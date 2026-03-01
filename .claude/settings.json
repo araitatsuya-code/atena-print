@@ -1,4 +1,23 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(wails *)",
+      "Bash(go *)",
+      "Bash(cd frontend && npm *)",
+      "Bash(cd frontend && npx *)",
+      "Edit(internal/**)",
+      "Edit(frontend/src/**)",
+      "Edit(app.go)",
+      "Edit(main.go)",
+      "Bash(gh api repos/araitatsuya-code/atena-print/pulls/comments/2868936766 --jq '.body[0:200]')",
+      "Bash(gh api repos/araitatsuya-code/atena-print/pulls/1/comments --jq '.[0] | keys')",
+      "Bash(gh api repos/araitatsuya-code/atena-print/pulls/1/comments --jq '.[] | select\\(.id == 2868936765\\) | .body[0:300]')",
+      "Bash(gh api repos/araitatsuya-code/atena-print/pulls/1/comments -X POST --field body=\"対応済みです。仮メールアドレス \\\\`contact@example.com\\\\` に変更しました。プロジェクト窓口が決まった際に正式なアドレスへ更新します。\" --field in_reply_to=2868936779 --jq '.id')"
+    ],
+    "deny": [
+      "Read(./.entire/metadata/**)"
+    ]
+  },
   "hooks": {
     "PostToolUse": [
       {
@@ -74,21 +93,6 @@
           }
         ]
       }
-    ]
-  },
-  "permissions": {
-    "deny": [
-      "Read(./.entire/metadata/**)"
-    ],
-        "allow": [
-      "Bash(wails *)",
-      "Bash(go *)",
-      "Bash(cd frontend && npm *)",
-      "Bash(cd frontend && npx *)",
-      "Edit(internal/**)",
-      "Edit(frontend/src/**)",
-      "Edit(app.go)",
-      "Edit(main.go)"
     ]
   }
 }
