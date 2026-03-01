@@ -14,7 +14,17 @@
       "Bash(git *)"
     ],
     "deny": [
-      "Read(./.entire/metadata/**)"
+      "Read(./.entire/metadata/**)",
+      "Read(.env)",
+      "Read(**/.env)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/id_rsa)",
+      "Read(**/id_ed25519)",
+      "Read(secrets/**)",
+      "Read(credentials/**)",
+      "Read(**/*secret*)",
+      "Read(**/*password*)"
     ],
     "additionalDirectories": []
   },
