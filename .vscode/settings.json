@@ -1,0 +1,7 @@
+{
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    {
+      "text": "コミットメッセージは日本語で記述してください。件名は日本語で簡潔に、本文が必要な場合も日本語で記述してください。"
+    }
+  ]
+}
