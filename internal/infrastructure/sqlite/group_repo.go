@@ -58,9 +58,16 @@ func (r *GroupRepo) Create(g *entity.Group) error {
 }
 
 func (r *GroupRepo) Update(g *entity.Group) error {
-	_, err := r.db.Exec(`UPDATE groups SET name=? WHERE id=?`, g.Name, g.ID)
+	result, err := r.db.Exec(`UPDATE groups SET name=? WHERE id=?`, g.Name, g.ID)
 	if err != nil {
 		return fmt.Errorf("update group: %w", err)
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update group rows affected: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("update group: not found id=%s", g.ID)
 	}
 	return nil
 }

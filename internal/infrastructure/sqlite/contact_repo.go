@@ -71,7 +71,7 @@ func (r *ContactRepo) Create(c *entity.Contact) error {
 
 func (r *ContactRepo) Update(c *entity.Contact) error {
 	c.UpdatedAt = time.Now()
-	_, err := r.db.Exec(`UPDATE contacts SET
+	result, err := r.db.Exec(`UPDATE contacts SET
 		family_name=?, given_name=?, family_name_kana=?, given_name_kana=?, honorific=?,
 		postal_code=?, prefecture=?, city=?, street=?, building=?, company=?, department=?, notes=?, updated_at=?
 		WHERE id=?`,
@@ -80,6 +80,13 @@ func (r *ContactRepo) Update(c *entity.Contact) error {
 		c.UpdatedAt, c.ID)
 	if err != nil {
 		return fmt.Errorf("update contact: %w", err)
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update contact rows affected: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("update contact: not found id=%s", c.ID)
 	}
 	return nil
 }
