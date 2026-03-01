@@ -1,0 +1,19 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "Atena ラベル印刷",
+  "outputfilename": "atena-label",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "info": {
+    "productName": "Atena ラベル印刷",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2026",
+    "comments": "日本語宛名ラベル印刷アプリ"
+  },
+  "author": {
+    "name": "araitatsuya-code",
+    "email": "contact@example.com"
+  }
+}

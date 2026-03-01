@@ -1,4 +1,33 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(wails *)",
+      "Bash(go *)",
+      "Bash(cd frontend && npm *)",
+      "Bash(cd frontend && npx *)",
+      "Edit(internal/**)",
+      "Edit(frontend/src/**)",
+      "Edit(app.go)",
+      "Edit(main.go)",
+      "Bash(gh pr *)",
+      "Bash(gh api *)",
+      "Bash(git *)"
+    ],
+    "deny": [
+      "Read(./.entire/metadata/**)",
+      "Read(.env)",
+      "Read(**/.env)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/id_rsa)",
+      "Read(**/id_ed25519)",
+      "Read(secrets/**)",
+      "Read(credentials/**)",
+      "Read(**/*secret*)",
+      "Read(**/*password*)"
+    ],
+    "additionalDirectories": []
+  },
   "hooks": {
     "PostToolUse": [
       {
@@ -74,21 +103,6 @@
           }
         ]
       }
-    ]
-  },
-  "permissions": {
-    "deny": [
-      "Read(./.entire/metadata/**)"
-    ],
-        "allow": [
-      "Bash(wails *)",
-      "Bash(go *)",
-      "Bash(cd frontend && npm *)",
-      "Bash(cd frontend && npx *)",
-      "Edit(internal/**)",
-      "Edit(frontend/src/**)",
-      "Edit(app.go)",
-      "Edit(main.go)"
     ]
   }
 }

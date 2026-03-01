@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS print_history;
+DROP TABLE IF EXISTS custom_watermarks;
+DROP TABLE IF EXISTS senders;
+DROP TABLE IF EXISTS contact_groups;
+DROP TABLE IF EXISTS groups;
+DROP TABLE IF EXISTS contacts;
