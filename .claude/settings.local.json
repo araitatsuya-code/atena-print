@@ -4,7 +4,9 @@
       "Bash(git add .vscode/settings.json)",
       "Bash(git checkout -b feature/phase1-foundation)",
       "Bash(npm install -D @types/node)",
-      "Bash(npm run build)"
+      "Bash(npm run build)",
+      "Bash(npx vitest --run)",
+      "Bash(npm install)"
     ]
   }
 }
