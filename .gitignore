@@ -1,3 +1,6 @@
 build/bin
 node_modules
 frontend/dist
+
+# Claude Code ローカル設定（個人パスを含むため）
+.claude/settings.local.json
