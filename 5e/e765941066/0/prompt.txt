@@ -1,0 +1,39 @@
+https://github.com/araitatsuya-code/atena-print/pull/1
+
+このPRレビュー対応できますか？
+内容を判断して変更しなくてもOK
+
+---
+
+続きをお願いします
+
+---
+
+coderabbitのメッセージに返信できる？
+
+---
+
+authorのメールアドレスは仮メールにできますか？
+
+---
+
+ghのレビュー対応をskillにするかコメント返信方法などを記憶しておいて
+
+---
+
+],
+    "additionalDirectories": [
+      "/Users/ta/.claude/projects/-Users-ta-workspace-atena-print"
+    ]
+
+この記述は？
+個人のユーザ名などは表に出ない方がいいのですが難しい？
+
+---
+
+OKです、マージしようと思うのでタスクリストを更新できますか？
+出来ればタイミングを見て自分で更新してほしい
+
+---
+
+.claude/settings.jsonは反映しないようにしますか
