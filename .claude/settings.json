@@ -79,6 +79,16 @@
   "permissions": {
     "deny": [
       "Read(./.entire/metadata/**)"
+    ],
+        "allow": [
+      "Bash(wails *)",
+      "Bash(go *)",
+      "Bash(cd frontend && npm *)",
+      "Bash(cd frontend && npx *)",
+      "Edit(internal/**)",
+      "Edit(frontend/src/**)",
+      "Edit(app.go)",
+      "Edit(main.go)"
     ]
   }
 }
