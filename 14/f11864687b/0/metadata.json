@@ -1,0 +1,38 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "14f11864687b",
+  "session_id": "aeab8eb7-d796-4285-a848-f13aab0b96bd",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-01T13:12:46.877877Z",
+  "branch": "feature/phase1-foundation",
+  "checkpoints_count": 2,
+  "files_touched": [
+    ".claude/settings.local.json",
+    "frontend/index.html",
+    "frontend/package.json",
+    "frontend/src/main.tsx",
+    "go.mod",
+    "internal/infrastructure/sqlite/contact_repo.go",
+    "internal/infrastructure/sqlite/group_repo.go",
+    "internal/infrastructure/sqlite/sender_repo.go",
+    "main.go"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "cd7033dec2ff",
+  "token_usage": {
+    "input_tokens": 35,
+    "cache_creation_tokens": 49385,
+    "cache_read_tokens": 1649720,
+    "output_tokens": 16878,
+    "api_call_count": 32
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-01T13:12:46.665339Z",
+    "agent_lines": 56,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 56,
+    "agent_percentage": 100
+  }
+}
