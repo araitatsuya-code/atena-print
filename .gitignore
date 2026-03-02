@@ -1,6 +1,9 @@
-build/bin
-node_modules
-frontend/dist
+.DS_Store
+**/.DS_Store
+build/
+node_modules/
+**/node_modules/
+frontend/dist/
 
 # Claude Code ローカル設定（個人パスを含むため）
 .claude/settings.local.json
