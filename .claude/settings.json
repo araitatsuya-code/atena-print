@@ -16,8 +16,7 @@
       "Bash(gh label create phase-2 --color 1D76DB --description \"Phase 2: 住所録 CRUD\")",
       "Bash(gh label create phase-3 --color 0052CC --description \"Phase 3: ラベルレンダリング\")",
       "Bash(gh label create phase-4 --color 5319E7 --description \"Phase 4: 透かし・QRバックエンド\")",
-      "Bash(gh label create phase-5 --color B60205 --description \"Phase 5: ラベル印刷\")",
-      "Bash(git commit:*)"
+      "Bash(gh label create phase-5 --color B60205 --description \"Phase 5: ラベル印刷\")"
     ],
     "deny": [
       "Read(./.entire/metadata/**)",

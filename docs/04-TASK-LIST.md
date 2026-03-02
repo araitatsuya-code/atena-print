@@ -5,72 +5,73 @@
 
 ---
 
-## Phase 1: 基盤構築 (Week 1-2)
+## Phase 1: 基盤構築 ✅ 完了 (PR #1)
 
 ### 1.1 Wails プロジェクト初期化
-- [ ] `wails init -n atena-label -t react-ts` でプロジェクト作成
-- [ ] wails.json の設定 (appName: "Atena ラベル印刷", width: 1280, height: 800)
-- [ ] `wails dev` で起動確認
+- [x] `wails init -n atena-label -t react-ts` でプロジェクト作成
+- [x] wails.json の設定 (appName: "Atena ラベル印刷", width: 1280, height: 800)
+- [x] `wails dev` で起動確認
 
 ### 1.2 Go モジュール・依存関係
-- [ ] go.mod に依存を追加:
+- [x] go.mod に依存を追加:
   - `github.com/mattn/go-sqlite3`
   - `github.com/google/uuid`
   - `github.com/golang-migrate/migrate/v4`
   - `github.com/jung-kurt/gofpdf`
   - `github.com/skip2/go-qrcode`
-- [ ] `go mod tidy`
+- [x] `go mod tidy`
 
 ### 1.3 Entity 定義
-- [ ] `internal/entity/contact.go` — Contact struct
-- [ ] `internal/entity/sender.go` — Sender struct
-- [ ] `internal/entity/group.go` — Group struct
-- [ ] `internal/entity/template.go` — Template, PostalConfig, TextConfig structs
-- [ ] `internal/entity/watermark.go` — Watermark struct
-- [ ] `internal/entity/qr_config.go` — QRConfig struct
-- [ ] `internal/entity/label_layout.go` — LabelLayout struct
-- [ ] `internal/entity/print_job.go` — PrintJob struct
+- [x] `internal/entity/contact.go` — Contact struct
+- [x] `internal/entity/sender.go` — Sender struct
+- [x] `internal/entity/group.go` — Group struct
+- [x] `internal/entity/template.go` — Template, PostalConfig, TextConfig structs
+- [x] `internal/entity/watermark.go` — Watermark struct
+- [x] `internal/entity/qr_config.go` — QRConfig struct
+- [x] `internal/entity/label_layout.go` — LabelLayout struct
+- [x] `internal/entity/print_job.go` — PrintJob struct
 
 > 詳細は `02-DATA-MODEL-API.md` を参照
 
 ### 1.4 DB スキーマ・マイグレーション
-- [ ] `internal/migration/000001_create_contacts.up.sql` — 全テーブル作成 (contacts, groups, contact_groups, senders, custom_watermarks, print_history)
-- [ ] `internal/migration/000001_create_contacts.down.sql`
-- [ ] `internal/infrastructure/sqlite/db.go` — DB初期化・マイグレーション実行関数
-- [ ] アプリ起動時に自動マイグレーション
+
+- [x] `internal/infrastructure/sqlite/migrations/000001_create_tables.up.sql` — 全テーブル作成 (contacts, groups, contact_groups, senders, custom_watermarks, print_history)
+- [x] `internal/infrastructure/sqlite/migrations/000001_create_tables.down.sql`
+- [x] `internal/infrastructure/sqlite/db.go` — DB初期化・マイグレーション実行関数
+- [x] アプリ起動時に自動マイグレーション
 
 ### 1.5 Repository インターフェース
-- [ ] `internal/repository/contact_repository.go`
+- [x] `internal/repository/contact_repository.go`
   - FindAll(groupID string) ([]Contact, error)
   - FindByID(id string) (*Contact, error)
   - Create(c *Contact) error
   - Update(c *Contact) error
   - Delete(id string) error
   - Search(query string) ([]Contact, error)
-- [ ] `internal/repository/sender_repository.go`
-- [ ] `internal/repository/group_repository.go`
+- [x] `internal/repository/sender_repository.go`
+- [x] `internal/repository/group_repository.go`
 
 ### 1.6 SQLite Repository 実装
-- [ ] `internal/infrastructure/sqlite/contact_repo.go` — ContactRepository実装
-- [ ] `internal/infrastructure/sqlite/sender_repo.go`
-- [ ] `internal/infrastructure/sqlite/group_repo.go`
+- [x] `internal/infrastructure/sqlite/contact_repo.go` — ContactRepository実装
+- [x] `internal/infrastructure/sqlite/sender_repo.go`
+- [x] `internal/infrastructure/sqlite/group_repo.go`
 
 ### 1.7 UseCase 実装 (Contact)
-- [ ] `internal/usecase/contact_usecase.go`
+- [x] `internal/usecase/contact_usecase.go`
   - NewContactUseCase(repo) → コンストラクタ
   - List(groupID) / Get(id) / Create / Update / Delete / Search
 
 ### 1.8 Wails ハンドラー (app.go) — 住所録API
-- [ ] App struct に contactUseCase を保持
-- [ ] DI: main.go で DB → Repo → UseCase → App を組み立て
-- [ ] GetContacts / GetContact / SaveContact / DeleteContacts / SearchContacts をバインド
-- [ ] `wails dev` でバインディング自動生成を確認
+- [x] App struct に contactUseCase を保持
+- [x] DI: main.go で DB → Repo → UseCase → App を組み立て
+- [x] GetContacts / GetContact / SaveContact / DeleteContacts / SearchContacts をバインド
+- [x] `wails dev` でバインディング自動生成を確認
 
 ### 1.9 フロントエンド基盤
-- [ ] Vite設定確認
-- [ ] Tailwind CSS + shadcn/ui セットアップ
-- [ ] App.tsx にルーティング基盤 (useState でビュー切替)
-- [ ] Zustandインストール・ストア骨格 (contactStore, previewStore, decorationStore, labelStore)
+- [x] Vite設定確認
+- [x] Tailwind CSS + shadcn/ui セットアップ
+- [x] App.tsx にルーティング基盤 (useState でビュー切替)
+- [x] Zustandインストール・ストア骨格 (contactStore, previewStore, decorationStore, labelStore)
 
 ---
 
