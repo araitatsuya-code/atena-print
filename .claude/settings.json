@@ -1,4 +1,38 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(wails *)",
+      "Bash(go *)",
+      "Bash(cd frontend && npm *)",
+      "Bash(cd frontend && npx *)",
+      "Edit(internal/**)",
+      "Edit(frontend/src/**)",
+      "Edit(app.go)",
+      "Edit(main.go)",
+      "Bash(gh pr *)",
+      "Bash(gh api *)",
+      "Bash(git *)",
+      "Bash(gh label list)",
+      "Bash(gh label create phase-2 --color 1D76DB --description \"Phase 2: 住所録 CRUD\")",
+      "Bash(gh label create phase-3 --color 0052CC --description \"Phase 3: ラベルレンダリング\")",
+      "Bash(gh label create phase-4 --color 5319E7 --description \"Phase 4: 透かし・QRバックエンド\")",
+      "Bash(gh label create phase-5 --color B60205 --description \"Phase 5: ラベル印刷\")"
+    ],
+    "deny": [
+      "Read(./.entire/metadata/**)",
+      "Read(.env)",
+      "Read(**/.env)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/id_rsa)",
+      "Read(**/id_ed25519)",
+      "Read(secrets/**)",
+      "Read(credentials/**)",
+      "Read(**/*secret*)",
+      "Read(**/*password*)"
+    ],
+    "additionalDirectories": []
+  },
   "hooks": {
     "PostToolUse": [
       {
@@ -74,21 +108,6 @@
           }
         ]
       }
-    ]
-  },
-  "permissions": {
-    "deny": [
-      "Read(./.entire/metadata/**)"
-    ],
-        "allow": [
-      "Bash(wails *)",
-      "Bash(go *)",
-      "Bash(cd frontend && npm *)",
-      "Bash(cd frontend && npx *)",
-      "Edit(internal/**)",
-      "Edit(frontend/src/**)",
-      "Edit(app.go)",
-      "Edit(main.go)"
     ]
   }
 }
