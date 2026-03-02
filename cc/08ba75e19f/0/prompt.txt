@@ -1,0 +1,36 @@
+commandを作成したのでmainからブランチ切ってPRしてください
+
+---
+
+[Request interrupted by user]
+
+---
+
+nodemoduleは追跡しないで
+
+---
+
+[Request interrupted by user]
+
+---
+
+distもいらない？
+
+---
+
+OK
+
+---
+
+[Request interrupted by user]
+
+---
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+EOF
+
+これはいらないです
+
+---
+
+This branch has conflicts that must be resolved
