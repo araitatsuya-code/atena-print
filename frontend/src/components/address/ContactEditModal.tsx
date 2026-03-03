@@ -51,6 +51,7 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
   )
   const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>>>({})
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }))
@@ -72,6 +73,7 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
       return
     }
     setSaving(true)
+    setSaveError(null)
     try {
       await SaveContact({
         id: contact?.id ?? '',
@@ -82,6 +84,7 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
       onSaved()
     } catch (err) {
       console.error(err)
+      setSaveError(err instanceof Error ? err.message : '保存に失敗しました')
     } finally {
       setSaving(false)
     }
@@ -90,15 +93,18 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
         className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ヘッダー */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-          <h2 className="text-base font-semibold text-gray-800">
+          <h2 id="modal-title" className="text-base font-semibold text-gray-800">
             {isNew ? '連絡先を追加' : '連絡先を編集'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+          <button onClick={onClose} aria-label="閉じる" className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
 
         {/* フォーム */}
@@ -195,6 +201,13 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
               className={`${inputCls()} resize-none`}
             />
           </Field>
+
+          {/* 保存エラー */}
+          {saveError && (
+            <p role="alert" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+              {saveError}
+            </p>
+          )}
 
           {/* ボタン */}
           <div className="flex justify-end gap-2 pt-1">

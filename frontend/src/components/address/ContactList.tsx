@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { GetContacts, GetGroups, DeleteContacts, SearchContacts } from '../../../wailsjs/go/main/App'
 import { useContactStore } from '../../stores/contactStore'
 import type { Group } from '../../types'
@@ -24,37 +24,53 @@ export default function ContactList() {
   const [editTarget, setEditTarget] = useState<Contact | null | undefined>(undefined)
   // undefined = モーダル非表示, null = 新規作成, Contact = 編集
 
+  const requestIdRef = useRef(0)
+
   // グループ一覧取得
   useEffect(() => {
     GetGroups().then(setGroups).catch(console.error)
   }, [])
 
-  // 連絡先一覧取得
+  // 連絡先一覧取得 (競合状態を防ぐためリクエストIDで管理)
   useEffect(() => {
+    const requestId = ++requestIdRef.current
     setLoading(true)
     const fetch = searchQuery
       ? SearchContacts(searchQuery)
       : GetContacts(currentGroupId)
     fetch
-      .then(setContacts)
+      .then((result) => {
+        if (requestId === requestIdRef.current) {
+          setContacts(result)
+        }
+      })
       .catch(console.error)
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (requestId === requestIdRef.current) {
+          setLoading(false)
+        }
+      })
   }, [currentGroupId, searchQuery])
+
+  const refreshContacts = async () => {
+    const result = searchQuery
+      ? await SearchContacts(searchQuery)
+      : await GetContacts(currentGroupId)
+    setContacts(result)
+  }
 
   const handleDelete = async () => {
     if (selectedIds.size === 0) return
     const ids = Array.from(selectedIds)
     await DeleteContacts(ids)
     clearSelection()
-    const updated = await GetContacts(currentGroupId)
-    setContacts(updated)
+    await refreshContacts()
   }
 
   const handleSaved = async () => {
     setEditTarget(undefined)
     clearSelection()
-    const updated = await GetContacts(currentGroupId)
-    setContacts(updated)
+    await refreshContacts()
   }
 
   const tabs = [{ id: '', name: 'すべて' }, ...groups]
@@ -67,7 +83,10 @@ export default function ContactList() {
           type="text"
           placeholder="検索..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            setSearchQuery(e.target.value)
+            clearSelection()
+          }}
           className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -80,6 +99,7 @@ export default function ContactList() {
             onClick={() => {
               setCurrentGroupId(tab.id)
               setSearchQuery('')
+              clearSelection()
             }}
             className={`px-3 py-1.5 text-xs rounded-t-md whitespace-nowrap transition-colors ${
               currentGroupId === tab.id && !searchQuery
