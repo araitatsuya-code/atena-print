@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"log"
 	"regexp"
 	"sync"
 
@@ -15,23 +16,32 @@ import (
 var postalJSON []byte
 
 var (
-	once   sync.Once
-	db     map[string][3]string
-	dbErr  error
-	digits = regexp.MustCompile(`\D`)
+	once       sync.Once
+	db         map[string][3]string
+	dbErr      error
+	nonDigitRe = regexp.MustCompile(`\D`)
 )
+
+// Repo implements repository.PostalRepository using embedded JSON data.
+type Repo struct{}
+
+// NewRepo returns a new Repo.
+func NewRepo() *Repo { return &Repo{} }
 
 // Lookup returns the address for a 7-digit postal code (hyphens ignored).
 // Returns an error if the code is not found or has an invalid format.
-func Lookup(postalCode string) (*entity.Address, error) {
+func (r *Repo) Lookup(postalCode string) (*entity.Address, error) {
 	once.Do(func() {
 		dbErr = json.Unmarshal(postalJSON, &db)
+		if dbErr != nil {
+			log.Printf("postal: failed to initialize postal data: %v", dbErr)
+		}
 	})
 	if dbErr != nil {
 		return nil, fmt.Errorf("postal: failed to load data: %w", dbErr)
 	}
 
-	code := digits.ReplaceAllString(postalCode, "")
+	code := nonDigitRe.ReplaceAllString(postalCode, "")
 	if len(code) != 7 {
 		return nil, fmt.Errorf("postal: invalid postal code %q (must be 7 digits)", postalCode)
 	}

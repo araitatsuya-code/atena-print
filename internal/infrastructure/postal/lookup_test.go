@@ -7,7 +7,7 @@ import (
 )
 
 func TestLookup_found(t *testing.T) {
-	addr, err := postal.Lookup("1000001")
+	addr, err := postal.NewRepo().Lookup("1000001")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -20,7 +20,7 @@ func TestLookup_found(t *testing.T) {
 }
 
 func TestLookup_hyphen(t *testing.T) {
-	addr, err := postal.Lookup("100-0001")
+	addr, err := postal.NewRepo().Lookup("100-0001")
 	if err != nil {
 		t.Fatalf("unexpected error with hyphen: %v", err)
 	}
@@ -30,14 +30,14 @@ func TestLookup_hyphen(t *testing.T) {
 }
 
 func TestLookup_notFound(t *testing.T) {
-	_, err := postal.Lookup("0000000")
+	_, err := postal.NewRepo().Lookup("0000000")
 	if err == nil {
 		t.Fatal("expected error for unknown code, got nil")
 	}
 }
 
 func TestLookup_invalidLength(t *testing.T) {
-	_, err := postal.Lookup("123")
+	_, err := postal.NewRepo().Lookup("123")
 	if err == nil {
 		t.Fatal("expected error for short code, got nil")
 	}

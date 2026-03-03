@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"atena-label/internal/entity"
-	"atena-label/internal/infrastructure/postal"
 	"atena-label/internal/repository"
 	"atena-label/internal/usecase"
 )
@@ -15,11 +14,12 @@ type App struct {
 	ctx            context.Context
 	contactUseCase *usecase.ContactUseCase
 	groupRepo      repository.GroupRepository
+	postalRepo     repository.PostalRepository
 }
 
 // NewApp creates a new App application struct
-func NewApp(contactUC *usecase.ContactUseCase, groupRepo repository.GroupRepository) *App {
-	return &App{contactUseCase: contactUC, groupRepo: groupRepo}
+func NewApp(contactUC *usecase.ContactUseCase, groupRepo repository.GroupRepository, postalRepo repository.PostalRepository) *App {
+	return &App{contactUseCase: contactUC, groupRepo: groupRepo, postalRepo: postalRepo}
 }
 
 // startup is called when the app starts. The context is saved
@@ -76,7 +76,7 @@ func (a *App) SearchContacts(query string) ([]entity.Contact, error) {
 
 // LookupPostal returns address information for the given postal code (7 digits, hyphens allowed).
 func (a *App) LookupPostal(postalCode string) (*entity.Address, error) {
-	addr, err := postal.Lookup(postalCode)
+	addr, err := a.postalRepo.Lookup(postalCode)
 	if err != nil {
 		return nil, fmt.Errorf("LookupPostal: %w", err)
 	}

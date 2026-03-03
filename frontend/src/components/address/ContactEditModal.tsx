@@ -66,6 +66,8 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
 
     try {
       const addr = await LookupPostal(digits)
+      // addr.town (町域名) は Contact.street (番地) とは異なるため自動入力しない。
+      // ユーザーが番地を手動入力する想定。
       setForm((prev) => ({
         ...prev,
         prefecture: addr.prefecture,
