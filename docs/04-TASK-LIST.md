@@ -77,32 +77,35 @@
 
 ## Phase 2: 住所録 CRUD (Week 3-4)
 
-### 2.1 住所録一覧コンポーネント
-- [ ] `frontend/src/components/address/ContactList.tsx`
+### 2.1 住所録一覧コンポーネント ✅ 完了 (PR #14)
+
+- [x] `frontend/src/components/address/ContactList.tsx`
   - Wails バインディング経由で連絡先一覧取得
   - チェックボックス付きリスト表示
   - グループフィルター (タブUI)
   - 検索バー
   - 全選択/全解除ボタン
 
-### 2.2 住所録編集モーダル
-- [ ] `frontend/src/components/address/ContactEditModal.tsx`
+### 2.2 住所録編集モーダル ✅ 完了 (PR #14)
+
+- [x] `frontend/src/components/address/ContactEditModal.tsx`
   - 新規追加/編集の両対応
   - フォームバリデーション
   - 保存 → Wails バインディング → DB
 
-### 2.3 郵便番号検索
-- [ ] `internal/infrastructure/postal/lookup.go` — 郵便番号→住所変換
+### 2.3 郵便番号検索 ✅ 完了 (PR #15)
+
+- [x] `internal/infrastructure/postal/lookup.go` — 郵便番号→住所変換
   - 組み込みの郵便番号データ (JSON) または外部API
   - LookupPostal メソッドを app.go にバインド
-- [ ] フロントエンドで郵便番号入力時に自動補完
+- [x] フロントエンドで郵便番号入力時に自動補完
 
 ### 2.4 CSVインポート/エクスポート
-- [ ] `internal/usecase/csv_usecase.go`
-- [ ] `internal/infrastructure/csv/csv.go`
-  - CSVカラムマッピング: 姓,名,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名
-- [ ] ImportCSV / ExportCSV を app.go にバインド
-- [ ] フロントエンドにインポートボタン (ファイル選択ダイアログ)
+- [x] `internal/usecase/csv_usecase.go`
+- [x] `internal/infrastructure/csv/csv.go`
+  - CSVカラムマッピング: 姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ
+- [x] ImportCSV / ExportCSV / OpenCSVFileDialog / SaveCSVFileDialog を app.go にバインド
+- [x] フロントエンドにインポートボタン・エクスポートボタン (ファイル選択ダイアログ)
 
 ### 2.5 グループ管理
 - [ ] `internal/usecase/group_usecase.go`

@@ -4,14 +4,22 @@ import {entity} from '../models';
 
 export function DeleteContacts(arg1:Array<string>):Promise<void>;
 
+export function ExportCSV(arg1:Array<string>,arg2:string):Promise<void>;
+
 export function GetContact(arg1:string):Promise<entity.Contact>;
 
 export function GetContacts(arg1:string):Promise<Array<entity.Contact>>;
 
 export function GetGroups():Promise<Array<entity.Group>>;
 
+export function ImportCSV(arg1:string):Promise<entity.ImportResult>;
+
+export function LookupPostal(arg1:string):Promise<entity.Address>;
+
+export function OpenCSVFileDialog():Promise<string>;
+
+export function SaveCSVFileDialog(arg1:string):Promise<string>;
+
 export function SaveContact(arg1:entity.Contact):Promise<entity.Contact>;
 
 export function SearchContacts(arg1:string):Promise<Array<entity.Contact>>;
-
-export function LookupPostal(arg1:string):Promise<entity.Address>;

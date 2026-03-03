@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { GetContacts, GetGroups, DeleteContacts, SearchContacts } from '../../../wailsjs/go/main/App'
+import {
+  GetContacts,
+  GetGroups,
+  DeleteContacts,
+  SearchContacts,
+  ImportCSV,
+  ExportCSV,
+  OpenCSVFileDialog,
+  SaveCSVFileDialog,
+} from '../../../wailsjs/go/main/App'
 import { useContactStore } from '../../stores/contactStore'
 import type { Group } from '../../types'
 import ContactEditModal from './ContactEditModal'
@@ -71,6 +80,28 @@ export default function ContactList() {
     setEditTarget(undefined)
     clearSelection()
     await refreshContacts()
+  }
+
+  const handleImport = async () => {
+    const filePath = await OpenCSVFileDialog()
+    if (!filePath) return
+    const result = await ImportCSV(filePath)
+    await refreshContacts()
+    const msg = `インポート完了: ${result.imported} 件`
+    if (result.errors && result.errors.length > 0) {
+      alert(`${msg}\n\nエラー:\n${result.errors.join('\n')}`)
+    } else {
+      alert(msg)
+    }
+  }
+
+  const handleExport = async () => {
+    const ids = selectedIds.size > 0 ? Array.from(selectedIds) : []
+    const defaultName = ids.length > 0 ? 'contacts_selected.csv' : 'contacts_all.csv'
+    const filePath = await SaveCSVFileDialog(defaultName)
+    if (!filePath) return
+    await ExportCSV(ids, filePath)
+    alert('エクスポート完了')
   }
 
   const tabs = [{ id: '', name: 'すべて' }, ...groups]
@@ -166,12 +197,24 @@ export default function ContactList() {
       </div>
 
       {/* フッターボタン */}
-      <div className="p-2 border-t border-gray-200 flex gap-2">
+      <div className="p-2 border-t border-gray-200 flex flex-wrap gap-2">
         <button
           onClick={() => setEditTarget(null)}
           className="flex-1 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
         >
           + 新規追加
+        </button>
+        <button
+          onClick={handleImport}
+          className="px-3 py-1.5 text-sm bg-gray-50 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
+        >
+          CSV取込
+        </button>
+        <button
+          onClick={handleExport}
+          className="px-3 py-1.5 text-sm bg-gray-50 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
+        >
+          CSV出力{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
         </button>
         {selectedIds.size > 0 && (
           <button
