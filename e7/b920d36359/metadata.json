@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "e7b920d36359",
+  "strategy": "manual-commit",
+  "branch": "issue-2-address-list-edit",
+  "checkpoints_count": 3,
+  "files_touched": [
+    ".claude/agents/pr-reviewer.md",
+    ".claude/settings.json"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e7/b920d36359/0/metadata.json",
+      "transcript": "/e7/b920d36359/0/full.jsonl",
+      "context": "/e7/b920d36359/0/context.md",
+      "content_hash": "/e7/b920d36359/0/content_hash.txt",
+      "prompt": "/e7/b920d36359/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 34,
+    "cache_creation_tokens": 29801,
+    "cache_read_tokens": 2299862,
+    "output_tokens": 11434,
+    "api_call_count": 30
+  }
+}
