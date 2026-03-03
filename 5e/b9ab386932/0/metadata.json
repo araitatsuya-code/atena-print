@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "5eb9ab386932",
+  "session_id": "9696189a-fcb3-4661-970d-907dcfdedf6f",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-03T06:11:31.151152Z",
+  "branch": "issue-4-csv-import-export",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "frontend/wailsjs/go/main/App.d.ts",
+    "frontend/wailsjs/go/main/App.js",
+    "frontend/wailsjs/go/models.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "c6b14ebbd664",
+  "token_usage": {
+    "input_tokens": 108,
+    "cache_creation_tokens": 205009,
+    "cache_read_tokens": 5066114,
+    "output_tokens": 30603,
+    "api_call_count": 85
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-03T06:11:31.009167Z",
+    "agent_lines": 0,
+    "human_added": 544,
+    "human_modified": 6,
+    "human_removed": 0,
+    "total_committed": 544,
+    "agent_percentage": 0
+  }
+}
