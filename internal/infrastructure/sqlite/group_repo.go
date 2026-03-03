@@ -49,6 +49,32 @@ func (r *GroupRepo) FindByID(id string) (*entity.Group, error) {
 	return g, nil
 }
 
+func (r *GroupRepo) FindByContactID(contactID string) ([]entity.Group, error) {
+	rows, err := r.db.Query(`
+		SELECT g.id, g.name FROM groups g
+		JOIN contact_groups cg ON cg.group_id = g.id
+		WHERE cg.contact_id = ?
+		ORDER BY g.name
+	`, contactID)
+	if err != nil {
+		return nil, fmt.Errorf("find groups by contact: %w", err)
+	}
+	defer rows.Close()
+
+	var groups []entity.Group
+	for rows.Next() {
+		g := entity.Group{}
+		if err := rows.Scan(&g.ID, &g.Name); err != nil {
+			return nil, err
+		}
+		groups = append(groups, g)
+	}
+	if groups == nil {
+		groups = []entity.Group{}
+	}
+	return groups, rows.Err()
+}
+
 func (r *GroupRepo) Create(g *entity.Group) error {
 	_, err := r.db.Exec(`INSERT INTO groups (id, name) VALUES (?, ?)`, g.ID, g.Name)
 	if err != nil {

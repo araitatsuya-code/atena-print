@@ -18,8 +18,28 @@ export function GetContacts(arg1) {
   return window['go']['main']['App']['GetContacts'](arg1);
 }
 
+export function AddContactToGroup(arg1, arg2) {
+  return window['go']['main']['App']['AddContactToGroup'](arg1, arg2);
+}
+
+export function DeleteGroup(arg1) {
+  return window['go']['main']['App']['DeleteGroup'](arg1);
+}
+
+export function GetContactGroups(arg1) {
+  return window['go']['main']['App']['GetContactGroups'](arg1);
+}
+
 export function GetGroups() {
   return window['go']['main']['App']['GetGroups']();
+}
+
+export function RemoveContactFromGroup(arg1, arg2) {
+  return window['go']['main']['App']['RemoveContactFromGroup'](arg1, arg2);
+}
+
+export function SaveGroup(arg1) {
+  return window['go']['main']['App']['SaveGroup'](arg1);
 }
 
 export function ImportCSV(arg1) {

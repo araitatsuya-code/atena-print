@@ -10,9 +10,9 @@ import {
   SaveCSVFileDialog,
 } from '../../../wailsjs/go/main/App'
 import { useContactStore } from '../../stores/contactStore'
-import type { Group } from '../../types'
+import type { Contact, Group } from '../../types'
 import ContactEditModal from './ContactEditModal'
-import type { Contact } from '../../types'
+import GroupManageDialog from './GroupManageDialog'
 
 export default function ContactList() {
   const {
@@ -32,12 +32,17 @@ export default function ContactList() {
   const [loading, setLoading] = useState(false)
   const [editTarget, setEditTarget] = useState<Contact | null | undefined>(undefined)
   // undefined = モーダル非表示, null = 新規作成, Contact = 編集
+  const [showGroupManage, setShowGroupManage] = useState(false)
 
   const requestIdRef = useRef(0)
 
+  const refreshGroups = () => {
+    GetGroups().then(setGroups).catch(console.error)
+  }
+
   // グループ一覧取得
   useEffect(() => {
-    GetGroups().then(setGroups).catch(console.error)
+    refreshGroups()
   }, [])
 
   // 連絡先一覧取得 (競合状態を防ぐためリクエストIDで管理)
@@ -132,7 +137,7 @@ export default function ContactList() {
       </div>
 
       {/* グループタブ */}
-      <div className="flex overflow-x-auto border-b border-gray-200 px-2 pt-1 gap-1">
+      <div className="flex items-end overflow-x-auto border-b border-gray-200 px-2 pt-1 gap-1">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -150,6 +155,13 @@ export default function ContactList() {
             {tab.name}
           </button>
         ))}
+        <button
+          onClick={() => setShowGroupManage(true)}
+          className="ml-auto px-2 py-1 text-xs text-gray-400 hover:text-blue-600 whitespace-nowrap"
+          title="グループを管理"
+        >
+          ＋グループ
+        </button>
       </div>
 
       {/* 全選択/全解除 */}
@@ -241,6 +253,14 @@ export default function ContactList() {
           contact={editTarget ?? undefined}
           onClose={() => setEditTarget(undefined)}
           onSaved={handleSaved}
+        />
+      )}
+
+      {/* グループ管理ダイアログ */}
+      {showGroupManage && (
+        <GroupManageDialog
+          onClose={() => setShowGroupManage(false)}
+          onChanged={refreshGroups}
         />
       )}
     </div>

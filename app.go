@@ -16,13 +16,13 @@ type App struct {
 	ctx            context.Context
 	contactUseCase *usecase.ContactUseCase
 	csvUseCase     *usecase.CSVUseCase
-	groupRepo      repository.GroupRepository
+	groupUseCase   *usecase.GroupUseCase
 	postalRepo     repository.PostalRepository
 }
 
 // NewApp creates a new App application struct
-func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupRepo repository.GroupRepository, postalRepo repository.PostalRepository) *App {
-	return &App{contactUseCase: contactUC, csvUseCase: csvUC, groupRepo: groupRepo, postalRepo: postalRepo}
+func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, postalRepo repository.PostalRepository) *App {
+	return &App{contactUseCase: contactUC, csvUseCase: csvUC, groupUseCase: groupUC, postalRepo: postalRepo}
 }
 
 // startup is called when the app starts. The context is saved
@@ -134,9 +134,51 @@ func (a *App) SaveCSVFileDialog(defaultFilename string) (string, error) {
 
 // GetGroups returns all groups.
 func (a *App) GetGroups() ([]entity.Group, error) {
-	groups, err := a.groupRepo.FindAll()
+	groups, err := a.groupUseCase.List()
 	if err != nil {
 		return nil, fmt.Errorf("GetGroups: %w", err)
 	}
 	return groups, nil
+}
+
+// SaveGroup creates or updates a group.
+func (a *App) SaveGroup(g entity.Group) (entity.Group, error) {
+	saved, err := a.groupUseCase.Save(g)
+	if err != nil {
+		return entity.Group{}, fmt.Errorf("SaveGroup: %w", err)
+	}
+	return saved, nil
+}
+
+// DeleteGroup deletes a group by ID.
+func (a *App) DeleteGroup(id string) error {
+	if err := a.groupUseCase.Delete(id); err != nil {
+		return fmt.Errorf("DeleteGroup: %w", err)
+	}
+	return nil
+}
+
+// GetContactGroups returns all groups that a contact belongs to.
+func (a *App) GetContactGroups(contactID string) ([]entity.Group, error) {
+	groups, err := a.groupUseCase.GetContactGroups(contactID)
+	if err != nil {
+		return nil, fmt.Errorf("GetContactGroups: %w", err)
+	}
+	return groups, nil
+}
+
+// AddContactToGroup adds a contact to a group.
+func (a *App) AddContactToGroup(contactID string, groupID string) error {
+	if err := a.groupUseCase.AddContactToGroup(contactID, groupID); err != nil {
+		return fmt.Errorf("AddContactToGroup: %w", err)
+	}
+	return nil
+}
+
+// RemoveContactFromGroup removes a contact from a group.
+func (a *App) RemoveContactFromGroup(contactID string, groupID string) error {
+	if err := a.groupUseCase.RemoveContactFromGroup(contactID, groupID); err != nil {
+		return fmt.Errorf("RemoveContactFromGroup: %w", err)
+	}
+	return nil
 }

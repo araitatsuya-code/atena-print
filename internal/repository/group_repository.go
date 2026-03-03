@@ -5,6 +5,7 @@ import "atena-label/internal/entity"
 type GroupRepository interface {
 	FindAll() ([]entity.Group, error)
 	FindByID(id string) (*entity.Group, error)
+	FindByContactID(contactID string) ([]entity.Group, error)
 	Create(g *entity.Group) error
 	Update(g *entity.Group) error
 	Delete(id string) error
