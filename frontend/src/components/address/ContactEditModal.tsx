@@ -77,10 +77,10 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
     try {
       await SaveContact({
         id: contact?.id ?? '',
-        createdAt: contact?.createdAt ?? '',
-        updatedAt: contact?.updatedAt ?? '',
+        createdAt: contact?.createdAt ?? null,
+        updatedAt: contact?.updatedAt ?? null,
         ...form,
-      })
+      } as Parameters<typeof SaveContact>[0])
       onSaved()
     } catch (err) {
       console.error(err)
