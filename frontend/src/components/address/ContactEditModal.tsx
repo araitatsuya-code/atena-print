@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { SaveContact } from '../../../wailsjs/go/main/App'
 import type { Contact } from '../../types'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '../ui/dialog'
 
 interface Props {
   contact?: Contact  // undefined = 新規作成
@@ -91,21 +92,20 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-title"
-        className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent>
         {/* ヘッダー */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-          <h2 id="modal-title" className="text-base font-semibold text-gray-800">
+        <DialogHeader>
+          <DialogTitle>
             {isNew ? '連絡先を追加' : '連絡先を編集'}
-          </h2>
-          <button onClick={onClose} aria-label="閉じる" className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
-        </div>
+          </DialogTitle>
+          <DialogClose
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+          >
+            &times;
+          </DialogClose>
+        </DialogHeader>
 
         {/* フォーム */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
@@ -227,8 +227,8 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
