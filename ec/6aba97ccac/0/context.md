@@ -1,0 +1,46 @@
+# Session Context
+
+## User Prompts
+
+### Prompt 1
+
+# 次の Issue を取得して実装開始
+
+次に取り組むべき Issue を見つけて実装を開始してください。
+
+手順:
+
+1. `gh issue list --state open --label <現在のPhase> --limit 1` で次の Issue を取得
+2. Issue がなければ次の Phase のラベルで探す
+3. 見つかったら /project:work-issue と同じフローで実装開始
+
+もし open な Issue がなければ「全 Issue 完了」と報告してください。
+
+### Prompt 2
+
+# Issue を実装
+
+指定された GitHub Issue を実装してください。
+
+## 手順
+
+1. `gh issue view <番号>` で Issue の内容を確認
+2. ブランチを作成: `git checkout -b issue-<番号>-<slug>`
+3. 必要な仕様を docs/ から参照して実装
+4. テスト実行:
+   - Go: `go test ./internal/...`
+   - Frontend: `cd frontend && npx vitest --run`
+5. 変更をコミット (コミットメッセージに `refs #<番号>` を含める)
+6. Push して PR 作成:
+
+ARGUMENTS: 3
+
+### Prompt 3
+
+実装前にlintとかテストとかしていますか？
+
+### Prompt 4
+
+postal.json (line 1)
+オフライン用データが 146 件しかなく、全国の郵便番号検索としては実用になりません。LookupPostal はこの一覧にない正しい郵便番号もほぼ全て not found にするので、受け入れ条件の「7桁入力で住所自動入力」を満たせないケースが大半です。
+
