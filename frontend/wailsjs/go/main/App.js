@@ -25,3 +25,7 @@ export function SaveContact(arg1) {
 export function SearchContacts(arg1) {
   return window['go']['main']['App']['SearchContacts'](arg1);
 }
+
+export function LookupPostal(arg1) {
+  return window['go']['main']['App']['LookupPostal'](arg1);
+}

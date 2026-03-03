@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { SaveContact } from '../../../wailsjs/go/main/App'
+import { useCallback, useState } from 'react'
+import { LookupPostal, SaveContact } from '../../../wailsjs/go/main/App'
 import type { Contact } from '../../types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '../ui/dialog'
 
@@ -53,6 +53,28 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
   const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>>>({})
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [postalLookupError, setPostalLookupError] = useState<string | null>(null)
+
+  const handlePostalChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value
+    setForm((prev) => ({ ...prev, postalCode: raw }))
+    setErrors((prev) => ({ ...prev, postalCode: undefined }))
+    setPostalLookupError(null)
+
+    const digits = raw.replace(/\D/g, '')
+    if (digits.length !== 7) return
+
+    try {
+      const addr = await LookupPostal(digits)
+      setForm((prev) => ({
+        ...prev,
+        prefecture: addr.prefecture,
+        city: addr.city,
+      }))
+    } catch {
+      setPostalLookupError('郵便番号が見つかりませんでした')
+    }
+  }, [])
 
   const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }))
@@ -151,12 +173,12 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
           </Field>
 
           {/* 郵便番号 */}
-          <Field label="郵便番号">
+          <Field label="郵便番号" error={postalLookupError ?? undefined}>
             <input
               type="text"
               value={form.postalCode}
-              onChange={set('postalCode')}
-              className={inputCls()}
+              onChange={handlePostalChange}
+              className={inputCls(!!postalLookupError)}
               placeholder="1000001"
               maxLength={8}
             />

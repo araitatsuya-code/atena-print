@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"atena-label/internal/entity"
+	"atena-label/internal/infrastructure/postal"
 	"atena-label/internal/repository"
 	"atena-label/internal/usecase"
 )
@@ -71,6 +72,15 @@ func (a *App) SearchContacts(query string) ([]entity.Contact, error) {
 		return nil, fmt.Errorf("SearchContacts: %w", err)
 	}
 	return contacts, nil
+}
+
+// LookupPostal returns address information for the given postal code (7 digits, hyphens allowed).
+func (a *App) LookupPostal(postalCode string) (*entity.Address, error) {
+	addr, err := postal.Lookup(postalCode)
+	if err != nil {
+		return nil, fmt.Errorf("LookupPostal: %w", err)
+	}
+	return addr, nil
 }
 
 // GetGroups returns all groups.
