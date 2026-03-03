@@ -14,6 +14,10 @@ export function GetContacts(arg1) {
   return window['go']['main']['App']['GetContacts'](arg1);
 }
 
+export function GetGroups() {
+  return window['go']['main']['App']['GetGroups']();
+}
+
 export function SaveContact(arg1) {
   return window['go']['main']['App']['SaveContact'](arg1);
 }

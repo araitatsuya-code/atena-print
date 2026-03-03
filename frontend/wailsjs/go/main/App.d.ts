@@ -8,6 +8,8 @@ export function GetContact(arg1:string):Promise<entity.Contact>;
 
 export function GetContacts(arg1:string):Promise<Array<entity.Contact>>;
 
+export function GetGroups():Promise<Array<entity.Group>>;
+
 export function SaveContact(arg1:entity.Contact):Promise<entity.Contact>;
 
 export function SearchContacts(arg1:string):Promise<Array<entity.Contact>>;
