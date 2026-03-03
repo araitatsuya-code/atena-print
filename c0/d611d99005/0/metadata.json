@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "c0d611d99005",
+  "session_id": "715c3a27-15a5-49b0-918a-62b14aebecb7",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-03T01:13:31.176769Z",
+  "branch": "issue-2-address-list-edit",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "frontend/src/components/address/ContactList.tsx",
+    "frontend/src/components/address/ContactEditModal.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "38daf1f13514",
+  "token_usage": {
+    "input_tokens": 21,
+    "cache_creation_tokens": 60885,
+    "cache_read_tokens": 900573,
+    "output_tokens": 8193,
+    "api_call_count": 19
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-03T01:13:30.927065Z",
+    "agent_lines": 0,
+    "human_added": 33,
+    "human_modified": 11,
+    "human_removed": 0,
+    "total_committed": 33,
+    "agent_percentage": 0
+  }
+}

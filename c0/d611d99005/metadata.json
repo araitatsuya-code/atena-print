@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "c0d611d99005",
+  "strategy": "manual-commit",
+  "branch": "issue-2-address-list-edit",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "frontend/src/components/address/ContactEditModal.tsx",
+    "frontend/src/components/address/ContactList.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/c0/d611d99005/0/metadata.json",
+      "transcript": "/c0/d611d99005/0/full.jsonl",
+      "context": "/c0/d611d99005/0/context.md",
+      "content_hash": "/c0/d611d99005/0/content_hash.txt",
+      "prompt": "/c0/d611d99005/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 21,
+    "cache_creation_tokens": 60885,
+    "cache_read_tokens": 900573,
+    "output_tokens": 8193,
+    "api_call_count": 19
+  }
+}
