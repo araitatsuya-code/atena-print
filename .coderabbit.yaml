@@ -1,0 +1,110 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: "ja-JP"
+
+tone_instructions: >
+  個人開発プロジェクトのレビュアーとして振る舞ってください。
+  重大なバグ・セキュリティ問題・設計上の問題のみ個別コメントし、
+  軽微な指摘（命名、フォーマット、typo等）はPRサマリーにまとめてください。
+  修正ループを最小限にするため、本当に直すべきものだけコメントしてください。
+  コードの良い点があれば軽く褒めてください。
+
+reviews:
+  # chill = ノイズ少なめ。assertive だと細かすぎてループが増える
+  profile: "chill"
+
+  # 個人開発なので request_changes は不要（ブロックされると面倒）
+  request_changes_workflow: false
+
+  # PR 説明欄に変更サマリーを自動生成
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+
+  # ポエムは必要(^ω^)
+  poem: true
+
+  # ウォークスルーは折りたたみ（長いPRでも邪魔にならない）
+  collapse_walkthrough: true
+
+  # レビューステータス表示
+  review_status: true
+
+  # Issue との整合性チェック（Closes #xx に対して）
+  assess_linked_issues: true
+
+  # レビュー対象から除外するファイル
+  path_filters:
+    - "!frontend/wailsjs/**"       # Wails 自動生成
+    - "!**/node_modules/**"
+    - "!**/*.min.js"
+    - "!**/*.min.css"
+    - "!**/go.sum"
+    - "!assets/watermarks/**"      # 画像アセット
+    - "!assets/fonts/**"           # フォントファイル
+
+  # パス別のレビュー指示
+  path_instructions:
+    - path: "internal/entity/**"
+      instructions: >
+        ドメインモデル層。他レイヤーへの依存がないことを確認。
+        json タグが camelCase で付いているか確認（Wails バインディングに必須）。
+        バリデーションロジックがあれば妥当性を確認。
+    - path: "internal/usecase/**"
+      instructions: >
+        ビジネスロジック層。infrastructure への直接依存がないことを確認。
+        repository インターフェース経由でのみデータアクセスしているか確認。
+        エラーハンドリングが適切か確認。
+    - path: "internal/infrastructure/**"
+      instructions: >
+        インフラ層。SQLインジェクションリスク、リソースリーク（DB接続、ファイルハンドル）を重点チェック。
+        PDF生成・QR生成・画像処理のエラーハンドリングを確認。
+    - path: "app.go"
+      instructions: >
+        Wails バインディング (Handler層)。
+        public メソッドが適切に UseCase に委譲しているか確認。
+        直接 infrastructure を呼んでいたら指摘。
+    - path: "frontend/src/components/**"
+      instructions: >
+        React コンポーネント。不要な re-render、useEffect の依存配列漏れを確認。
+        Wails バインディング呼び出しのエラーハンドリングを確認。
+    - path: "frontend/src/stores/**"
+      instructions: >
+        Zustand ストア。状態設計の妥当性を確認。
+    - path: "internal/infrastructure/pdf/**"
+      instructions: >
+        PDF生成エンジン。縦書きの文字配置、ラベル面付け計算の正確性を確認。
+        フォント埋め込みの漏れがないか確認。
+    - path: "**/*_test.go"
+      instructions: >
+        テストコード。カバレッジより境界値とエラーケースの網羅性を重視。
+        軽微なスタイル指摘は不要。
+
+  auto_review:
+    enabled: true
+    # ドラフトPRはレビューしない
+    drafts: false
+    # main ブランチへの PR のみ
+    base_branches:
+      - "main"
+
+  # AI Agents 向けプロンプトセクションを表示
+  tools:
+    github-checks:
+      enabled: true
+      timeout_ms: 90000
+
+# ナレッジベース（学習機能）
+knowledge_base:
+  opt_out: false
+  learnings:
+    scope: "auto"
+  # CLAUDE.md 等のコーディングガイドラインを読み込む
+  # ※ CLAUDE.md, .cursorrules 等はデフォルトで自動検出される
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "docs/01-PROJECT-SPEC.md"
+      - "docs/02-DATA-MODEL-API.md"
+
+chat:
+  auto_reply: true
