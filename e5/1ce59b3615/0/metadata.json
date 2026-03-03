@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "e51ce59b3615",
+  "session_id": "9696189a-fcb3-4661-970d-907dcfdedf6f",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-03T01:49:18.511767Z",
+  "branch": "issue-3-postal-lookup",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "internal/entity/address.go",
+    "internal/infrastructure/postal/lookup.go",
+    "app.go",
+    "internal/infrastructure/postal/lookup_test.go",
+    "frontend/wailsjs/go/main/App.js",
+    "frontend/wailsjs/go/main/App.d.ts",
+    "frontend/wailsjs/go/models.ts",
+    "frontend/src/components/address/ContactEditModal.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "ab258893ba12",
+  "token_usage": {
+    "input_tokens": 49,
+    "cache_creation_tokens": 58114,
+    "cache_read_tokens": 1807695,
+    "output_tokens": 15904,
+    "api_call_count": 41
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-03T01:49:18.440969Z",
+    "agent_lines": 162,
+    "human_added": 1,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 163,
+    "agent_percentage": 99.38650306748467
+  }
+}

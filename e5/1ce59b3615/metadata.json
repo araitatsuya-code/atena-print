@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "e51ce59b3615",
+  "strategy": "manual-commit",
+  "branch": "issue-3-postal-lookup",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "app.go",
+    "frontend/src/components/address/ContactEditModal.tsx",
+    "frontend/wailsjs/go/main/App.d.ts",
+    "frontend/wailsjs/go/main/App.js",
+    "frontend/wailsjs/go/models.ts",
+    "internal/entity/address.go",
+    "internal/infrastructure/postal/lookup.go",
+    "internal/infrastructure/postal/lookup_test.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e5/1ce59b3615/0/metadata.json",
+      "transcript": "/e5/1ce59b3615/0/full.jsonl",
+      "context": "/e5/1ce59b3615/0/context.md",
+      "content_hash": "/e5/1ce59b3615/0/content_hash.txt",
+      "prompt": "/e5/1ce59b3615/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 49,
+    "cache_creation_tokens": 58114,
+    "cache_read_tokens": 1807695,
+    "output_tokens": 15904,
+    "api_call_count": 41
+  }
+}
