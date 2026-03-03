@@ -5,9 +5,18 @@
   "branch": "issue-4-csv-import-export",
   "checkpoints_count": 2,
   "files_touched": [
+    "app.go",
+    "docs/04-TASK-LIST.md",
+    "frontend/src/components/address/ContactList.tsx",
+    "frontend/src/types.ts",
     "frontend/wailsjs/go/main/App.d.ts",
     "frontend/wailsjs/go/main/App.js",
-    "frontend/wailsjs/go/models.ts"
+    "frontend/wailsjs/go/models.ts",
+    "internal/entity/csv_result.go",
+    "internal/infrastructure/csv/csv.go",
+    "internal/infrastructure/csv/csv_test.go",
+    "internal/usecase/csv_usecase.go",
+    "main.go"
   ],
   "sessions": [
     {
@@ -16,13 +25,20 @@
       "context": "/5e/b9ab386932/0/context.md",
       "content_hash": "/5e/b9ab386932/0/content_hash.txt",
       "prompt": "/5e/b9ab386932/0/prompt.txt"
+    },
+    {
+      "metadata": "/5e/b9ab386932/1/metadata.json",
+      "transcript": "/5e/b9ab386932/1/full.jsonl",
+      "context": "/5e/b9ab386932/1/context.md",
+      "content_hash": "/5e/b9ab386932/1/content_hash.txt",
+      "prompt": "/5e/b9ab386932/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 108,
-    "cache_creation_tokens": 205009,
-    "cache_read_tokens": 5066114,
-    "output_tokens": 30603,
-    "api_call_count": 85
+    "input_tokens": 186,
+    "cache_creation_tokens": 286604,
+    "cache_read_tokens": 8479717,
+    "output_tokens": 58079,
+    "api_call_count": 151
   }
 }
