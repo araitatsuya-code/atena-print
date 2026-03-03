@@ -75,7 +75,7 @@
 
 ---
 
-## Phase 2: 住所録 CRUD (Week 3-4)
+## Phase 2: 住所録 CRUD ✅ 完了 (PR #14, #15, #16, #17)
 
 ### 2.1 住所録一覧コンポーネント ✅ 完了 (PR #14)
 
@@ -100,17 +100,19 @@
   - LookupPostal メソッドを app.go にバインド
 - [x] フロントエンドで郵便番号入力時に自動補完
 
-### 2.4 CSVインポート/エクスポート
+### 2.4 CSVインポート/エクスポート ✅ 完了 (PR #16)
+
 - [x] `internal/usecase/csv_usecase.go`
 - [x] `internal/infrastructure/csv/csv.go`
   - CSVカラムマッピング: 姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ
 - [x] ImportCSV / ExportCSV / OpenCSVFileDialog / SaveCSVFileDialog を app.go にバインド
 - [x] フロントエンドにインポートボタン・エクスポートボタン (ファイル選択ダイアログ)
 
-### 2.5 グループ管理
-- [ ] `internal/usecase/group_usecase.go`
-- [ ] GetGroups / SaveGroup / DeleteGroup / AddContactToGroup / RemoveContactFromGroup をバインド
-- [ ] 住所録編集モーダルにグループ選択UI
+### 2.5 グループ管理 ✅ 完了 (PR #17)
+
+- [x] `internal/usecase/group_usecase.go`
+- [x] GetGroups / SaveGroup / DeleteGroup / SetContactGroups をバインド
+- [x] 住所録編集モーダルにグループ選択UI
 
 ---
 
