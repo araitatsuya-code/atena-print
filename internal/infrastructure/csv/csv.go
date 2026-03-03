@@ -12,6 +12,22 @@ import (
 	"atena-label/internal/entity"
 )
 
+// Adapter implements usecase.CSVPort using the package-level Import/Export functions.
+type Adapter struct{}
+
+// NewAdapter returns a new Adapter.
+func NewAdapter() *Adapter { return &Adapter{} }
+
+// Import delegates to the package-level Import function.
+func (a *Adapter) Import(filePath string) ([]entity.Contact, []string) {
+	return Import(filePath)
+}
+
+// Export delegates to the package-level Export function.
+func (a *Adapter) Export(contacts []entity.Contact, filePath string) error {
+	return Export(contacts, filePath)
+}
+
 // csvHeader defines the canonical CSV column order.
 // 姓, 名, 姓（カナ）, 名（カナ）, 敬称, 郵便番号, 都道府県, 市区町村, 番地, 建物名, 会社名, 部署名, メモ
 var csvHeader = []string{
@@ -73,12 +89,16 @@ func Import(filePath string) ([]entity.Contact, []string) {
 }
 
 // Export writes contacts to a CSV file with BOM-prefixed UTF-8 for Excel compatibility.
-func Export(contacts []entity.Contact, filePath string) error {
+func Export(contacts []entity.Contact, filePath string) (retErr error) {
 	f, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("ファイルを作成できません: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil && retErr == nil {
+			retErr = fmt.Errorf("ファイルのクローズに失敗しました: %w", err)
+		}
+	}()
 
 	// Write BOM so Excel opens the file without encoding issues.
 	if _, err := f.Write([]byte{0xEF, 0xBB, 0xBF}); err != nil {
@@ -86,7 +106,6 @@ func Export(contacts []entity.Contact, filePath string) error {
 	}
 
 	w := csv.NewWriter(f)
-	defer w.Flush()
 
 	if err := w.Write(csvHeader); err != nil {
 		return fmt.Errorf("ヘッダーの書き込みに失敗しました: %w", err)
@@ -96,6 +115,11 @@ func Export(contacts []entity.Contact, filePath string) error {
 		if err := w.Write(contactToRow(c)); err != nil {
 			return fmt.Errorf("データの書き込みに失敗しました: %w", err)
 		}
+	}
+
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return fmt.Errorf("データの書き込みに失敗しました: %w", err)
 	}
 
 	return nil

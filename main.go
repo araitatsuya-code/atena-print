@@ -10,6 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
+	csvpkg "atena-label/internal/infrastructure/csv"
 	"atena-label/internal/infrastructure/postal"
 	dbpkg "atena-label/internal/infrastructure/sqlite"
 	"atena-label/internal/usecase"
@@ -32,7 +33,7 @@ func main() {
 
 	contactRepo := dbpkg.NewContactRepo(db)
 	contactUC := usecase.NewContactUseCase(contactRepo)
-	csvUC := usecase.NewCSVUseCase(contactRepo)
+	csvUC := usecase.NewCSVUseCase(contactRepo, csvpkg.NewAdapter())
 	groupRepo := dbpkg.NewGroupRepo(db)
 
 	postalRepo := postal.NewRepo()

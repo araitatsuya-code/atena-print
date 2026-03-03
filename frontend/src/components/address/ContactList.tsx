@@ -83,25 +83,34 @@ export default function ContactList() {
   }
 
   const handleImport = async () => {
-    const filePath = await OpenCSVFileDialog()
-    if (!filePath) return
-    const result = await ImportCSV(filePath)
-    await refreshContacts()
-    const msg = `インポート完了: ${result.imported} 件`
-    if (result.errors && result.errors.length > 0) {
-      alert(`${msg}\n\nエラー:\n${result.errors.join('\n')}`)
-    } else {
-      alert(msg)
+    try {
+      const filePath = await OpenCSVFileDialog()
+      if (!filePath) return
+      const result = await ImportCSV(filePath)
+      const msg = `インポート完了: ${result.imported} 件`
+      if (result.errors && result.errors.length > 0) {
+        alert(`${msg}\n\nエラー:\n${result.errors.join('\n')}`)
+      } else {
+        alert(msg)
+      }
+    } catch (err) {
+      alert(`インポートに失敗しました: ${err}`)
+    } finally {
+      await refreshContacts()
     }
   }
 
   const handleExport = async () => {
-    const ids = selectedIds.size > 0 ? Array.from(selectedIds) : []
-    const defaultName = ids.length > 0 ? 'contacts_selected.csv' : 'contacts_all.csv'
-    const filePath = await SaveCSVFileDialog(defaultName)
-    if (!filePath) return
-    await ExportCSV(ids, filePath)
-    alert('エクスポート完了')
+    try {
+      const ids = selectedIds.size > 0 ? Array.from(selectedIds) : []
+      const defaultName = ids.length > 0 ? 'contacts_selected.csv' : 'contacts_all.csv'
+      const filePath = await SaveCSVFileDialog(defaultName)
+      if (!filePath) return
+      await ExportCSV(ids, filePath)
+      alert('エクスポート完了')
+    } catch (err) {
+      alert(`エクスポートに失敗しました: ${err}`)
+    }
   }
 
   const tabs = [{ id: '', name: 'すべて' }, ...groups]

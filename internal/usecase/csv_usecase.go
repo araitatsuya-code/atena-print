@@ -4,21 +4,28 @@ import (
 	"fmt"
 
 	"atena-label/internal/entity"
-	csvinfra "atena-label/internal/infrastructure/csv"
 	"atena-label/internal/repository"
 )
 
-type CSVUseCase struct {
-	repo repository.ContactRepository
+// CSVPort abstracts CSV file I/O so the use-case layer has no dependency on
+// any specific CSV infrastructure implementation.
+type CSVPort interface {
+	Import(filePath string) ([]entity.Contact, []string)
+	Export(contacts []entity.Contact, filePath string) error
 }
 
-func NewCSVUseCase(repo repository.ContactRepository) *CSVUseCase {
-	return &CSVUseCase{repo: repo}
+type CSVUseCase struct {
+	repo repository.ContactRepository
+	csv  CSVPort
+}
+
+func NewCSVUseCase(repo repository.ContactRepository, csv CSVPort) *CSVUseCase {
+	return &CSVUseCase{repo: repo, csv: csv}
 }
 
 // Import reads a CSV file and saves each row as a new contact.
 func (uc *CSVUseCase) Import(filePath string) (entity.ImportResult, error) {
-	contacts, rowErrors := csvinfra.Import(filePath)
+	contacts, rowErrors := uc.csv.Import(filePath)
 
 	result := entity.ImportResult{
 		Total:  len(contacts) + len(rowErrors),
@@ -62,5 +69,8 @@ func (uc *CSVUseCase) Export(ids []string, filePath string) error {
 		}
 	}
 
-	return csvinfra.Export(contacts, filePath)
+	if err := uc.csv.Export(contacts, filePath); err != nil {
+		return fmt.Errorf("CSVエクスポートに失敗しました: %w", err)
+	}
+	return nil
 }
