@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
 	"atena-label/internal/entity"
 	"atena-label/internal/repository"
 	"atena-label/internal/usecase"
@@ -13,13 +15,14 @@ import (
 type App struct {
 	ctx            context.Context
 	contactUseCase *usecase.ContactUseCase
+	csvUseCase     *usecase.CSVUseCase
 	groupRepo      repository.GroupRepository
 	postalRepo     repository.PostalRepository
 }
 
 // NewApp creates a new App application struct
-func NewApp(contactUC *usecase.ContactUseCase, groupRepo repository.GroupRepository, postalRepo repository.PostalRepository) *App {
-	return &App{contactUseCase: contactUC, groupRepo: groupRepo, postalRepo: postalRepo}
+func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupRepo repository.GroupRepository, postalRepo repository.PostalRepository) *App {
+	return &App{contactUseCase: contactUC, csvUseCase: csvUC, groupRepo: groupRepo, postalRepo: postalRepo}
 }
 
 // startup is called when the app starts. The context is saved
@@ -81,6 +84,52 @@ func (a *App) LookupPostal(postalCode string) (*entity.Address, error) {
 		return nil, fmt.Errorf("LookupPostal: %w", err)
 	}
 	return addr, nil
+}
+
+// ImportCSV imports contacts from the given CSV file path.
+func (a *App) ImportCSV(filePath string) (entity.ImportResult, error) {
+	result, err := a.csvUseCase.Import(filePath)
+	if err != nil {
+		return result, fmt.Errorf("ImportCSV: %w", err)
+	}
+	return result, nil
+}
+
+// ExportCSV exports the given contacts (or all if ids is empty) to a CSV file.
+func (a *App) ExportCSV(ids []string, filePath string) error {
+	if err := a.csvUseCase.Export(ids, filePath); err != nil {
+		return fmt.Errorf("ExportCSV: %w", err)
+	}
+	return nil
+}
+
+// OpenCSVFileDialog opens a native file picker filtered to CSV files.
+func (a *App) OpenCSVFileDialog() (string, error) {
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "CSVファイルを選択",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "CSVファイル (*.csv)", Pattern: "*.csv"},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("OpenCSVFileDialog: %w", err)
+	}
+	return path, nil
+}
+
+// SaveCSVFileDialog opens a native save dialog for CSV output.
+func (a *App) SaveCSVFileDialog(defaultFilename string) (string, error) {
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "CSVファイルを保存",
+		DefaultFilename: defaultFilename,
+		Filters: []runtime.FileFilter{
+			{DisplayName: "CSVファイル (*.csv)", Pattern: "*.csv"},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("SaveCSVFileDialog: %w", err)
+	}
+	return path, nil
 }
 
 // GetGroups returns all groups.

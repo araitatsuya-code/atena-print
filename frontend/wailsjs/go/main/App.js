@@ -6,6 +6,10 @@ export function DeleteContacts(arg1) {
   return window['go']['main']['App']['DeleteContacts'](arg1);
 }
 
+export function ExportCSV(arg1, arg2) {
+  return window['go']['main']['App']['ExportCSV'](arg1, arg2);
+}
+
 export function GetContact(arg1) {
   return window['go']['main']['App']['GetContact'](arg1);
 }
@@ -18,14 +22,26 @@ export function GetGroups() {
   return window['go']['main']['App']['GetGroups']();
 }
 
+export function ImportCSV(arg1) {
+  return window['go']['main']['App']['ImportCSV'](arg1);
+}
+
+export function LookupPostal(arg1) {
+  return window['go']['main']['App']['LookupPostal'](arg1);
+}
+
+export function OpenCSVFileDialog() {
+  return window['go']['main']['App']['OpenCSVFileDialog']();
+}
+
+export function SaveCSVFileDialog(arg1) {
+  return window['go']['main']['App']['SaveCSVFileDialog'](arg1);
+}
+
 export function SaveContact(arg1) {
   return window['go']['main']['App']['SaveContact'](arg1);
 }
 
 export function SearchContacts(arg1) {
   return window['go']['main']['App']['SearchContacts'](arg1);
-}
-
-export function LookupPostal(arg1) {
-  return window['go']['main']['App']['LookupPostal'](arg1);
 }

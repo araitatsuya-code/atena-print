@@ -92,4 +92,10 @@ export interface Template {
   sender: TextConfig
 }
 
+export interface ImportResult {
+  total: number
+  imported: number
+  errors: string[]
+}
+
 export type View = 'contacts' | 'preview' | 'settings'

@@ -95,5 +95,22 @@ export namespace entity {
 	    }
 	}
 
+	export class ImportResult {
+	    total: number;
+	    imported: number;
+	    errors: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new ImportResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.total = source["total"];
+	        this.imported = source["imported"];
+	        this.errors = source["errors"];
+	    }
+	}
+
 }
 
