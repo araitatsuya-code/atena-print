@@ -25,7 +25,13 @@
       "Bash(git commit:*)",
       "Bash(npx tsc --noEmit)",
       "Bash(npm run lint)",
-      "Bash(npm install @radix-ui/react-dialog)"
+      "Bash(npm install @radix-ui/react-dialog)",
+      "Bash(gh issue list --state open --limit 10)",
+      "Bash(gh issue list --state open --label \"phase-2\" --limit 5)",
+      "Bash(gh issue view 3)",
+      "Bash(gh issue view 3 --json number,title,body,labels)",
+      "Bash(mkdir -p /Users/ta/workspace/atena-print/internal/infrastructure/postal)",
+      "Bash(npm run)"
     ],
     "deny": [
       "Read(./.entire/metadata/**)",

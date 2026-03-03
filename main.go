@@ -10,6 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
+	"atena-label/internal/infrastructure/postal"
 	dbpkg "atena-label/internal/infrastructure/sqlite"
 	"atena-label/internal/usecase"
 )
@@ -33,7 +34,8 @@ func main() {
 	contactUC := usecase.NewContactUseCase(contactRepo)
 	groupRepo := dbpkg.NewGroupRepo(db)
 
-	app := NewApp(contactUC, groupRepo)
+	postalRepo := postal.NewRepo()
+	app := NewApp(contactUC, groupRepo, postalRepo)
 
 	err = wails.Run(&options.App{
 		Title:  "Atena ラベル印刷",

@@ -1,5 +1,22 @@
 export namespace entity {
-	
+
+	export class Address {
+	    prefecture: string;
+	    city: string;
+	    town: string;
+
+	    static createFrom(source: any = {}) {
+	        return new Address(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.prefecture = source["prefecture"];
+	        this.city = source["city"];
+	        this.town = source["town"];
+	    }
+	}
+
 	export class Contact {
 	    id: string;
 	    familyName: string;
