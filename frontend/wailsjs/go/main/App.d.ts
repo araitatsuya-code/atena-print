@@ -10,7 +10,19 @@ export function GetContact(arg1:string):Promise<entity.Contact>;
 
 export function GetContacts(arg1:string):Promise<Array<entity.Contact>>;
 
+export function AddContactToGroup(arg1:string,arg2:string):Promise<void>;
+
+export function DeleteGroup(arg1:string):Promise<void>;
+
+export function GetContactGroups(arg1:string):Promise<Array<entity.Group>>;
+
 export function GetGroups():Promise<Array<entity.Group>>;
+
+export function RemoveContactFromGroup(arg1:string,arg2:string):Promise<void>;
+
+export function SaveGroup(arg1:entity.Group):Promise<entity.Group>;
+
+export function SetContactGroups(arg1:string,arg2:Array<string>):Promise<void>;
 
 export function ImportCSV(arg1:string):Promise<entity.ImportResult>;
 

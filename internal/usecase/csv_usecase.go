@@ -33,7 +33,7 @@ func (uc *CSVUseCase) Import(filePath string) (entity.ImportResult, error) {
 	}
 
 	if len(rowErrors) > 0 && len(contacts) == 0 {
-		return result, fmt.Errorf("CSVのインポートに失敗しました")
+		return result, fmt.Errorf("CSVのインポートに失敗しました: %s", rowErrors[0])
 	}
 
 	for i := range contacts {

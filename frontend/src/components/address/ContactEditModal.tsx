@@ -1,6 +1,12 @@
-import { useCallback, useState } from 'react'
-import { LookupPostal, SaveContact } from '../../../wailsjs/go/main/App'
-import type { Contact } from '../../types'
+import { useCallback, useEffect, useState } from 'react'
+import {
+  LookupPostal,
+  SaveContact,
+  GetGroups,
+  GetContactGroups,
+  SetContactGroups,
+} from '../../../wailsjs/go/main/App'
+import type { Contact, Group } from '../../types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '../ui/dialog'
 
 interface Props {
@@ -55,6 +61,18 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [postalLookupError, setPostalLookupError] = useState<string | null>(null)
 
+  const [allGroups, setAllGroups] = useState<Group[]>([])
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    GetGroups().then(setAllGroups).catch(console.error)
+    if (contact?.id) {
+      GetContactGroups(contact.id)
+        .then((groups) => setSelectedGroupIds(new Set(groups.map((g) => g.id))))
+        .catch(console.error)
+    }
+  }, [contact?.id])
+
   const handlePostalChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value
     setForm((prev) => ({ ...prev, postalCode: raw }))
@@ -100,12 +118,16 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
     setSaving(true)
     setSaveError(null)
     try {
-      await SaveContact({
+      const saved = await SaveContact({
         id: contact?.id ?? '',
         createdAt: contact?.createdAt ?? null,
         updatedAt: contact?.updatedAt ?? null,
         ...form,
       } as Parameters<typeof SaveContact>[0])
+
+      // グループ割り当てを原子的に置換
+      await SetContactGroups(saved.id, [...selectedGroupIds])
+
       onSaved()
     } catch (err) {
       console.error(err)
@@ -113,6 +135,18 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
     } finally {
       setSaving(false)
     }
+  }
+
+  const toggleGroup = (groupId: string) => {
+    setSelectedGroupIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupId)) {
+        next.delete(groupId)
+      } else {
+        next.add(groupId)
+      }
+      return next
+    })
   }
 
   return (
@@ -225,6 +259,25 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
               className={`${inputCls()} resize-none`}
             />
           </Field>
+
+          {/* グループ */}
+          {allGroups.length > 0 && (
+            <Field label="グループ">
+              <div className="flex flex-wrap gap-2">
+                {allGroups.map((g) => (
+                  <label key={g.id} className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedGroupIds.has(g.id)}
+                      onChange={() => toggleGroup(g.id)}
+                      className="h-3.5 w-3.5 accent-blue-600"
+                    />
+                    <span className="text-sm text-gray-700">{g.name}</span>
+                  </label>
+                ))}
+              </div>
+            </Field>
+          )}
 
           {/* 保存エラー */}
           {saveError && (
