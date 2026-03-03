@@ -16,7 +16,16 @@
       "Bash(gh label create phase-2 --color 1D76DB --description \"Phase 2: 住所録 CRUD\")",
       "Bash(gh label create phase-3 --color 0052CC --description \"Phase 3: ラベルレンダリング\")",
       "Bash(gh label create phase-4 --color 5319E7 --description \"Phase 4: 透かし・QRバックエンド\")",
-      "Bash(gh label create phase-5 --color B60205 --description \"Phase 5: ラベル印刷\")"
+      "Bash(gh label create phase-5 --color B60205 --description \"Phase 5: ラベル印刷\")",
+      "Bash(gh issue list --state closed --limit 100 --json number,title,state,labels)",
+      "Bash(gh issue list --state open --label phase-2 --limit 1 --json number,title,body)",
+      "Bash(gh issue list --state open --label phase-2 --json number,title --limit 10)",
+      "Bash(gh issue view 2 --json number,title,body)",
+      "Bash(npx vitest --run)",
+      "Bash(git commit:*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run lint)",
+      "Bash(npm install @radix-ui/react-dialog)"
     ],
     "deny": [
       "Read(./.entire/metadata/**)",
@@ -31,7 +40,9 @@
       "Read(**/*secret*)",
       "Read(**/*password*)"
     ],
-    "additionalDirectories": []
+    "additionalDirectories": [
+      "/Users/ta/workspace/atena-print/frontend/src/components"
+    ]
   },
   "hooks": {
     "PostToolUse": [

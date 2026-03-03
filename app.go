@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"atena-label/internal/entity"
+	"atena-label/internal/repository"
 	"atena-label/internal/usecase"
 )
 
@@ -12,11 +13,12 @@ import (
 type App struct {
 	ctx            context.Context
 	contactUseCase *usecase.ContactUseCase
+	groupRepo      repository.GroupRepository
 }
 
 // NewApp creates a new App application struct
-func NewApp(contactUC *usecase.ContactUseCase) *App {
-	return &App{contactUseCase: contactUC}
+func NewApp(contactUC *usecase.ContactUseCase, groupRepo repository.GroupRepository) *App {
+	return &App{contactUseCase: contactUC, groupRepo: groupRepo}
 }
 
 // startup is called when the app starts. The context is saved
@@ -69,4 +71,13 @@ func (a *App) SearchContacts(query string) ([]entity.Contact, error) {
 		return nil, fmt.Errorf("SearchContacts: %w", err)
 	}
 	return contacts, nil
+}
+
+// GetGroups returns all groups.
+func (a *App) GetGroups() ([]entity.Group, error) {
+	groups, err := a.groupRepo.FindAll()
+	if err != nil {
+		return nil, fmt.Errorf("GetGroups: %w", err)
+	}
+	return groups, nil
 }

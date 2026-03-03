@@ -31,8 +31,9 @@ func main() {
 
 	contactRepo := dbpkg.NewContactRepo(db)
 	contactUC := usecase.NewContactUseCase(contactRepo)
+	groupRepo := dbpkg.NewGroupRepo(db)
 
-	app := NewApp(contactUC)
+	app := NewApp(contactUC, groupRepo)
 
 	err = wails.Run(&options.App{
 		Title:  "Atena ラベル印刷",
