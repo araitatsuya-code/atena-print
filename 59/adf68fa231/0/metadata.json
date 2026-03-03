@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "59adf68fa231",
+  "session_id": "9696189a-fcb3-4661-970d-907dcfdedf6f",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-03T05:05:53.146978Z",
+  "branch": "issue-3-postal-lookup",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "app.go",
+    "frontend/src/components/address/ContactEditModal.tsx",
+    "internal/infrastructure/postal/lookup.go",
+    "internal/infrastructure/postal/lookup_test.go"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "56a16bf4acef",
+  "checkpoint_transcript_start": 254,
+  "transcript_lines_at_start": 254,
+  "token_usage": {
+    "input_tokens": 37,
+    "cache_creation_tokens": 97698,
+    "cache_read_tokens": 2045231,
+    "output_tokens": 9058,
+    "api_call_count": 26
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-03T05:05:53.011453Z",
+    "agent_lines": 0,
+    "human_added": 22,
+    "human_modified": 14,
+    "human_removed": 0,
+    "total_committed": 22,
+    "agent_percentage": 0
+  }
+}
