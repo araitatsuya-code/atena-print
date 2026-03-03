@@ -182,3 +182,11 @@ func (a *App) RemoveContactFromGroup(contactID string, groupID string) error {
 	}
 	return nil
 }
+
+// SetContactGroups atomically replaces all group memberships for a contact.
+func (a *App) SetContactGroups(contactID string, groupIDs []string) error {
+	if err := a.groupUseCase.SetContactGroups(contactID, groupIDs); err != nil {
+		return fmt.Errorf("SetContactGroups: %w", err)
+	}
+	return nil
+}

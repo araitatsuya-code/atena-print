@@ -65,14 +65,38 @@ func (r *GroupRepo) FindByContactID(contactID string) ([]entity.Group, error) {
 	for rows.Next() {
 		g := entity.Group{}
 		if err := rows.Scan(&g.ID, &g.Name); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("FindByContactID: scanning row: %w", err)
 		}
 		groups = append(groups, g)
 	}
 	if groups == nil {
 		groups = []entity.Group{}
 	}
-	return groups, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("FindByContactID: rows iteration: %w", err)
+	}
+	return groups, nil
+}
+
+func (r *GroupRepo) SetContactGroups(contactID string, groupIDs []string) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("SetContactGroups: begin tx: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	if _, err := tx.Exec(`DELETE FROM contact_groups WHERE contact_id = ?`, contactID); err != nil {
+		return fmt.Errorf("SetContactGroups: clear groups: %w", err)
+	}
+	for _, gid := range groupIDs {
+		if _, err := tx.Exec(`INSERT OR IGNORE INTO contact_groups (contact_id, group_id) VALUES (?, ?)`, contactID, gid); err != nil {
+			return fmt.Errorf("SetContactGroups: insert group %s: %w", gid, err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("SetContactGroups: commit: %w", err)
+	}
+	return nil
 }
 
 func (r *GroupRepo) Create(g *entity.Group) error {

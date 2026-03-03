@@ -42,6 +42,10 @@ export function SaveGroup(arg1) {
   return window['go']['main']['App']['SaveGroup'](arg1);
 }
 
+export function SetContactGroups(arg1, arg2) {
+  return window['go']['main']['App']['SetContactGroups'](arg1, arg2);
+}
+
 export function ImportCSV(arg1) {
   return window['go']['main']['App']['ImportCSV'](arg1);
 }

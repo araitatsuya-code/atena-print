@@ -5,12 +5,15 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/google/uuid"
 
 	"atena-label/internal/entity"
 )
+
+var postalCodeRe = regexp.MustCompile(`^\d{7}$`)
 
 // Adapter implements usecase.CSVPort using the package-level Import/Export functions.
 type Adapter struct{}
@@ -155,6 +158,11 @@ func rowToContact(row []string, lineNum int) (entity.Contact, error) {
 		honorific = "様"
 	}
 
+	postal := col(row, 5)
+	if postal != "" && !postalCodeRe.MatchString(postal) {
+		return entity.Contact{}, fmt.Errorf("行 %d: 郵便番号が無効です (%q)", lineNum, postal)
+	}
+
 	return entity.Contact{
 		ID:             uuid.New().String(),
 		FamilyName:     col(row, 0),
@@ -162,7 +170,7 @@ func rowToContact(row []string, lineNum int) (entity.Contact, error) {
 		FamilyNameKana: col(row, 2),
 		GivenNameKana:  col(row, 3),
 		Honorific:      honorific,
-		PostalCode:     col(row, 5),
+		PostalCode:     postal,
 		Prefecture:     col(row, 6),
 		City:           col(row, 7),
 		Street:         col(row, 8),

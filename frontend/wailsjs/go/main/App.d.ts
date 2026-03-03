@@ -22,6 +22,8 @@ export function RemoveContactFromGroup(arg1:string,arg2:string):Promise<void>;
 
 export function SaveGroup(arg1:entity.Group):Promise<entity.Group>;
 
+export function SetContactGroups(arg1:string,arg2:Array<string>):Promise<void>;
+
 export function ImportCSV(arg1:string):Promise<entity.ImportResult>;
 
 export function LookupPostal(arg1:string):Promise<entity.Address>;

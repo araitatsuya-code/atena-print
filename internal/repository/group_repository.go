@@ -11,4 +11,5 @@ type GroupRepository interface {
 	Delete(id string) error
 	AddContact(contactID, groupID string) error
 	RemoveContact(contactID, groupID string) error
+	SetContactGroups(contactID string, groupIDs []string) error
 }

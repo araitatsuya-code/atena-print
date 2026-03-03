@@ -4,8 +4,7 @@ import {
   SaveContact,
   GetGroups,
   GetContactGroups,
-  AddContactToGroup,
-  RemoveContactFromGroup,
+  SetContactGroups,
 } from '../../../wailsjs/go/main/App'
 import type { Contact, Group } from '../../types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '../ui/dialog'
@@ -126,16 +125,8 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
         ...form,
       } as Parameters<typeof SaveContact>[0])
 
-      // グループ割り当て更新
-      const prevGroupIds = contact?.id
-        ? new Set((await GetContactGroups(contact.id)).map((g) => g.id))
-        : new Set<string>()
-      const toAdd = [...selectedGroupIds].filter((id) => !prevGroupIds.has(id))
-      const toRemove = [...prevGroupIds].filter((id) => !selectedGroupIds.has(id))
-      await Promise.all([
-        ...toAdd.map((gid) => AddContactToGroup(saved.id, gid)),
-        ...toRemove.map((gid) => RemoveContactFromGroup(saved.id, gid)),
-      ])
+      // グループ割り当てを原子的に置換
+      await SetContactGroups(saved.id, [...selectedGroupIds])
 
       onSaved()
     } catch (err) {
