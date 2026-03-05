@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "020d8f1b4f3b",
+  "strategy": "manual-commit",
+  "branch": "issue-6-canvas-label-preview",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "frontend/src/App.tsx",
+    "frontend/src/components/preview/LabelCanvas.tsx",
+    "frontend/src/lib/verticalText.test.ts",
+    "frontend/src/lib/verticalText.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/02/0d8f1b4f3b/0/metadata.json",
+      "transcript": "/02/0d8f1b4f3b/0/full.jsonl",
+      "context": "/02/0d8f1b4f3b/0/context.md",
+      "content_hash": "/02/0d8f1b4f3b/0/content_hash.txt",
+      "prompt": "/02/0d8f1b4f3b/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 28,
+    "cache_creation_tokens": 62149,
+    "cache_read_tokens": 1068179,
+    "output_tokens": 20386,
+    "api_call_count": 24
+  }
+}
