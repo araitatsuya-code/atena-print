@@ -10,8 +10,11 @@ import (
 
 const previewSize = 256 // pixels for preview PNG
 
+// Generator implements repository.QRGenerator using go-qrcode.
+type Generator struct{}
+
 // GeneratePreviewPNG encodes config.Content as a QR code and returns PNG bytes.
-func GeneratePreviewPNG(config entity.QRConfig) ([]byte, error) {
+func (g *Generator) GeneratePreviewPNG(config entity.QRConfig) ([]byte, error) {
 	if config.Content == "" {
 		return nil, fmt.Errorf("QR content cannot be empty")
 	}

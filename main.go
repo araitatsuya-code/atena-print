@@ -11,7 +11,9 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
 	csvpkg "atena-label/internal/infrastructure/csv"
+	imagepkg "atena-label/internal/infrastructure/image"
 	"atena-label/internal/infrastructure/postal"
+	qrpkg "atena-label/internal/infrastructure/qr"
 	dbpkg "atena-label/internal/infrastructure/sqlite"
 	"atena-label/internal/usecase"
 )
@@ -37,8 +39,8 @@ func main() {
 	groupRepo := dbpkg.NewGroupRepo(db)
 	groupUC := usecase.NewGroupUseCase(groupRepo)
 	watermarkRepo := dbpkg.NewWatermarkRepo(db)
-	watermarkUC := usecase.NewWatermarkUseCase(watermarkRepo, filepath.Join(appDataDir, "watermarks"))
-	qrCodeUC := usecase.NewQRCodeUseCase()
+	watermarkUC := usecase.NewWatermarkUseCase(watermarkRepo, &imagepkg.FileStorage{}, filepath.Join(appDataDir, "watermarks"))
+	qrCodeUC := usecase.NewQRCodeUseCase(&qrpkg.Generator{})
 
 	postalRepo := postal.NewRepo()
 	app := NewApp(contactUC, csvUC, groupUC, watermarkUC, qrCodeUC, postalRepo)

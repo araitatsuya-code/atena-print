@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"atena-label/internal/entity"
-	imagepkg "atena-label/internal/infrastructure/image"
 	"atena-label/internal/repository"
 )
 
@@ -23,11 +22,12 @@ var presets = []entity.Watermark{
 
 type WatermarkUseCase struct {
 	repo       repository.WatermarkRepository
+	storage    repository.StorageRepository
 	storageDir string
 }
 
-func NewWatermarkUseCase(repo repository.WatermarkRepository, storageDir string) *WatermarkUseCase {
-	return &WatermarkUseCase{repo: repo, storageDir: storageDir}
+func NewWatermarkUseCase(repo repository.WatermarkRepository, storage repository.StorageRepository, storageDir string) *WatermarkUseCase {
+	return &WatermarkUseCase{repo: repo, storage: storage, storageDir: storageDir}
 }
 
 // GetPresets returns all preset and custom watermarks.
@@ -55,7 +55,7 @@ func (uc *WatermarkUseCase) Upload(srcPath string) (entity.Watermark, error) {
 	}
 	dstPath := filepath.Join(uc.storageDir, id+ext)
 
-	if err := imagepkg.CopyToStorage(srcPath, dstPath); err != nil {
+	if err := uc.storage.CopyFile(srcPath, dstPath); err != nil {
 		return entity.Watermark{}, fmt.Errorf("copy watermark: %w", err)
 	}
 

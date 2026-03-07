@@ -32,6 +32,10 @@ func LoadCustom(filePath string) ([]byte, error) {
 
 // ApplyOpacity takes PNG data and returns new PNG bytes with opacity (0.0–1.0) applied to the alpha channel.
 func ApplyOpacity(pngData []byte, opacity float64) ([]byte, error) {
+	if opacity < 0 || opacity > 1 {
+		return nil, fmt.Errorf("opacity must be between 0.0 and 1.0, got %v", opacity)
+	}
+
 	img, _, err := image.Decode(bytes.NewReader(pngData))
 	if err != nil {
 		return nil, fmt.Errorf("decode image: %w", err)
@@ -59,15 +63,18 @@ func ApplyOpacity(pngData []byte, opacity float64) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// CopyToStorage copies a file from src path to dst path.
-func CopyToStorage(src, dst string) error {
-	in, err := os.Open(src)
+// FileStorage implements repository.StorageRepository using the OS filesystem.
+type FileStorage struct{}
+
+// CopyFile copies a file from srcPath to dstPath.
+func (fs *FileStorage) CopyFile(srcPath, dstPath string) error {
+	in, err := os.Open(srcPath)
 	if err != nil {
 		return fmt.Errorf("open src: %w", err)
 	}
 	defer in.Close()
 
-	out, err := os.Create(dst)
+	out, err := os.Create(dstPath)
 	if err != nil {
 		return fmt.Errorf("create dst: %w", err)
 	}
