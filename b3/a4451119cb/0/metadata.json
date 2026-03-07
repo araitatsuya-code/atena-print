@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "b3a4451119cb",
+  "session_id": "7bf01a22-7ad5-46c0-bdd1-d7d928796704",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-07T04:32:52.45343Z",
+  "branch": "feat/issue-7-8-watermark-qr-preview-area",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "frontend/src/components/preview/WatermarkLayer.tsx",
+    "frontend/src/components/preview/QROverlay.tsx",
+    "frontend/src/components/preview/PreviewArea.tsx",
+    "frontend/src/App.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "805298469007",
+  "token_usage": {
+    "input_tokens": 52,
+    "cache_creation_tokens": 52267,
+    "cache_read_tokens": 1427621,
+    "output_tokens": 18102,
+    "api_call_count": 40
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-07T04:32:52.378994Z",
+    "agent_lines": 353,
+    "human_added": 318,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 671,
+    "agent_percentage": 52.6080476900149
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "b3a4451119cb",
+  "strategy": "manual-commit",
+  "branch": "feat/issue-7-8-watermark-qr-preview-area",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "frontend/src/App.tsx",
+    "frontend/src/components/preview/PreviewArea.tsx",
+    "frontend/src/components/preview/QROverlay.tsx",
+    "frontend/src/components/preview/WatermarkLayer.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/b3/a4451119cb/0/metadata.json",
+      "transcript": "/b3/a4451119cb/0/full.jsonl",
+      "context": "/b3/a4451119cb/0/context.md",
+      "content_hash": "/b3/a4451119cb/0/content_hash.txt",
+      "prompt": "/b3/a4451119cb/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 52,
+    "cache_creation_tokens": 52267,
+    "cache_read_tokens": 1427621,
+    "output_tokens": 18102,
+    "api_call_count": 40
+  }
+}
