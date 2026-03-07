@@ -10,7 +10,7 @@ const defaultQRConfig: QRConfig = {
 }
 
 beforeEach(() => {
-  useDecorationStore.setState({ watermark: null, qrConfig: defaultQRConfig })
+  useDecorationStore.setState({ watermark: null, qrConfig: defaultQRConfig, showDecoPanel: false })
 })
 
 describe('decorationStore', () => {
@@ -45,5 +45,13 @@ describe('decorationStore', () => {
   it('setQRConfig: positionの変更', () => {
     useDecorationStore.getState().setQRConfig({ position: 'top-left' })
     expect(useDecorationStore.getState().qrConfig.position).toBe('top-left')
+  })
+
+  it('toggleDecoPanel: ON/OFFが切り替わる', () => {
+    expect(useDecorationStore.getState().showDecoPanel).toBe(false)
+    useDecorationStore.getState().toggleDecoPanel()
+    expect(useDecorationStore.getState().showDecoPanel).toBe(true)
+    useDecorationStore.getState().toggleDecoPanel()
+    expect(useDecorationStore.getState().showDecoPanel).toBe(false)
   })
 })

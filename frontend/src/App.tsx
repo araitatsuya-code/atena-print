@@ -1,10 +1,18 @@
 import { useState } from 'react'
+import { useShallow } from 'zustand/shallow'
 import type { View } from './types'
 import ContactList from './components/address/ContactList'
 import PreviewArea from './components/preview/PreviewArea'
+import DecorationSidebar from './components/decoration/DecorationSidebar'
+import { useDecorationStore } from './stores/decorationStore'
 
 function App() {
   const [view, setView] = useState<View>('contacts')
+  const { showDecoPanel, toggleDecoPanel } = useDecorationStore(
+    useShallow((s) => ({ showDecoPanel: s.showDecoPanel, toggleDecoPanel: s.toggleDecoPanel })),
+  )
+
+  const showPreview = view === 'contacts' || view === 'preview'
 
   return (
     <div className="flex h-screen bg-gray-50 text-gray-900">
@@ -29,8 +37,27 @@ function App() {
             <ContactList />
           </div>
         )}
-        {view === 'contacts' && <PreviewArea />}
-        {view === 'preview' && <PreviewArea />}
+        {showPreview && (
+          <>
+            <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+              {/* トップバー */}
+              <div className="flex items-center justify-end px-4 py-2 bg-white border-b border-gray-200 shrink-0">
+                <button
+                  onClick={toggleDecoPanel}
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                    showDecoPanel
+                      ? 'bg-blue-50 border-blue-400 text-blue-700'
+                      : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  デザイン設定
+                </button>
+              </div>
+              <PreviewArea />
+            </div>
+            {showDecoPanel && <DecorationSidebar />}
+          </>
+        )}
         {view === 'settings' && (
           <div className="flex-1 p-6">
             <h2 className="text-xl font-semibold mb-4">設定</h2>
