@@ -116,35 +116,40 @@
 
 ---
 
-## Phase 3: ラベルレンダリング (Week 5-7)
+## Phase 3: ラベルレンダリング ✅ 完了 (PR #18, #19)
 
-### 3.1 Canvas ベースラベルプレビュー
-- [ ] `frontend/src/components/preview/LabelCanvas.tsx`
+### 3.1 Canvas ベースラベルプレビュー ✅ 完了 (PR #18)
+
+- [x] `frontend/src/components/preview/LabelCanvas.tsx`
   - Canvas API で宛名ラベルを描画
   - テンプレートJSONに従ったレイアウト
   - 郵便番号表示
 
-### 3.2 縦書きエンジン (Canvas)
-- [ ] `frontend/src/lib/verticalText.ts`
+### 3.2 縦書きエンジン (Canvas) ✅ 完了 (PR #18)
+
+- [x] `frontend/src/lib/verticalText.ts`
   - 1文字ずつ縦方向に配置
   - 拗音・促音 (ゃ, っ) のオフセット
   - 長音符 (ー) の90度回転
   - 句読点の位置調整
   - 数字→漢数字変換オプション
 
-### 3.3 透かし描画 (Canvas)
-- [ ] `frontend/src/components/preview/WatermarkLayer.tsx`
+### 3.3 透かし描画 (Canvas) ✅ 完了 (PR #19)
+
+- [x] `frontend/src/components/preview/WatermarkLayer.tsx`
   - プリセット透かし: SVGパターンで描画
   - カスタム画像: img要素をCanvasに描画
   - 透明度スライダー連動
 
-### 3.4 QRコード描画 (Canvas)
-- [ ] `frontend/src/components/preview/QROverlay.tsx`
+### 3.4 QRコード描画 (Canvas) ✅ 完了 (PR #19)
+
+- [x] `frontend/src/components/preview/QROverlay.tsx`
   - プレビュー用: JSライブラリ (qrcode) でCanvas上に描画
   - 位置・サイズ設定連動
 
-### 3.5 プレビュー統合
-- [ ] `frontend/src/components/preview/PreviewArea.tsx`
+### 3.5 プレビュー統合 ✅ 完了 (PR #19)
+
+- [x] `frontend/src/components/preview/PreviewArea.tsx`
   - LabelCanvas + WatermarkLayer + QROverlay を統合
   - ズーム機能
   - 複数選択時のサムネイルナビゲーション
