@@ -1,9 +1,18 @@
 import { useState } from 'react'
 import type { View } from './types'
 import ContactList from './components/address/ContactList'
+import LabelCanvas, { DEFAULT_TEMPLATE } from './components/preview/LabelCanvas'
+import { useShallow } from 'zustand/shallow'
+import { useContactStore } from './stores/contactStore'
 
 function App() {
   const [view, setView] = useState<View>('contacts')
+  const { contacts, selectedIds } = useContactStore(
+    useShallow((s) => ({ contacts: s.contacts, selectedIds: s.selectedIds })),
+  )
+
+  // プレビュー対象: 選択中の最初の連絡先
+  const previewContact = contacts.find((c) => selectedIds.has(c.id)) ?? null
 
   return (
     <div className="flex h-screen bg-gray-50 text-gray-900">
@@ -29,14 +38,29 @@ function App() {
           </div>
         )}
         {view === 'contacts' && (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-gray-400 text-sm">連絡先を選択するとプレビューが表示されます</p>
+          <div className="flex-1 flex items-center justify-center bg-[#f0f0f0]">
+            {previewContact ? (
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-xs text-gray-500">ラベルプレビュー</p>
+                <LabelCanvas contact={previewContact} template={DEFAULT_TEMPLATE} zoom={2} />
+              </div>
+            ) : (
+              <p className="text-gray-400 text-sm">連絡先を選択するとプレビューが表示されます</p>
+            )}
           </div>
         )}
         {view === 'preview' && (
-          <div className="flex-1 p-6">
-            <h2 className="text-xl font-semibold mb-4">ラベルプレビュー</h2>
-            <p className="text-gray-500">Phase 3 で実装予定</p>
+          <div className="flex-1 flex items-center justify-center bg-[#f0f0f0] p-6">
+            {previewContact ? (
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-xs text-gray-500">
+                  {previewContact.familyName} {previewContact.givenName} — {DEFAULT_TEMPLATE.name}
+                </p>
+                <LabelCanvas contact={previewContact} template={DEFAULT_TEMPLATE} zoom={3} />
+              </div>
+            ) : (
+              <p className="text-gray-400 text-sm">住所録から連絡先を選択してください</p>
+            )}
           </div>
         )}
         {view === 'settings' && (
