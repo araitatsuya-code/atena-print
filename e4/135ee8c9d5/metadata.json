@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "e4135ee8c9d5",
+  "strategy": "manual-commit",
+  "branch": "feat/issue-10-decoration-sidebar",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "frontend/src/App.tsx",
+    "frontend/src/components/decoration/DecorationSidebar.tsx",
+    "frontend/src/components/decoration/QRPanel.tsx",
+    "frontend/src/components/decoration/WatermarkPanel.tsx",
+    "frontend/src/stores/decorationStore.test.ts",
+    "frontend/src/stores/decorationStore.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/e4/135ee8c9d5/0/metadata.json",
+      "transcript": "/e4/135ee8c9d5/0/full.jsonl",
+      "context": "/e4/135ee8c9d5/0/context.md",
+      "content_hash": "/e4/135ee8c9d5/0/content_hash.txt",
+      "prompt": "/e4/135ee8c9d5/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 50,
+    "cache_creation_tokens": 48493,
+    "cache_read_tokens": 1239509,
+    "output_tokens": 16481,
+    "api_call_count": 38
+  }
+}
