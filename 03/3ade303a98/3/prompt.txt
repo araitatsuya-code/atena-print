@@ -1,0 +1,82 @@
+# 次の Issue を取得して実装開始
+
+次に取り組むべき Issue を見つけて実装を開始してください。
+
+手順:
+
+1. `gh issue list --state open --label <現在のPhase> --limit 1` で次の Issue を取得
+2. Issue がなければ次の Phase のラベルで探す
+3. 見つかったら /project:work-issue と同じフローで実装開始
+
+もし open な Issue がなければ「全 Issue 完了」と報告してください。
+
+---
+
+# 次の Issue を取得して実装開始
+
+次に取り組むべき Issue を見つけて実装を開始してください。
+
+手順:
+
+1. `gh issue list --state open --label <現在のPhase> --limit 1` で次の Issue を取得
+2. Issue がなければ次の Phase のラベルで探す
+3. 見つかったら /project:work-issue と同じフローで実装開始
+
+もし open な Issue がなければ「全 Issue 完了」と報告してください。
+
+---
+
+# Issue を実装
+
+指定された GitHub Issue を実装してください。
+
+## 手順
+
+1. `gh issue view <番号>` で Issue の内容を確認
+2. ブランチを作成: `git checkout -b issue-<番号>-<slug>`
+3. 必要な仕様を docs/ から参照して実装
+4. テスト実行:
+   - Go: `go test ./internal/...`
+   - Frontend: `cd frontend && npx vitest --run`
+5. 変更をコミット (コミットメッセージに `refs #<番号>` を含める)
+6. Push して PR 作成:
+
+ARGUMENTS: 4
+
+---
+
+Verify each finding against the current code and only fix it if needed.
+
+Inline comments:
+In `@frontend/src/components/address/ContactList.tsx`:
+- Around line 85-105: Wrap the Wails binding calls in handleImport and
+handleExport with try-catch (and a finally where appropriate) to surface errors
+to the user: in handleImport, surround OpenCSVFileDialog, ImportCSV and
+refreshContacts so that ImportCSV errors are caught and an alert is shown (and
+ensure refreshContacts runs in finally or only after successful import as
+intended); in handleExport, wrap SaveCSVFileDialog and ExportCSV so any thrown
+errors from ExportCSV are caught and displayed via alert; reference the
+functions handleImport, handleExport, ImportCSV, ExportCSV, OpenCSVFileDialog,
+SaveCSVFileDialog and refreshContacts when making these changes.
+
+In `@internal/infrastructure/csv/csv.go`:
+- Around line 75-102: Export currently defers w.Flush() and f.Close() but does
+not check for write/flush/close errors; update Export to explicitly call
+w.Flush() after the loop, then check if err := w.Error(); err != nil and return
+a wrapped error (e.g., "データの書き込みに失敗しました: %w"), and also call f.Close() (or check
+its deferred return) and if Close returns an error wrap and return that as well
+so write/flush/close failures from csv.Writer w and file f are surfaced;
+reference symbols: Export, w (csv.Writer), w.Flush(), w.Error(), and f.Close().
+
+In `@internal/usecase/csv_usecase.go`:
+- Around line 7-8: The usecase currently imports csvinfra and directly calls its
+implementation (csvinfra import and calls at lines 21 and 65), violating layer
+boundaries; instead define a port interface (e.g., CSVWriterPort or
+CSVRepository) in the usecase/repository package that declares the needed
+methods, add that interface as a dependency on the UseCase struct (inject via
+the constructor), replace all direct csvinfra.* calls with calls to the injected
+interface methods, and remove the csvinfra import from
+internal/usecase/csv_usecase.go; additionally change the return at line 65 to
+wrap the underlying error with context (for example using fmt.Errorf("failed to
+...: %w", err) or errors.Wrap) so the UseCase boundary always returns
+contextualized errors.
