@@ -118,14 +118,16 @@
 
 ## Phase 3: ラベルレンダリング (Week 5-7)
 
-### 3.1 Canvas ベースラベルプレビュー
-- [ ] `frontend/src/components/preview/LabelCanvas.tsx`
+### 3.1 Canvas ベースラベルプレビュー ✅ 完了 (PR #18)
+
+- [x] `frontend/src/components/preview/LabelCanvas.tsx`
   - Canvas API で宛名ラベルを描画
   - テンプレートJSONに従ったレイアウト
   - 郵便番号表示
 
-### 3.2 縦書きエンジン (Canvas)
-- [ ] `frontend/src/lib/verticalText.ts`
+### 3.2 縦書きエンジン (Canvas) ✅ 完了 (PR #18)
+
+- [x] `frontend/src/lib/verticalText.ts`
   - 1文字ずつ縦方向に配置
   - 拗音・促音 (ゃ, っ) のオフセット
   - 長音符 (ー) の90度回転
