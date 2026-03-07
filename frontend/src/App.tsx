@@ -2,11 +2,14 @@ import { useState } from 'react'
 import type { View } from './types'
 import ContactList from './components/address/ContactList'
 import LabelCanvas, { DEFAULT_TEMPLATE } from './components/preview/LabelCanvas'
+import { useShallow } from 'zustand/shallow'
 import { useContactStore } from './stores/contactStore'
 
 function App() {
   const [view, setView] = useState<View>('contacts')
-  const { contacts, selectedIds } = useContactStore()
+  const { contacts, selectedIds } = useContactStore(
+    useShallow((s) => ({ contacts: s.contacts, selectedIds: s.selectedIds })),
+  )
 
   // プレビュー対象: 選択中の最初の連絡先
   const previewContact = contacts.find((c) => selectedIds.has(c.id)) ?? null
