@@ -56,12 +56,19 @@ export default function WatermarkLayer({
       }
     } else if (watermark.type === 'custom' && watermark.filePath) {
       const img = new Image()
+      const opacity = watermark.opacity
+
       img.onload = () => {
-        ctx.globalAlpha = watermark.opacity
+        ctx.globalAlpha = opacity
         // ラベル全体に引き伸ばして描画
         ctx.drawImage(img, 0, 0, canvasW, canvasH)
       }
       img.src = watermark.filePath
+
+      return () => {
+        img.onload = null
+        img.src = ''
+      }
     }
   }, [watermark, canvasW, canvasH, zoom])
 

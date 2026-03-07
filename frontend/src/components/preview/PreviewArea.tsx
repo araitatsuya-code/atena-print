@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useContactStore } from '../../stores/contactStore'
 import { usePreviewStore } from '../../stores/previewStore'
@@ -15,24 +16,35 @@ export default function PreviewArea() {
   const { contacts, selectedIds } = useContactStore(
     useShallow((s) => ({ contacts: s.contacts, selectedIds: s.selectedIds })),
   )
-  const { zoom, previewContactIndex, setZoom, setPreviewContactIndex } = usePreviewStore(
-    useShallow((s) => ({
-      zoom: s.zoom,
-      previewContactIndex: s.previewContactIndex,
-      setZoom: s.setZoom,
-      setPreviewContactIndex: s.setPreviewContactIndex,
-    })),
-  )
+  const { zoom, selectedTemplate, previewContactIndex, setZoom, setPreviewContactIndex } =
+    usePreviewStore(
+      useShallow((s) => ({
+        zoom: s.zoom,
+        selectedTemplate: s.selectedTemplate,
+        previewContactIndex: s.previewContactIndex,
+        setZoom: s.setZoom,
+        setPreviewContactIndex: s.setPreviewContactIndex,
+      })),
+    )
   const { watermark, qrConfig } = useDecorationStore(
     useShallow((s) => ({ watermark: s.watermark, qrConfig: s.qrConfig })),
   )
 
   const selectedContacts = contacts.filter((c) => selectedIds.has(c.id))
-  const currentContact: Contact | null =
-    selectedContacts[previewContactIndex] ?? selectedContacts[0] ?? null
 
-  // テンプレートは将来 previewStore.selectedTemplate で差し替え
-  const template: Template = DEFAULT_TEMPLATE
+  // 選択件数が減ったときにインデックスを範囲内にクランプ
+  useEffect(() => {
+    if (selectedContacts.length === 0) return
+    const clamped = Math.min(previewContactIndex, selectedContacts.length - 1)
+    if (clamped !== previewContactIndex) {
+      setPreviewContactIndex(clamped)
+    }
+  }, [selectedContacts.length, previewContactIndex, setPreviewContactIndex])
+
+  const safeIndex = Math.max(0, Math.min(previewContactIndex, selectedContacts.length - 1))
+  const currentContact: Contact | null = selectedContacts[safeIndex] ?? null
+
+  const template: Template = selectedTemplate ?? DEFAULT_TEMPLATE
 
   const zoomIn = () => setZoom(Math.min(ZOOM_MAX, Math.round((zoom + ZOOM_STEP) * 100) / 100))
   const zoomOut = () => setZoom(Math.max(ZOOM_MIN, Math.round((zoom - ZOOM_STEP) * 100) / 100))
@@ -46,7 +58,7 @@ export default function PreviewArea() {
           {template.name}
           {selectedContacts.length > 0 && (
             <span className="ml-2 text-xs text-gray-400">
-              {previewContactIndex + 1} / {selectedContacts.length} 件
+              {safeIndex + 1} / {selectedContacts.length} 件
             </span>
           )}
         </span>
@@ -100,7 +112,7 @@ export default function PreviewArea() {
               key={c.id}
               onClick={() => setPreviewContactIndex(i)}
               className={`shrink-0 flex flex-col items-center gap-1 p-1 rounded border-2 transition-colors ${
-                i === previewContactIndex
+                i === safeIndex
                   ? 'border-blue-500 bg-blue-50'
                   : 'border-transparent hover:border-gray-300'
               }`}

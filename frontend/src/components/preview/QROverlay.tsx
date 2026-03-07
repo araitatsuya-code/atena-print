@@ -39,9 +39,10 @@ export default function QROverlay({
 
     if (!qrConfig.enabled || !qrConfig.content) return
 
+    let cancelled = false
+
     const qrSize = Math.round(qrConfig.size * zoom)
     const padding = Math.round(4 * zoom)
-
     const { x, y } = resolvePosition(qrConfig.position, canvasW, canvasH, qrSize, padding)
 
     // 一時 canvas に QR を描画してから貼り付け
@@ -52,6 +53,7 @@ export default function QROverlay({
       color: { dark: '#000000', light: '#ffffff' },
     })
       .then(() => {
+        if (cancelled) return
         ctx.clearRect(0, 0, canvasW, canvasH)
         // 白背景パディング
         ctx.fillStyle = '#ffffff'
@@ -61,6 +63,10 @@ export default function QROverlay({
       .catch(() => {
         // content が無効な場合は無視
       })
+
+    return () => {
+      cancelled = true
+    }
   }, [qrConfig, canvasW, canvasH, zoom])
 
   return (
