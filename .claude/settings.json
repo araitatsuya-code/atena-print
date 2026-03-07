@@ -31,7 +31,18 @@
       "Bash(gh issue view 3)",
       "Bash(gh issue view 3 --json number,title,body,labels)",
       "Bash(mkdir -p /Users/ta/workspace/atena-print/internal/infrastructure/postal)",
-      "Bash(npm run)"
+      "Bash(npm run)",
+      "Bash(mkdir -p /Users/ta/workspace/atena-print/internal/infrastructure/csv)",
+      "Bash(gh issue list --state open --limit 20 --json number,title,labels)",
+      "Bash(gh issue list --state closed --limit 10 --json number,title,labels)",
+      "Bash(gh issue view 7 --json title,body,labels)",
+      "Bash(gh issue view 8 --json title,body,labels)",
+      "Bash(npm install qrcode @types/qrcode)",
+      "Bash(npm run build)",
+      "Bash(npx vitest run)",
+      "Bash(gh issue list --state open)",
+      "Bash(gh issue list --state open --limit 20)",
+      "Bash(gh issue view 9)"
     ],
     "deny": [
       "Read(./.entire/metadata/**)",

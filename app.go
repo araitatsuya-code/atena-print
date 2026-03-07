@@ -13,16 +13,18 @@ import (
 
 // App struct
 type App struct {
-	ctx            context.Context
-	contactUseCase *usecase.ContactUseCase
-	csvUseCase     *usecase.CSVUseCase
-	groupUseCase   *usecase.GroupUseCase
-	postalRepo     repository.PostalRepository
+	ctx              context.Context
+	contactUseCase   *usecase.ContactUseCase
+	csvUseCase       *usecase.CSVUseCase
+	groupUseCase     *usecase.GroupUseCase
+	watermarkUseCase *usecase.WatermarkUseCase
+	qrCodeUseCase    *usecase.QRCodeUseCase
+	postalRepo       repository.PostalRepository
 }
 
 // NewApp creates a new App application struct
-func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, postalRepo repository.PostalRepository) *App {
-	return &App{contactUseCase: contactUC, csvUseCase: csvUC, groupUseCase: groupUC, postalRepo: postalRepo}
+func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, postalRepo repository.PostalRepository) *App {
+	return &App{contactUseCase: contactUC, csvUseCase: csvUC, groupUseCase: groupUC, watermarkUseCase: watermarkUC, qrCodeUseCase: qrCodeUC, postalRepo: postalRepo}
 }
 
 // startup is called when the app starts. The context is saved
@@ -189,4 +191,39 @@ func (a *App) SetContactGroups(contactID string, groupIDs []string) error {
 		return fmt.Errorf("SetContactGroups: %w", err)
 	}
 	return nil
+}
+
+// GetWatermarkPresets returns all watermark options (presets + custom uploads).
+func (a *App) GetWatermarkPresets() ([]entity.Watermark, error) {
+	list, err := a.watermarkUseCase.GetPresets()
+	if err != nil {
+		return nil, fmt.Errorf("GetWatermarkPresets: %w", err)
+	}
+	return list, nil
+}
+
+// UploadWatermark copies a custom watermark image to storage and returns the saved entity.
+func (a *App) UploadWatermark(filePath string) (entity.Watermark, error) {
+	w, err := a.watermarkUseCase.Upload(filePath)
+	if err != nil {
+		return entity.Watermark{}, fmt.Errorf("UploadWatermark: %w", err)
+	}
+	return w, nil
+}
+
+// DeleteWatermark removes a custom watermark by ID.
+func (a *App) DeleteWatermark(id string) error {
+	if err := a.watermarkUseCase.Delete(id); err != nil {
+		return fmt.Errorf("DeleteWatermark: %w", err)
+	}
+	return nil
+}
+
+// GenerateQRPreview generates a QR code PNG for the given config and returns the raw bytes.
+func (a *App) GenerateQRPreview(config entity.QRConfig) ([]byte, error) {
+	png, err := a.qrCodeUseCase.GeneratePreview(config)
+	if err != nil {
+		return nil, fmt.Errorf("GenerateQRPreview: %w", err)
+	}
+	return png, nil
 }

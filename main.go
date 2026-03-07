@@ -11,7 +11,9 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
 	csvpkg "atena-label/internal/infrastructure/csv"
+	imagepkg "atena-label/internal/infrastructure/image"
 	"atena-label/internal/infrastructure/postal"
+	qrpkg "atena-label/internal/infrastructure/qr"
 	dbpkg "atena-label/internal/infrastructure/sqlite"
 	"atena-label/internal/usecase"
 )
@@ -20,12 +22,12 @@ import (
 var assets embed.FS
 
 func main() {
-	dbPath, err := resolveDBPath()
+	appDataDir, err := resolveDataDir()
 	if err != nil {
-		log.Fatal("DB path:", err)
+		log.Fatal("data dir:", err)
 	}
 
-	db, err := dbpkg.Open(dbPath)
+	db, err := dbpkg.Open(filepath.Join(appDataDir, "atena.db"))
 	if err != nil {
 		log.Fatal("Open DB:", err)
 	}
@@ -36,9 +38,12 @@ func main() {
 	csvUC := usecase.NewCSVUseCase(contactRepo, csvpkg.NewAdapter())
 	groupRepo := dbpkg.NewGroupRepo(db)
 	groupUC := usecase.NewGroupUseCase(groupRepo)
+	watermarkRepo := dbpkg.NewWatermarkRepo(db)
+	watermarkUC := usecase.NewWatermarkUseCase(watermarkRepo, &imagepkg.FileStorage{}, filepath.Join(appDataDir, "watermarks"))
+	qrCodeUC := usecase.NewQRCodeUseCase(&qrpkg.Generator{})
 
 	postalRepo := postal.NewRepo()
-	app := NewApp(contactUC, csvUC, groupUC, postalRepo)
+	app := NewApp(contactUC, csvUC, groupUC, watermarkUC, qrCodeUC, postalRepo)
 
 	err = wails.Run(&options.App{
 		Title:  "Atena ラベル印刷",
@@ -59,7 +64,7 @@ func main() {
 	}
 }
 
-func resolveDBPath() (string, error) {
+func resolveDataDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -68,5 +73,5 @@ func resolveDBPath() (string, error) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "atena.db"), nil
+	return dir, nil
 }
