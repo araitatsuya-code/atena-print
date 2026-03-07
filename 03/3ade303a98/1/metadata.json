@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "033ade303a98",
+  "session_id": "7f625b41-8d78-4e33-b7b7-540005dcb3ba",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-07T06:19:01.249024Z",
+  "branch": "feature/issue-9-watermark-qr-backend",
+  "checkpoints_count": 3,
+  "files_touched": [
+    ".claude/settings.json"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "bfe4e4313ffe",
+  "token_usage": {
+    "input_tokens": 58,
+    "cache_creation_tokens": 190006,
+    "cache_read_tokens": 2017557,
+    "output_tokens": 26002,
+    "api_call_count": 42
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-07T06:19:01.196416Z",
+    "agent_lines": 3,
+    "human_added": 1099,
+    "human_modified": 1,
+    "human_removed": 0,
+    "total_committed": 1103,
+    "agent_percentage": 0.271985494106981
+  }
+}
