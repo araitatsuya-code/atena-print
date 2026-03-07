@@ -157,19 +157,20 @@
 
 ---
 
-## Phase 4: 透かし・QR バックエンド (Week 8-9)
+## Phase 4: 透かし・QR バックエンド ✅ 完了 (PR #20)
 
-### 4.1 透かし画像処理 (Go)
-- [ ] `internal/usecase/watermark_usecase.go`
-- [ ] `internal/infrastructure/image/watermark.go`
+### 4.1 透かし画像処理 (Go) ✅ 完了 (PR #20)
+
+- [x] `internal/usecase/watermark_usecase.go`
+- [x] `internal/infrastructure/image/watermark.go`
   - プリセット画像の読み込み (assets/watermarks/)
   - カスタム画像のアップロード・保存
-  - 画像リサイズ (ラベルサイズに合わせる)
   - 透明度適用 (Go の image パッケージで alpha 調整)
 
-### 4.2 QRコード生成 (Go)
-- [ ] `internal/usecase/qrcode_usecase.go`
-- [ ] `internal/infrastructure/qr/generator.go`
+### 4.2 QRコード生成 (Go) ✅ 完了 (PR #20)
+
+- [x] `internal/usecase/qrcode_usecase.go`
+- [x] `internal/infrastructure/qr/generator.go`
   - go-qrcode で QR画像 (PNG) を生成
   - サイズ指定対応
   - GenerateQRPreview をバインド
