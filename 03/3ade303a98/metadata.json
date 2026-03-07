@@ -3,7 +3,7 @@
   "checkpoint_id": "033ade303a98",
   "strategy": "manual-commit",
   "branch": "feature/issue-9-watermark-qr-backend",
-  "checkpoints_count": 4,
+  "checkpoints_count": 5,
   "files_touched": [
     ".claude/settings.json"
   ],
@@ -21,13 +21,20 @@
       "context": "/03/3ade303a98/1/context.md",
       "content_hash": "/03/3ade303a98/1/content_hash.txt",
       "prompt": "/03/3ade303a98/1/prompt.txt"
+    },
+    {
+      "metadata": "/03/3ade303a98/2/metadata.json",
+      "transcript": "/03/3ade303a98/2/full.jsonl",
+      "context": "/03/3ade303a98/2/context.md",
+      "content_hash": "/03/3ade303a98/2/content_hash.txt",
+      "prompt": "/03/3ade303a98/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 91,
-    "cache_creation_tokens": 256341,
-    "cache_read_tokens": 3639800,
-    "output_tokens": 34827,
-    "api_call_count": 69
+    "input_tokens": 199,
+    "cache_creation_tokens": 461350,
+    "cache_read_tokens": 8705914,
+    "output_tokens": 65430,
+    "api_call_count": 154
   }
 }
