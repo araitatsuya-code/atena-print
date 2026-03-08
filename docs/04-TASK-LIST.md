@@ -186,8 +186,8 @@
 ## Phase 5: ラベル印刷 (Week 10-11)
 
 ### 5.1 PDF生成エンジン (Go)
-- [ ] `internal/usecase/print_usecase.go`
-- [ ] `internal/infrastructure/pdf/label_pdf.go`
+- [x] `internal/usecase/print_usecase.go`
+- [x] `internal/infrastructure/pdf/label_pdf.go`
   - gofpdf で A4ページにラベルをグリッド配置
   - 各ラベル内に:
     - 縦書き宛名 (1文字ずつ SetXY で配置)
@@ -197,8 +197,8 @@
   - LabelLayout に従った面付け計算
 
 ### 5.2 PDF内の透かし・QR合成
-- [ ] PDF生成時に透かし画像を背景としてImageで配置
-- [ ] PDF生成時にQR画像を指定位置にImageで配置
+- [x] PDF生成時に透かし画像を背景としてImageで配置
+- [x] PDF生成時にQR画像を指定位置にImageで配置
 
 ### 5.3 ラベル設定パネル
 - [ ] `frontend/src/components/label/LabelSettingsPanel.tsx`

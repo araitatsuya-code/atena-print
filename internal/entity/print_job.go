@@ -2,7 +2,7 @@ package entity
 
 type PrintJob struct {
 	ContactIDs  []string    `json:"contactIds"`
-	TemplateID  string      `json:"templateId"`
+	Template    Template    `json:"template"`
 	SenderID    string      `json:"senderId"`
 	LabelLayout LabelLayout `json:"labelLayout"`
 	Watermark   *Watermark  `json:"watermark,omitempty"`
