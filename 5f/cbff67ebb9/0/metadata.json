@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "5fcbff67ebb9",
+  "session_id": "b78d71d0-7df6-49b2-ba72-14f84bb452de",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-08T03:12:39.451069Z",
+  "branch": "main",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "app.go",
+    "docs/04-TASK-LIST.md",
+    "go.mod",
+    "internal/entity/print_job.go",
+    "internal/infrastructure/pdf/label_pdf.go",
+    "internal/repository/pdf_repository.go",
+    "internal/usecase/print_usecase.go",
+    "frontend/wailsjs/go/main/App.d.ts",
+    "frontend/wailsjs/go/main/App.js",
+    "frontend/wailsjs/go/models.ts",
+    "go.sum",
+    "main.go"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "40bd07e7dfa9",
+  "token_usage": {
+    "input_tokens": 74,
+    "cache_creation_tokens": 54081,
+    "cache_read_tokens": 2723568,
+    "output_tokens": 23154,
+    "api_call_count": 66
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-08T03:12:39.365284Z",
+    "agent_lines": 92,
+    "human_added": 620,
+    "human_modified": 8,
+    "human_removed": 0,
+    "total_committed": 720,
+    "agent_percentage": 12.777777777777777
+  }
+}
