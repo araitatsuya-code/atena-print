@@ -40,6 +40,8 @@ export function SaveContact(arg1:entity.Contact):Promise<entity.Contact>;
 
 export function SaveGroup(arg1:entity.Group):Promise<entity.Group>;
 
+export function PrintPDF(arg1:string):Promise<void>;
+
 export function SavePDFFileDialog(arg1:string):Promise<string>;
 
 export function SearchContacts(arg1:string):Promise<Array<entity.Contact>>;

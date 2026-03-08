@@ -7,6 +7,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"atena-label/internal/entity"
+	"atena-label/internal/infrastructure/printer"
 	"atena-label/internal/repository"
 	"atena-label/internal/usecase"
 )
@@ -237,6 +238,14 @@ func (a *App) GenerateLabelPDF(job entity.PrintJob, outPath string) (string, err
 		return "", fmt.Errorf("GenerateLabelPDF: %w", err)
 	}
 	return path, nil
+}
+
+// PrintPDF opens the given PDF file in the OS default viewer/printer.
+func (a *App) PrintPDF(pdfPath string) error {
+	if err := printer.PrintFile(pdfPath); err != nil {
+		return fmt.Errorf("PrintPDF: %w", err)
+	}
+	return nil
 }
 
 // SavePDFFileDialog opens a native save dialog filtered to PDF files.

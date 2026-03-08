@@ -78,6 +78,10 @@ export function SaveGroup(arg1) {
   return window['go']['main']['App']['SaveGroup'](arg1);
 }
 
+export function PrintPDF(arg1) {
+  return window['go']['main']['App']['PrintPDF'](arg1);
+}
+
 export function SavePDFFileDialog(arg1) {
   return window['go']['main']['App']['SavePDFFileDialog'](arg1);
 }
