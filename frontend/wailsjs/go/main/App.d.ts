@@ -51,3 +51,11 @@ export function SearchContacts(arg1:string):Promise<Array<entity.Contact>>;
 export function SetContactGroups(arg1:string,arg2:Array<string>):Promise<void>;
 
 export function UploadWatermark(arg1:string):Promise<entity.Watermark>;
+
+export function GetSenders():Promise<Array<entity.Sender>>;
+
+export function SaveSender(arg1:entity.Sender):Promise<entity.Sender>;
+
+export function DeleteSender(arg1:string):Promise<void>;
+
+export function SetDefaultSender(arg1:string):Promise<void>;

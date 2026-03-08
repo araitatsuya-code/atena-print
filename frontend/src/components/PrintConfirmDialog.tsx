@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import { GenerateLabelPDF, GetTempPDFPath, PrintPDF, SavePDFFileDialog } from '../../wailsjs/go/main/App'
+import { useEffect, useState } from 'react'
+import { GenerateLabelPDF, GetTempPDFPath, PrintPDF, SavePDFFileDialog, GetSenders } from '../../wailsjs/go/main/App'
 import { entity } from '../../wailsjs/go/models'
 import { useContactStore } from '../stores/contactStore'
 import { useDecorationStore } from '../stores/decorationStore'
 import { useLabelStore } from '../stores/labelStore'
+import { useSenderStore } from '../stores/senderStore'
 import { useShallow } from 'zustand/shallow'
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 export default function PrintConfirmDialog({ onClose }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedSenderId, setSelectedSenderId] = useState('')
 
   const { contacts, selectedIds } = useContactStore(
     useShallow((s) => ({ contacts: s.contacts, selectedIds: s.selectedIds })),
@@ -21,6 +23,20 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     useShallow((s) => ({ watermark: s.watermark, qrConfig: s.qrConfig })),
   )
   const layout = useLabelStore((s) => s.layout)
+  const { senders, setSenders } = useSenderStore(
+    useShallow((s) => ({ senders: s.senders, setSenders: s.setSenders })),
+  )
+
+  useEffect(() => {
+    GetSenders()
+      .then((list) => {
+        const loaded = list ?? []
+        setSenders(loaded)
+        const def = loaded.find((s) => s.isDefault)
+        if (def) setSelectedSenderId(def.id)
+      })
+      .catch(() => {})
+  }, [])
 
   const selectedContacts = contacts.filter((c) => selectedIds.has(c.id))
   const count = selectedContacts.length
@@ -39,7 +55,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
         recipient: { nameX: 0, nameY: 0, nameFont: 0, addressX: 0, addressY: 0, addressFont: 0 },
         sender: { nameX: 0, nameY: 0, nameFont: 0, addressX: 0, addressY: 0, addressFont: 0 },
       },
-      senderId: '',
+      senderId: selectedSenderId,
       labelLayout: layout,
       watermark: watermark ?? undefined,
       qrConfig: qrConfig.enabled ? qrConfig : undefined,
@@ -75,6 +91,8 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     })
   }
 
+  const selectedSender = senders.find((s) => s.id === selectedSenderId)
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-80 p-6 space-y-4">
@@ -89,6 +107,30 @@ export default function PrintConfirmDialog({ onClose }: Props) {
             <span className="text-gray-500">用紙</span>
             <span className="font-medium text-right">{paperLabel}</span>
           </div>
+        </div>
+
+        {/* 差出人選択 */}
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">差出人</label>
+          <select
+            value={selectedSenderId}
+            onChange={(e) => setSelectedSenderId(e.target.value)}
+            className="w-full text-sm border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          >
+            <option value="">なし</option>
+            {senders.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.familyName} {s.givenName}
+                {s.company ? ` (${s.company})` : ''}
+                {s.isDefault ? ' ★' : ''}
+              </option>
+            ))}
+          </select>
+          {selectedSender && (
+            <p className="text-xs text-gray-400 mt-1 truncate">
+              〒{selectedSender.postalCode} {selectedSender.prefecture}{selectedSender.city}{selectedSender.street}
+            </p>
+          )}
         </div>
 
         {error && (

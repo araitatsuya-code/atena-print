@@ -23,12 +23,13 @@ type App struct {
 	watermarkUseCase *usecase.WatermarkUseCase
 	qrCodeUseCase    *usecase.QRCodeUseCase
 	printUseCase     *usecase.PrintUseCase
+	senderUseCase    *usecase.SenderUseCase
 	postalRepo       repository.PostalRepository
 }
 
 // NewApp creates a new App application struct
-func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, printUC *usecase.PrintUseCase, postalRepo repository.PostalRepository) *App {
-	return &App{contactUseCase: contactUC, csvUseCase: csvUC, groupUseCase: groupUC, watermarkUseCase: watermarkUC, qrCodeUseCase: qrCodeUC, printUseCase: printUC, postalRepo: postalRepo}
+func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, printUC *usecase.PrintUseCase, senderUC *usecase.SenderUseCase, postalRepo repository.PostalRepository) *App {
+	return &App{contactUseCase: contactUC, csvUseCase: csvUC, groupUseCase: groupUC, watermarkUseCase: watermarkUC, qrCodeUseCase: qrCodeUC, printUseCase: printUC, senderUseCase: senderUC, postalRepo: postalRepo}
 }
 
 // startup is called when the app starts. The context is saved
@@ -246,6 +247,40 @@ func (a *App) GenerateLabelPDF(job entity.PrintJob, outPath string) (string, err
 func (a *App) PrintPDF(pdfPath string) error {
 	if err := a.printUseCase.Print(pdfPath); err != nil {
 		return fmt.Errorf("PrintPDF: %w", err)
+	}
+	return nil
+}
+
+// GetSenders returns all senders.
+func (a *App) GetSenders() ([]entity.Sender, error) {
+	senders, err := a.senderUseCase.List()
+	if err != nil {
+		return nil, fmt.Errorf("GetSenders: %w", err)
+	}
+	return senders, nil
+}
+
+// SaveSender creates or updates a sender.
+func (a *App) SaveSender(s entity.Sender) (entity.Sender, error) {
+	saved, err := a.senderUseCase.Save(s)
+	if err != nil {
+		return entity.Sender{}, fmt.Errorf("SaveSender: %w", err)
+	}
+	return saved, nil
+}
+
+// DeleteSender deletes a sender by ID.
+func (a *App) DeleteSender(id string) error {
+	if err := a.senderUseCase.Delete(id); err != nil {
+		return fmt.Errorf("DeleteSender: %w", err)
+	}
+	return nil
+}
+
+// SetDefaultSender sets the given sender as the default.
+func (a *App) SetDefaultSender(id string) error {
+	if err := a.senderUseCase.SetDefault(id); err != nil {
+		return fmt.Errorf("SetDefaultSender: %w", err)
 	}
 	return nil
 }

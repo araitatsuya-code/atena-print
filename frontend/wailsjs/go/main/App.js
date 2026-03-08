@@ -101,3 +101,19 @@ export function SetContactGroups(arg1, arg2) {
 export function UploadWatermark(arg1) {
   return window['go']['main']['App']['UploadWatermark'](arg1);
 }
+
+export function GetSenders() {
+  return window['go']['main']['App']['GetSenders']();
+}
+
+export function SaveSender(arg1) {
+  return window['go']['main']['App']['SaveSender'](arg1);
+}
+
+export function DeleteSender(arg1) {
+  return window['go']['main']['App']['DeleteSender'](arg1);
+}
+
+export function SetDefaultSender(arg1) {
+  return window['go']['main']['App']['SetDefaultSender'](arg1);
+}
