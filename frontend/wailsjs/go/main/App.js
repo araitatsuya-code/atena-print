@@ -62,6 +62,14 @@ export function OpenCSVFileDialog() {
   return window['go']['main']['App']['OpenCSVFileDialog']();
 }
 
+export function GetTempPDFPath() {
+  return window['go']['main']['App']['GetTempPDFPath']();
+}
+
+export function PrintPDF(arg1) {
+  return window['go']['main']['App']['PrintPDF'](arg1);
+}
+
 export function RemoveContactFromGroup(arg1, arg2) {
   return window['go']['main']['App']['RemoveContactFromGroup'](arg1, arg2);
 }

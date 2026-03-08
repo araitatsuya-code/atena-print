@@ -32,6 +32,10 @@ export function LookupPostal(arg1:string):Promise<entity.Address>;
 
 export function OpenCSVFileDialog():Promise<string>;
 
+export function GetTempPDFPath():Promise<string>;
+
+export function PrintPDF(arg1:string):Promise<void>;
+
 export function RemoveContactFromGroup(arg1:string,arg2:string):Promise<void>;
 
 export function SaveCSVFileDialog(arg1:string):Promise<string>;
