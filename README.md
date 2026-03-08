@@ -15,6 +15,11 @@
 - **QRコード**: URL 等をエンコードしたQRコードをラベル上に配置
 - **ラベル面付け**: A4 用紙に複数面（8面/10面/12面）を自動配置して PDF 生成・印刷
 
+## 次フェーズ優先項目 (2026-03-08 時点)
+
+- [#30 ラベル横書き対応（プレビュー/PDF印刷の両対応）](https://github.com/araitatsuya-code/atena-print/issues/30)
+- [#31 ラベル印刷位置のドラッグ微調整（オフセット保存）](https://github.com/araitatsuya-code/atena-print/issues/31)
+
 ## 技術スタック
 
 |レイヤー|技術|
