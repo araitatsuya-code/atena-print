@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "8411b3aa639a",
+  "session_id": "fb62ccae-10b3-42a6-9361-cc731ad07f4e",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-08T05:37:23.169051Z",
+  "branch": "feat/issue-12-label-settings-print-flow",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "app.go",
+    "frontend/wailsjs/go/main/App.d.ts",
+    "frontend/wailsjs/go/main/App.js",
+    "internal/infrastructure/printer/print.go"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "1d29fff8f11a",
+  "token_usage": {
+    "input_tokens": 150,
+    "cache_creation_tokens": 183282,
+    "cache_read_tokens": 9165476,
+    "output_tokens": 42666,
+    "api_call_count": 123
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-08T05:37:22.83768Z",
+    "agent_lines": 2,
+    "human_added": 37,
+    "human_modified": 4,
+    "human_removed": 0,
+    "total_committed": 43,
+    "agent_percentage": 4.651162790697675
+  }
+}
