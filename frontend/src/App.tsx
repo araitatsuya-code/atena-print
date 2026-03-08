@@ -6,6 +6,7 @@ import PreviewArea from './components/preview/PreviewArea'
 import DecorationSidebar from './components/decoration/DecorationSidebar'
 import LabelSettingsPanel from './components/label/LabelSettingsPanel'
 import PrintConfirmDialog from './components/PrintConfirmDialog'
+import SenderManager from './components/sender/SenderManager'
 import { useDecorationStore } from './stores/decorationStore'
 import { useLabelStore } from './stores/labelStore'
 import { useContactStore } from './stores/contactStore'
@@ -34,6 +35,9 @@ function App() {
         </NavButton>
         <NavButton active={view === 'preview'} onClick={() => setView('preview')}>
           ラベルプレビュー
+        </NavButton>
+        <NavButton active={view === 'senders'} onClick={() => setView('senders')}>
+          差出人管理
         </NavButton>
         <NavButton active={view === 'settings'} onClick={() => setView('settings')}>
           設定
@@ -94,6 +98,11 @@ function App() {
             )}
             {showDecoPanel && <DecorationSidebar />}
           </>
+        )}
+        {view === 'senders' && (
+          <div className="flex-1 overflow-y-auto">
+            <SenderManager />
+          </div>
         )}
         {view === 'settings' && (
           <div className="flex-1 p-6">

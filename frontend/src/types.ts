@@ -98,4 +98,4 @@ export interface ImportResult {
   errors: string[]
 }
 
-export type View = 'contacts' | 'preview' | 'settings'
+export type View = 'contacts' | 'preview' | 'senders' | 'settings'

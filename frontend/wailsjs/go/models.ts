@@ -174,6 +174,36 @@ export namespace entity {
 	        this.position = source["position"];
 	    }
 	}
+	export class Sender {
+	    id: string;
+	    familyName: string;
+	    givenName: string;
+	    postalCode: string;
+	    prefecture: string;
+	    city: string;
+	    street: string;
+	    building: string;
+	    company: string;
+	    isDefault: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new Sender(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.familyName = source["familyName"];
+	        this.givenName = source["givenName"];
+	        this.postalCode = source["postalCode"];
+	        this.prefecture = source["prefecture"];
+	        this.city = source["city"];
+	        this.street = source["street"];
+	        this.building = source["building"];
+	        this.company = source["company"];
+	        this.isDefault = source["isDefault"];
+	    }
+	}
 	export class Watermark {
 	    id: string;
 	    name: string;

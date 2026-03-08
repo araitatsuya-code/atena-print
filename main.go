@@ -45,11 +45,12 @@ func main() {
 	qrCodeUC := usecase.NewQRCodeUseCase(&qrpkg.Generator{})
 
 	senderRepo := dbpkg.NewSenderRepo(db)
+	senderUC := usecase.NewSenderUseCase(senderRepo)
 	pdfGen := pdfpkg.NewGenerator("")
 	printUC := usecase.NewPrintUseCase(contactRepo, senderRepo, pdfGen, &printer.OSPrinter{})
 
 	postalRepo := postal.NewRepo()
-	app := NewApp(contactUC, csvUC, groupUC, watermarkUC, qrCodeUC, printUC, postalRepo)
+	app := NewApp(contactUC, csvUC, groupUC, watermarkUC, qrCodeUC, printUC, senderUC, postalRepo)
 
 	err = wails.Run(&options.App{
 		Title:  "Atena ラベル印刷",
