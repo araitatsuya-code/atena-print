@@ -1,0 +1,38 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "866735ced71f",
+  "strategy": "manual-commit",
+  "branch": "feature/issue-26-dashboard-settings",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "app.go",
+    "frontend/src/App.tsx",
+    "frontend/src/components/Dashboard.tsx",
+    "frontend/src/components/Settings.tsx",
+    "frontend/src/types.ts",
+    "frontend/wailsjs/go/main/App.d.ts",
+    "frontend/wailsjs/go/main/App.js",
+    "frontend/wailsjs/go/models.ts",
+    "internal/entity/print_history.go",
+    "internal/infrastructure/sqlite/print_history_repo.go",
+    "internal/repository/print_history_repo.go",
+    "internal/usecase/print_history_usecase.go",
+    "main.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/86/6735ced71f/0/metadata.json",
+      "transcript": "/86/6735ced71f/0/full.jsonl",
+      "context": "/86/6735ced71f/0/context.md",
+      "content_hash": "/86/6735ced71f/0/content_hash.txt",
+      "prompt": "/86/6735ced71f/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 72,
+    "cache_creation_tokens": 55488,
+    "cache_read_tokens": 2723520,
+    "output_tokens": 21954,
+    "api_call_count": 64
+  }
+}
