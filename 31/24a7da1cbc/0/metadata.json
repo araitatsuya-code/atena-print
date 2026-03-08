@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "3124a7da1cbc",
+  "session_id": "fb62ccae-10b3-42a6-9361-cc731ad07f4e",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-08T04:49:12.395905Z",
+  "branch": "feat/issue-12-label-settings-print-flow",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "frontend/src/App.tsx",
+    "frontend/src/components/PrintConfirmDialog.tsx",
+    "frontend/src/components/label/LabelSettingsPanel.tsx",
+    "frontend/src/types.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "b43213b0e9c6",
+  "token_usage": {
+    "input_tokens": 103,
+    "cache_creation_tokens": 140214,
+    "cache_read_tokens": 4759736,
+    "output_tokens": 32652,
+    "api_call_count": 88
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-08T04:49:12.258667Z",
+    "agent_lines": 341,
+    "human_added": 38,
+    "human_modified": 38,
+    "human_removed": 0,
+    "total_committed": 417,
+    "agent_percentage": 81.77458033573141
+  }
+}
