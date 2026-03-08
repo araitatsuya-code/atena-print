@@ -12,6 +12,7 @@ import (
 
 	csvpkg "atena-label/internal/infrastructure/csv"
 	imagepkg "atena-label/internal/infrastructure/image"
+	pdfpkg "atena-label/internal/infrastructure/pdf"
 	"atena-label/internal/infrastructure/postal"
 	qrpkg "atena-label/internal/infrastructure/qr"
 	dbpkg "atena-label/internal/infrastructure/sqlite"
@@ -42,8 +43,12 @@ func main() {
 	watermarkUC := usecase.NewWatermarkUseCase(watermarkRepo, &imagepkg.FileStorage{}, filepath.Join(appDataDir, "watermarks"))
 	qrCodeUC := usecase.NewQRCodeUseCase(&qrpkg.Generator{})
 
+	senderRepo := dbpkg.NewSenderRepo(db)
+	pdfGen := pdfpkg.NewGenerator("")
+	printUC := usecase.NewPrintUseCase(contactRepo, senderRepo, pdfGen)
+
 	postalRepo := postal.NewRepo()
-	app := NewApp(contactUC, csvUC, groupUC, watermarkUC, qrCodeUC, postalRepo)
+	app := NewApp(contactUC, csvUC, groupUC, watermarkUC, qrCodeUC, printUC, postalRepo)
 
 	err = wails.Run(&options.App{
 		Title:  "Atena ラベル印刷",

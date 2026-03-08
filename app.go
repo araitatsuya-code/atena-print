@@ -19,12 +19,13 @@ type App struct {
 	groupUseCase     *usecase.GroupUseCase
 	watermarkUseCase *usecase.WatermarkUseCase
 	qrCodeUseCase    *usecase.QRCodeUseCase
+	printUseCase     *usecase.PrintUseCase
 	postalRepo       repository.PostalRepository
 }
 
 // NewApp creates a new App application struct
-func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, postalRepo repository.PostalRepository) *App {
-	return &App{contactUseCase: contactUC, csvUseCase: csvUC, groupUseCase: groupUC, watermarkUseCase: watermarkUC, qrCodeUseCase: qrCodeUC, postalRepo: postalRepo}
+func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, printUC *usecase.PrintUseCase, postalRepo repository.PostalRepository) *App {
+	return &App{contactUseCase: contactUC, csvUseCase: csvUC, groupUseCase: groupUC, watermarkUseCase: watermarkUC, qrCodeUseCase: qrCodeUC, printUseCase: printUC, postalRepo: postalRepo}
 }
 
 // startup is called when the app starts. The context is saved
@@ -226,4 +227,29 @@ func (a *App) GenerateQRPreview(config entity.QRConfig) ([]byte, error) {
 		return nil, fmt.Errorf("GenerateQRPreview: %w", err)
 	}
 	return png, nil
+}
+
+// GenerateLabelPDF generates a label PDF from the given print job and saves it to outPath.
+// Returns the output file path.
+func (a *App) GenerateLabelPDF(job entity.PrintJob, outPath string) (string, error) {
+	path, err := a.printUseCase.GenerateLabelPDF(job, outPath)
+	if err != nil {
+		return "", fmt.Errorf("GenerateLabelPDF: %w", err)
+	}
+	return path, nil
+}
+
+// SavePDFFileDialog opens a native save dialog filtered to PDF files.
+func (a *App) SavePDFFileDialog(defaultFilename string) (string, error) {
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "PDFファイルを保存",
+		DefaultFilename: defaultFilename,
+		Filters: []runtime.FileFilter{
+			{DisplayName: "PDFファイル (*.pdf)", Pattern: "*.pdf"},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("SavePDFFileDialog: %w", err)
+	}
+	return path, nil
 }

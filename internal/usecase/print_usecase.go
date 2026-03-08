@@ -1,0 +1,74 @@
+package usecase
+
+import (
+	"fmt"
+	"os"
+
+	"atena-label/internal/entity"
+	"atena-label/internal/repository"
+)
+
+// PrintUseCase orchestrates PDF generation for label printing.
+type PrintUseCase struct {
+	contactRepo  repository.ContactRepository
+	senderRepo   repository.SenderRepository
+	pdfGenerator repository.PDFGenerator
+}
+
+// NewPrintUseCase creates a new PrintUseCase.
+func NewPrintUseCase(
+	contactRepo repository.ContactRepository,
+	senderRepo repository.SenderRepository,
+	pdfGenerator repository.PDFGenerator,
+) *PrintUseCase {
+	return &PrintUseCase{
+		contactRepo:  contactRepo,
+		senderRepo:   senderRepo,
+		pdfGenerator: pdfGenerator,
+	}
+}
+
+// GenerateLabelPDF resolves contacts and sender from the job, generates a PDF,
+// writes it to outPath, and returns the path.
+func (uc *PrintUseCase) GenerateLabelPDF(job entity.PrintJob, outPath string) (string, error) {
+	// Resolve contacts.
+	contacts := make([]entity.Contact, 0, len(job.ContactIDs))
+	for _, id := range job.ContactIDs {
+		c, err := uc.contactRepo.FindByID(id)
+		if err != nil {
+			return "", fmt.Errorf("contact %s: %w", id, err)
+		}
+		if c == nil {
+			return "", fmt.Errorf("contact %s: not found", id)
+		}
+		contacts = append(contacts, *c)
+	}
+	if len(contacts) == 0 {
+		return "", fmt.Errorf("no contacts specified for printing")
+	}
+
+	// Resolve sender (optional).
+	var sender *entity.Sender
+	if job.SenderID != "" {
+		s, err := uc.senderRepo.FindByID(job.SenderID)
+		if err != nil {
+			return "", fmt.Errorf("sender %s: %w", job.SenderID, err)
+		}
+		if s == nil {
+			return "", fmt.Errorf("sender %s: not found", job.SenderID)
+		}
+		sender = s
+	}
+
+	// Generate PDF bytes.
+	pdfBytes, err := uc.pdfGenerator.GenerateLabelPDF(job, contacts, sender)
+	if err != nil {
+		return "", fmt.Errorf("generate PDF: %w", err)
+	}
+
+	// Write to file.
+	if err := os.WriteFile(outPath, pdfBytes, 0644); err != nil {
+		return "", fmt.Errorf("write PDF file: %w", err)
+	}
+	return outPath, nil
+}
