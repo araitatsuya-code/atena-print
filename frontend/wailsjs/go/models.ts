@@ -330,9 +330,44 @@ export namespace entity {
 		    return a;
 		}
 	}
-	
-	
-	
+
+	export class PrintHistory {
+	    id: string;
+	    printedAt: string;
+	    contactCount: number;
+	    templateId: string;
+	    watermarkId: string;
+	    qrEnabled: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new PrintHistory(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.printedAt = source["printedAt"];
+	        this.contactCount = source["contactCount"];
+	        this.templateId = source["templateId"];
+	        this.watermarkId = source["watermarkId"];
+	        this.qrEnabled = source["qrEnabled"];
+	    }
+	}
+
+	export class DashboardStats {
+	    contactCount: number;
+	    groupCount: number;
+
+	    static createFrom(source: any = {}) {
+	        return new DashboardStats(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.contactCount = source["contactCount"];
+	        this.groupCount = source["groupCount"];
+	    }
+	}
 
 }
 

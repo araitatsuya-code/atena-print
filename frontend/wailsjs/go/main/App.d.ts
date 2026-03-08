@@ -59,3 +59,13 @@ export function SaveSender(arg1:entity.Sender):Promise<entity.Sender>;
 export function DeleteSender(arg1:string):Promise<void>;
 
 export function SetDefaultSender(arg1:string):Promise<void>;
+
+export function GetPrintHistory(arg1:number):Promise<Array<entity.PrintHistory>>;
+
+export function GetDashboardStats():Promise<entity.DashboardStats>;
+
+export function GetAppVersion():Promise<string>;
+
+export function ExportDB():Promise<string>;
+
+export function ImportDB():Promise<void>;

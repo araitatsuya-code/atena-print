@@ -117,3 +117,23 @@ export function DeleteSender(arg1) {
 export function SetDefaultSender(arg1) {
   return window['go']['main']['App']['SetDefaultSender'](arg1);
 }
+
+export function GetPrintHistory(arg1) {
+  return window['go']['main']['App']['GetPrintHistory'](arg1);
+}
+
+export function GetDashboardStats() {
+  return window['go']['main']['App']['GetDashboardStats']();
+}
+
+export function GetAppVersion() {
+  return window['go']['main']['App']['GetAppVersion']();
+}
+
+export function ExportDB() {
+  return window['go']['main']['App']['ExportDB']();
+}
+
+export function ImportDB() {
+  return window['go']['main']['App']['ImportDB']();
+}

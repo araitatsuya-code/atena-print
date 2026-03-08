@@ -98,4 +98,18 @@ export interface ImportResult {
   errors: string[]
 }
 
-export type View = 'contacts' | 'preview' | 'senders' | 'settings'
+export interface PrintHistory {
+  id: string
+  printedAt: string
+  contactCount: number
+  templateId: string
+  watermarkId: string
+  qrEnabled: boolean
+}
+
+export interface DashboardStats {
+  contactCount: number
+  groupCount: number
+}
+
+export type View = 'dashboard' | 'contacts' | 'preview' | 'senders' | 'settings'
