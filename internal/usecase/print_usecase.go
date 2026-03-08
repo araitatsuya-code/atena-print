@@ -38,6 +38,9 @@ func (uc *PrintUseCase) GenerateLabelPDF(job entity.PrintJob, outPath string) (s
 		if err != nil {
 			return "", fmt.Errorf("contact %s: %w", id, err)
 		}
+		if c == nil {
+			return "", fmt.Errorf("contact %s: not found", id)
+		}
 		contacts = append(contacts, *c)
 	}
 	if len(contacts) == 0 {
@@ -50,6 +53,9 @@ func (uc *PrintUseCase) GenerateLabelPDF(job entity.PrintJob, outPath string) (s
 		s, err := uc.senderRepo.FindByID(job.SenderID)
 		if err != nil {
 			return "", fmt.Errorf("sender %s: %w", job.SenderID, err)
+		}
+		if s == nil {
+			return "", fmt.Errorf("sender %s: not found", job.SenderID)
 		}
 		sender = s
 	}
