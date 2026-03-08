@@ -185,7 +185,8 @@
 
 ## Phase 5: ラベル印刷 (Week 10-11)
 
-### 5.1 PDF生成エンジン (Go)
+### 5.1 PDF生成エンジン (Go) ✅ 完了 (PR #22)
+
 - [x] `internal/usecase/print_usecase.go`
 - [x] `internal/infrastructure/pdf/label_pdf.go`
   - gofpdf で A4ページにラベルをグリッド配置
@@ -196,7 +197,8 @@
   - TrueTypeフォント埋め込み (明朝体)
   - LabelLayout に従った面付け計算
 
-### 5.2 PDF内の透かし・QR合成
+### 5.2 PDF内の透かし・QR合成 ✅ 完了 (PR #22)
+
 - [x] PDF生成時に透かし画像を背景としてImageで配置
 - [x] PDF生成時にQR画像を指定位置にImageで配置
 
