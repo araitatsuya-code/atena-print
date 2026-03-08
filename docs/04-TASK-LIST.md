@@ -157,7 +157,7 @@
 
 ---
 
-## Phase 4: 透かし・QR バックエンド ✅ 完了 (PR #20)
+## Phase 4: 透かし・QR バックエンド ✅ 完了 (PR #20, #21)
 
 ### 4.1 透かし画像処理 (Go) ✅ 完了 (PR #20)
 
@@ -175,10 +175,11 @@
   - サイズ指定対応
   - GenerateQRPreview をバインド
 
-### 4.3 デザイン設定パネル
-- [ ] `frontend/src/components/decoration/WatermarkPanel.tsx` — 透かしプリセット選択 + 透明度 + アップロード
-- [ ] `frontend/src/components/decoration/QRPanel.tsx` — QR ON/OFF + コンテンツ入力 + プレビュー
-- [ ] `frontend/src/components/decoration/DecorationSidebar.tsx` — 上記を統合した右パネル
+### 4.3 デザイン設定パネル ✅ 完了 (PR #21)
+
+- [x] `frontend/src/components/decoration/WatermarkPanel.tsx` — 透かしプリセット選択 + 透明度 + アップロード
+- [x] `frontend/src/components/decoration/QRPanel.tsx` — QR ON/OFF + コンテンツ入力 + プレビュー
+- [x] `frontend/src/components/decoration/DecorationSidebar.tsx` — 上記を統合した右パネル
 
 ---
 
