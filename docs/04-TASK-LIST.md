@@ -183,7 +183,7 @@
 
 ---
 
-## Phase 5: ラベル印刷 (Week 10-11)
+## Phase 5: ラベル印刷 ✅ 完了 (PR #22, #24)
 
 ### 5.1 PDF生成エンジン (Go) ✅ 完了 (PR #22)
 
@@ -202,22 +202,26 @@
 - [x] PDF生成時に透かし画像を背景としてImageで配置
 - [x] PDF生成時にQR画像を指定位置にImageで配置
 
-### 5.3 ラベル設定パネル
-- [ ] `frontend/src/components/label/LabelSettingsPanel.tsx`
+### 5.3 ラベル設定パネル ✅ 完了 (PR #24)
+
+- [x] `frontend/src/components/label/LabelSettingsPanel.tsx`
   - 用紙タイプ選択
   - ラベルサイズ入力
   - 余白入力
   - A4レイアウトミニプレビュー
 
-### 5.4 印刷フロー
-- [ ] `internal/infrastructure/printer/print.go`
-  - Windows: `cmd /c start /wait "" "path.pdf"` で標準ビューア経由印刷
-  - macOS: `lpr` コマンド or `open` で Preview.app 経由
-- [ ] GenerateLabelPDF / PrintPDF をバインド
-- [ ] フロントエンドの「ラベル印刷」ボタンからの一連のフロー実装
+### 5.4 印刷フロー ✅ 完了 (PR #24)
 
-### 5.5 印刷確認ダイアログ
-- [ ] `frontend/src/components/PrintConfirmDialog.tsx`
+- [x] `internal/infrastructure/printer/print.go`
+  - Windows: `cmd /c start /wait "" "path.pdf"` で標準ビューア経由印刷
+  - macOS: `open` で Preview.app 経由
+  - `Printer` インターフェース (repository 層) 経由で Clean Architecture を維持
+- [x] `GenerateLabelPDF` / `PrintPDF` / `GetTempPDFPath` を `app.go` にバインド
+- [x] フロントエンドの「ラベル印刷」ボタンからの一連のフロー実装
+
+### 5.5 印刷確認ダイアログ ✅ 完了 (PR #24)
+
+- [x] `frontend/src/components/PrintConfirmDialog.tsx`
   - 印刷枚数・用紙タイプの確認
   - 「PDF保存」「印刷」の選択
 
