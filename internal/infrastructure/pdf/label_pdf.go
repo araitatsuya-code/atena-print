@@ -70,12 +70,16 @@ func (g *Generator) GenerateLabelPDF(
 	pdf.SetCompression(true)
 
 	// Register Japanese font if available.
+	// Use AddUTF8FontFromBytes to avoid gofpdf's internal filepath.Join
+	// mangling absolute paths when its fontpath is non-empty.
 	const fontName = "jfont"
 	hasJFont := false
 	if g.fontPath != "" {
-		pdf.AddUTF8Font(fontName, "", g.fontPath)
-		if pdf.Error() == nil {
-			hasJFont = true
+		if fontBytes, err := os.ReadFile(g.fontPath); err == nil {
+			pdf.AddUTF8FontFromBytes(fontName, "", fontBytes)
+			if pdf.Error() == nil {
+				hasJFont = true
+			}
 		}
 	}
 
