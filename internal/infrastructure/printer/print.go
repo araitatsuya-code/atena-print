@@ -6,9 +6,12 @@ import (
 	"runtime"
 )
 
-// PrintFile opens the given PDF file using the OS default application.
+// OSPrinter opens a PDF file using the OS default application.
+type OSPrinter struct{}
+
+// Print opens the given PDF file using the OS default application.
 // On Windows, it uses cmd /c start; on macOS/Linux, it uses open/lpr.
-func PrintFile(pdfPath string) error {
+func (p *OSPrinter) Print(pdfPath string) error {
 	switch runtime.GOOS {
 	case "windows":
 		cmd := exec.Command("cmd", "/c", "start", "/wait", "", pdfPath)

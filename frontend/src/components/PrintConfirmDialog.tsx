@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GenerateLabelPDF, PrintPDF, SavePDFFileDialog } from '../../wailsjs/go/main/App'
+import { GenerateLabelPDF, GetTempPDFPath, PrintPDF, SavePDFFileDialog } from '../../wailsjs/go/main/App'
 import { entity } from '../../wailsjs/go/models'
 import { useContactStore } from '../stores/contactStore'
 import { useDecorationStore } from '../stores/decorationStore'
@@ -69,7 +69,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
 
   function handlePrint() {
     return run(async () => {
-      const tmpPath = `/tmp/atena-label-${Date.now()}.pdf`
+      const tmpPath = await GetTempPDFPath()
       const outPath = await GenerateLabelPDF(buildJob(), tmpPath)
       await PrintPDF(outPath)
     })

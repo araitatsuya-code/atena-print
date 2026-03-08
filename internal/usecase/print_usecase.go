@@ -13,6 +13,7 @@ type PrintUseCase struct {
 	contactRepo  repository.ContactRepository
 	senderRepo   repository.SenderRepository
 	pdfGenerator repository.PDFGenerator
+	printer      repository.Printer
 }
 
 // NewPrintUseCase creates a new PrintUseCase.
@@ -20,12 +21,22 @@ func NewPrintUseCase(
 	contactRepo repository.ContactRepository,
 	senderRepo repository.SenderRepository,
 	pdfGenerator repository.PDFGenerator,
+	printer repository.Printer,
 ) *PrintUseCase {
 	return &PrintUseCase{
 		contactRepo:  contactRepo,
 		senderRepo:   senderRepo,
 		pdfGenerator: pdfGenerator,
+		printer:      printer,
 	}
+}
+
+// Print opens the given PDF file via the OS printer.
+func (uc *PrintUseCase) Print(pdfPath string) error {
+	if err := uc.printer.Print(pdfPath); err != nil {
+		return fmt.Errorf("print: %w", err)
+	}
+	return nil
 }
 
 // GenerateLabelPDF resolves contacts and sender from the job, generates a PDF,

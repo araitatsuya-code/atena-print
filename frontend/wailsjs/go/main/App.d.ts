@@ -32,6 +32,10 @@ export function LookupPostal(arg1:string):Promise<entity.Address>;
 
 export function OpenCSVFileDialog():Promise<string>;
 
+export function GetTempPDFPath():Promise<string>;
+
+export function PrintPDF(arg1:string):Promise<void>;
+
 export function RemoveContactFromGroup(arg1:string,arg2:string):Promise<void>;
 
 export function SaveCSVFileDialog(arg1:string):Promise<string>;
@@ -39,8 +43,6 @@ export function SaveCSVFileDialog(arg1:string):Promise<string>;
 export function SaveContact(arg1:entity.Contact):Promise<entity.Contact>;
 
 export function SaveGroup(arg1:entity.Group):Promise<entity.Group>;
-
-export function PrintPDF(arg1:string):Promise<void>;
 
 export function SavePDFFileDialog(arg1:string):Promise<string>;
 

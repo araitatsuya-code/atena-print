@@ -14,6 +14,7 @@ import (
 	imagepkg "atena-label/internal/infrastructure/image"
 	pdfpkg "atena-label/internal/infrastructure/pdf"
 	"atena-label/internal/infrastructure/postal"
+	"atena-label/internal/infrastructure/printer"
 	qrpkg "atena-label/internal/infrastructure/qr"
 	dbpkg "atena-label/internal/infrastructure/sqlite"
 	"atena-label/internal/usecase"
@@ -45,7 +46,7 @@ func main() {
 
 	senderRepo := dbpkg.NewSenderRepo(db)
 	pdfGen := pdfpkg.NewGenerator("")
-	printUC := usecase.NewPrintUseCase(contactRepo, senderRepo, pdfGen)
+	printUC := usecase.NewPrintUseCase(contactRepo, senderRepo, pdfGen, &printer.OSPrinter{})
 
 	postalRepo := postal.NewRepo()
 	app := NewApp(contactUC, csvUC, groupUC, watermarkUC, qrCodeUC, printUC, postalRepo)
