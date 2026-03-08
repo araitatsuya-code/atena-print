@@ -92,15 +92,6 @@ export interface Template {
   sender: TextConfig
 }
 
-export interface PrintJob {
-  contactIds: string[]
-  template: Template
-  senderId: string
-  labelLayout: LabelLayout
-  watermark?: Watermark
-  qrConfig?: QRConfig
-}
-
 export interface ImportResult {
   total: number
   imported: number

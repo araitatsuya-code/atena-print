@@ -17,13 +17,17 @@ const defaultLayout: LabelLayout = {
 interface LabelState {
   layout: LabelLayout
   selectedSender: Sender | null
+  showPanel: boolean
   setLayout: (layout: Partial<LabelLayout>) => void
   setSelectedSender: (sender: Sender | null) => void
+  togglePanel: () => void
 }
 
 export const useLabelStore = create<LabelState>((set, get) => ({
   layout: defaultLayout,
   selectedSender: null,
+  showPanel: false,
   setLayout: (layout) => set({ layout: { ...get().layout, ...layout } }),
   setSelectedSender: (sender) => set({ selectedSender: sender }),
+  togglePanel: () => set({ showPanel: !get().showPanel }),
 }))

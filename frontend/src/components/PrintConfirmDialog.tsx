@@ -46,14 +46,11 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     })
   }
 
-  async function handleSavePDF() {
+  async function run(action: () => Promise<void>) {
     setError(null)
     setLoading(true)
     try {
-      const savePath = await SavePDFFileDialog('ラベル.pdf')
-      if (!savePath) return
-      const job = buildJob()
-      await GenerateLabelPDF(job, savePath)
+      await action()
       onClose()
     } catch (e) {
       setError(String(e))
@@ -62,20 +59,20 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     }
   }
 
-  async function handlePrint() {
-    setError(null)
-    setLoading(true)
-    try {
+  function handleSavePDF() {
+    return run(async () => {
+      const savePath = await SavePDFFileDialog('ラベル.pdf')
+      if (!savePath) return
+      await GenerateLabelPDF(buildJob(), savePath)
+    })
+  }
+
+  function handlePrint() {
+    return run(async () => {
       const tmpPath = `/tmp/atena-label-${Date.now()}.pdf`
-      const job = buildJob()
-      const outPath = await GenerateLabelPDF(job, tmpPath)
+      const outPath = await GenerateLabelPDF(buildJob(), tmpPath)
       await PrintPDF(outPath)
-      onClose()
-    } catch (e) {
-      setError(String(e))
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   return (

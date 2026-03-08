@@ -7,15 +7,18 @@ import DecorationSidebar from './components/decoration/DecorationSidebar'
 import LabelSettingsPanel from './components/label/LabelSettingsPanel'
 import PrintConfirmDialog from './components/PrintConfirmDialog'
 import { useDecorationStore } from './stores/decorationStore'
+import { useLabelStore } from './stores/labelStore'
 import { useContactStore } from './stores/contactStore'
 
 function App() {
   const [view, setView] = useState<View>('contacts')
-  const [showLabelPanel, setShowLabelPanel] = useState(false)
   const [showPrintDialog, setShowPrintDialog] = useState(false)
 
   const { showDecoPanel, toggleDecoPanel } = useDecorationStore(
     useShallow((s) => ({ showDecoPanel: s.showDecoPanel, toggleDecoPanel: s.toggleDecoPanel })),
+  )
+  const { showPanel: showLabelPanel, togglePanel: toggleLabelPanel } = useLabelStore(
+    useShallow((s) => ({ showPanel: s.showPanel, togglePanel: s.togglePanel })),
   )
   const selectedCount = useContactStore((s) => s.selectedIds.size)
 
@@ -48,10 +51,9 @@ function App() {
           <>
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
               {/* トップバー */}
-              <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
-                <div className="flex-1" />
+              <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
                 <button
-                  onClick={() => setShowLabelPanel((v) => !v)}
+                  onClick={toggleLabelPanel}
                   className={`px-3 py-1.5 text-xs rounded border transition-colors ${
                     showLabelPanel
                       ? 'bg-green-50 border-green-400 text-green-700'

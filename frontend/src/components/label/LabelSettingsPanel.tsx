@@ -4,7 +4,7 @@ import type { LabelLayout } from '../../types'
 
 interface Preset {
   name: string
-  layout: LabelLayout
+  layout?: LabelLayout
 }
 
 const PRESETS: Preset[] = [
@@ -70,7 +70,6 @@ const PRESETS: Preset[] = [
   },
   {
     name: 'カスタム',
-    layout: null as unknown as LabelLayout,
   },
 ]
 
@@ -103,7 +102,8 @@ export default function LabelSettingsPanel() {
     }
   }
 
-  function numInput(field: keyof LabelLayout, label: string, step = 0.1) {
+  function numInput(field: keyof LabelLayout, label: string, unit: 'mm' | '面' = 'mm') {
+    const step = unit === 'mm' ? 0.1 : 1
     return (
       <div className="flex items-center gap-2">
         <label className="text-xs text-gray-600 w-20 shrink-0">{label}</label>
@@ -111,11 +111,11 @@ export default function LabelSettingsPanel() {
           type="number"
           step={step}
           min={0}
-          value={(layout[field] as number).toFixed(step < 1 ? 1 : 0)}
+          value={(layout[field] as number).toFixed(unit === 'mm' ? 1 : 0)}
           onChange={(e) => setLayout({ [field]: parseFloat(e.target.value) || 0 })}
           className="w-20 border border-gray-300 rounded px-2 py-0.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-blue-400"
         />
-        <span className="text-xs text-gray-400">{step < 1 ? 'mm' : '面'}</span>
+        <span className="text-xs text-gray-400">{unit}</span>
       </div>
     )
   }
@@ -157,8 +157,8 @@ export default function LabelSettingsPanel() {
       <div>
         <p className="text-xs font-medium text-gray-700 mb-1">面付け</p>
         <div className="space-y-1">
-          {numInput('columns', '列数', 1)}
-          {numInput('rows', '行数', 1)}
+          {numInput('columns', '列数', '面')}
+          {numInput('rows', '行数', '面')}
         </div>
       </div>
 
