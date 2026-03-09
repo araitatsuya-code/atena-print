@@ -25,8 +25,10 @@ export default function Settings() {
   async function handleImport() {
     setImportMsg('')
     try {
-      await ImportDB()
-      setImportMsg('復元しました。アプリを再起動すると反映されます。')
+      const imported = await ImportDB()
+      if (imported) {
+        setImportMsg('復元しました。アプリを再起動すると反映されます。')
+      }
     } catch (e) {
       setImportMsg(`エラー: ${e}`)
     }

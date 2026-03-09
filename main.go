@@ -54,7 +54,7 @@ func main() {
 
 	dbPath := filepath.Join(appDataDir, "atena.db")
 	postalRepo := postal.NewRepo()
-	app := NewApp(contactUC, csvUC, groupUC, watermarkUC, qrCodeUC, printUC, senderUC, postalRepo, printHistoryUC, dbPath)
+	app := NewApp(contactUC, csvUC, groupUC, watermarkUC, qrCodeUC, printUC, senderUC, postalRepo, printHistoryUC, db, dbPath)
 
 	err = wails.Run(&options.App{
 		Title:  "Atena ラベル印刷",

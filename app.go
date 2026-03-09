@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -30,11 +32,12 @@ type App struct {
 	senderUseCase       *usecase.SenderUseCase
 	postalRepo          repository.PostalRepository
 	printHistoryUseCase *usecase.PrintHistoryUseCase
+	db                  *sql.DB
 	dbPath              string
 }
 
 // NewApp creates a new App application struct
-func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, printUC *usecase.PrintUseCase, senderUC *usecase.SenderUseCase, postalRepo repository.PostalRepository, printHistoryUC *usecase.PrintHistoryUseCase, dbPath string) *App {
+func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, printUC *usecase.PrintUseCase, senderUC *usecase.SenderUseCase, postalRepo repository.PostalRepository, printHistoryUC *usecase.PrintHistoryUseCase, db *sql.DB, dbPath string) *App {
 	return &App{
 		contactUseCase:      contactUC,
 		csvUseCase:          csvUC,
@@ -45,6 +48,7 @@ func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupU
 		senderUseCase:       senderUC,
 		postalRepo:          postalRepo,
 		printHistoryUseCase: printHistoryUC,
+		db:                  db,
 		dbPath:              dbPath,
 	}
 }
@@ -257,13 +261,15 @@ func (a *App) GenerateLabelPDF(job entity.PrintJob, outPath string) (string, err
 	if err != nil {
 		return "", fmt.Errorf("GenerateLabelPDF: %w", err)
 	}
-	// 印刷ログを記録 (エラーは無視してメイン処理を妨げない)
+	// 印刷ログを記録 (失敗してもPDF生成結果は返す)
 	watermarkID := ""
 	if job.Watermark != nil {
 		watermarkID = job.Watermark.ID
 	}
 	qrEnabled := job.QRConfig != nil && job.QRConfig.Enabled
-	_ = a.printHistoryUseCase.Record(len(job.ContactIDs), job.Template.ID, watermarkID, qrEnabled)
+	if herr := a.printHistoryUseCase.Record(len(job.ContactIDs), job.Template.ID, watermarkID, qrEnabled); herr != nil {
+		log.Printf("GenerateLabelPDF: 印刷履歴の保存に失敗しました: %v", herr)
+	}
 	return path, nil
 }
 
@@ -362,7 +368,8 @@ func (a *App) GetAppVersion() string {
 	return AppVersion
 }
 
-// ExportDB opens a save dialog and copies the SQLite database to the chosen path.
+// ExportDB opens a save dialog and exports the database using SQLite's VACUUM INTO
+// for a consistent online snapshot without interrupting the live connection.
 func (a *App) ExportDB() (string, error) {
 	dest, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		Title:           "データをバックアップ",
@@ -374,15 +381,18 @@ func (a *App) ExportDB() (string, error) {
 	if err != nil || dest == "" {
 		return "", nil
 	}
-	if err := copyFile(a.dbPath, dest); err != nil {
+	// 既存ファイルを一旦削除しないと VACUUM INTO が失敗する
+	_ = os.Remove(dest)
+	if _, err := a.db.ExecContext(a.ctx, "VACUUM INTO ?", dest); err != nil {
 		return "", fmt.Errorf("ExportDB: %w", err)
 	}
 	return dest, nil
 }
 
-// ImportDB opens a file dialog, copies the chosen DB file over the current database.
-// The application must be restarted for the change to take effect.
-func (a *App) ImportDB() error {
+// ImportDB opens a file dialog and atomically replaces the database file.
+// Returns true if the import was performed, false if the user cancelled.
+// The application must be restarted for the new DB to take effect.
+func (a *App) ImportDB() (bool, error) {
 	src, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "バックアップから復元",
 		Filters: []runtime.FileFilter{
@@ -390,12 +400,18 @@ func (a *App) ImportDB() error {
 		},
 	})
 	if err != nil || src == "" {
-		return nil
+		return false, nil
 	}
-	if err := copyFile(src, a.dbPath); err != nil {
-		return fmt.Errorf("ImportDB: %w", err)
+	// 一時ファイルに書き出してからアトミックにリネーム (src == dbPath でも安全)
+	tmp := a.dbPath + ".import.tmp"
+	if err := copyFile(src, tmp); err != nil {
+		return false, fmt.Errorf("ImportDB コピー失敗: %w", err)
 	}
-	return nil
+	if err := os.Rename(tmp, a.dbPath); err != nil {
+		_ = os.Remove(tmp)
+		return false, fmt.Errorf("ImportDB 配置失敗: %w", err)
+	}
+	return true, nil
 }
 
 func copyFile(src, dst string) error {

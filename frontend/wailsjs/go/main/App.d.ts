@@ -68,4 +68,4 @@ export function GetAppVersion():Promise<string>;
 
 export function ExportDB():Promise<string>;
 
-export function ImportDB():Promise<void>;
+export function ImportDB():Promise<boolean>;
