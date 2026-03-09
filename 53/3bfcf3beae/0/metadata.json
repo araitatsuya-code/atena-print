@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "533bfcf3beae",
+  "session_id": "ce145dbf-fbdb-4747-8ea1-0ccc4d7bbe66",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-09T13:28:12.442364Z",
+  "branch": "feature/issue-26-dashboard-settings",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "app.go",
+    "main.go",
+    "frontend/wailsjs/go/main/App.d.ts",
+    "frontend/src/components/Settings.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "1b072bba8648",
+  "checkpoint_transcript_start": 191,
+  "transcript_lines_at_start": 191,
+  "token_usage": {
+    "input_tokens": 27,
+    "cache_creation_tokens": 88216,
+    "cache_read_tokens": 1675910,
+    "output_tokens": 8402,
+    "api_call_count": 23
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-09T13:28:12.20773Z",
+    "agent_lines": 34,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 34,
+    "agent_percentage": 100
+  }
+}
