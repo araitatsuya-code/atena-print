@@ -84,6 +84,13 @@ function mm(value: number, scale: number): number {
   return value * MM_TO_PX * scale
 }
 
+/** フォントファミリー文字列を返す */
+function resolveFontFamily(family?: 'serif' | 'sans-serif', fallback: 'serif' | 'sans-serif' = 'serif'): string {
+  return (family ?? fallback) === 'sans-serif'
+    ? '"Hiragino Kaku Gothic ProN", "Meiryo", sans-serif'
+    : '"Hiragino Mincho ProN", "Yu Mincho", "MS PMincho", serif'
+}
+
 interface LabelCanvasProps {
   contact: Contact
   template?: Template
@@ -155,7 +162,8 @@ function renderLabel(
     const baseY = mm(pc.y, s)
 
     ctx.fillStyle = '#111827'
-    ctx.font = `${fontSize}px "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif`
+    const pcWeight = pc.bold ? 'bold' : 'normal'
+    ctx.font = `${pcWeight} ${fontSize}px ${resolveFontFamily(pc.fontFamily, 'sans-serif')}`
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
 
@@ -194,7 +202,8 @@ function renderVerticalLabel(
     const honorific = contact.honorific || '様'
 
     ctx.fillStyle = '#111827'
-    ctx.font = `${nameFontPx}px "Hiragino Mincho ProN", "Yu Mincho", "MS PMincho", serif`
+    const nameWeight = rc.nameBold ? 'bold' : 'normal'
+    ctx.font = `${nameWeight} ${nameFontPx}px ${resolveFontFamily(rc.nameFontFamily)}`
 
     // 氏名: 右端カラム、敬称は独立した右隣カラム
     drawVerticalBlock({
@@ -217,7 +226,8 @@ function renderVerticalLabel(
     const addrLine2 = `${contact.street}${contact.building ? `　${contact.building}` : ''}`
 
     ctx.fillStyle = '#111827'
-    ctx.font = `${addrFontPx}px "Hiragino Mincho ProN", "Yu Mincho", "MS PMincho", serif`
+    const addrWeight = rc.addressBold ? 'bold' : 'normal'
+    ctx.font = `${addrWeight} ${addrFontPx}px ${resolveFontFamily(rc.addressFontFamily)}`
 
     drawVerticalBlock({
       ctx,
@@ -237,8 +247,6 @@ function renderHorizontalLabel(
   tpl: Template,
   s: number,
 ): void {
-  const serifFont = '"Hiragino Mincho ProN", "Yu Mincho", "MS PMincho", serif'
-
   // ─── 宛先 氏名 ───────────────────────────────────────────
   {
     const rc = tpl.recipient
@@ -247,7 +255,7 @@ function renderHorizontalLabel(
     const fullName = `${contact.familyName}${contact.givenName}　${honorific}`
 
     ctx.fillStyle = '#111827'
-    ctx.font = `${nameFontPx}px ${serifFont}`
+    ctx.font = `${rc.nameBold ? 'bold' : 'normal'} ${nameFontPx}px ${resolveFontFamily(rc.nameFontFamily)}`
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
     ctx.fillText(fullName, mm(rc.nameX, s), mm(rc.nameY, s))
@@ -265,7 +273,7 @@ function renderHorizontalLabel(
     ].filter(Boolean)
 
     ctx.fillStyle = '#111827'
-    ctx.font = `${addrFontPx}px ${serifFont}`
+    ctx.font = `${rc.addressBold ? 'bold' : 'normal'} ${addrFontPx}px ${resolveFontFamily(rc.addressFontFamily)}`
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
 

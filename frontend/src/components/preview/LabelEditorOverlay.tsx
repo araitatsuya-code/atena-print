@@ -16,6 +16,8 @@ interface Box {
   widthMm: number
   heightMm: number
   fontPt: number
+  fontFamily: 'serif' | 'sans-serif'
+  bold: boolean
   color: string
 }
 
@@ -36,6 +38,8 @@ function buildBoxes(tpl: Template): Box[] {
       widthMm: pc.digitSpacing * 8.5,
       heightMm: (pc.fontSize / 2.835) * 1.8,
       fontPt: pc.fontSize,
+      fontFamily: pc.fontFamily ?? 'sans-serif',
+      bold: pc.bold ?? false,
       color: '#3b82f6',
     })
   }
@@ -52,6 +56,8 @@ function buildBoxes(tpl: Template): Box[] {
       widthMm: nw,
       heightMm: Math.max(5, lh - rc.nameY - 2),
       fontPt: rc.nameFont,
+      fontFamily: rc.nameFontFamily ?? 'serif',
+      bold: rc.nameBold ?? false,
       color: '#10b981',
     })
     const aw = (rc.addressFont / 2.835) * 2.5
@@ -63,6 +69,8 @@ function buildBoxes(tpl: Template): Box[] {
       widthMm: aw,
       heightMm: Math.max(5, lh - rc.addressY - 2),
       fontPt: rc.addressFont,
+      fontFamily: rc.addressFontFamily ?? 'serif',
+      bold: rc.addressBold ?? false,
       color: '#f59e0b',
     })
   } else {
@@ -75,6 +83,8 @@ function buildBoxes(tpl: Template): Box[] {
       widthMm: Math.max(10, lw - rc.nameX - 2),
       heightMm: (rc.nameFont / 2.835) * 1.8,
       fontPt: rc.nameFont,
+      fontFamily: rc.nameFontFamily ?? 'serif',
+      bold: rc.nameBold ?? false,
       color: '#10b981',
     })
     boxes.push({
@@ -85,6 +95,8 @@ function buildBoxes(tpl: Template): Box[] {
       widthMm: Math.max(10, lw - rc.addressX - 2),
       heightMm: (rc.addressFont / 2.835) * 3.5,
       fontPt: rc.addressFont,
+      fontFamily: rc.addressFontFamily ?? 'serif',
+      bold: rc.addressBold ?? false,
       color: '#f59e0b',
     })
   }
@@ -100,6 +112,8 @@ function buildBoxes(tpl: Template): Box[] {
       widthMm: snw,
       heightMm: Math.max(3, Math.min(15, lh - snd.nameY - 1)),
       fontPt: snd.nameFont,
+      fontFamily: snd.nameFontFamily ?? 'serif',
+      bold: snd.nameBold ?? false,
       color: '#8b5cf6',
     })
     const saw = (snd.addressFont / 2.835) * 2.5
@@ -111,6 +125,8 @@ function buildBoxes(tpl: Template): Box[] {
       widthMm: saw,
       heightMm: Math.max(3, Math.min(12, lh - snd.addressY - 1)),
       fontPt: snd.addressFont,
+      fontFamily: snd.addressFontFamily ?? 'serif',
+      bold: snd.addressBold ?? false,
       color: '#ec4899',
     })
   } else {
@@ -122,6 +138,8 @@ function buildBoxes(tpl: Template): Box[] {
       widthMm: Math.max(10, lw - snd.nameX - 2),
       heightMm: (snd.nameFont / 2.835) * 1.8,
       fontPt: snd.nameFont,
+      fontFamily: snd.nameFontFamily ?? 'serif',
+      bold: snd.nameBold ?? false,
       color: '#8b5cf6',
     })
     boxes.push({
@@ -132,6 +150,8 @@ function buildBoxes(tpl: Template): Box[] {
       widthMm: Math.max(10, lw - snd.addressX - 2),
       heightMm: (snd.addressFont / 2.835) * 1.8,
       fontPt: snd.addressFont,
+      fontFamily: snd.addressFontFamily ?? 'serif',
+      bold: snd.addressBold ?? false,
       color: '#ec4899',
     })
   }
@@ -175,6 +195,44 @@ function applyFontDelta(tpl: Template, id: string, delta: number): Template {
       return { ...tpl, sender: { ...tpl.sender, nameFont: r(tpl.sender.nameFont + delta) } }
     case 'senderAddr':
       return { ...tpl, sender: { ...tpl.sender, addressFont: r(tpl.sender.addressFont + delta) } }
+    default:
+      return tpl
+  }
+}
+
+/** フォントファミリーを変更 */
+function applyFontFamily(tpl: Template, id: string, family: 'serif' | 'sans-serif'): Template {
+  switch (id) {
+    case 'postalCode':
+      if (!tpl.postalCode) return tpl
+      return { ...tpl, postalCode: { ...tpl.postalCode, fontFamily: family } }
+    case 'recipientName':
+      return { ...tpl, recipient: { ...tpl.recipient, nameFontFamily: family } }
+    case 'recipientAddr':
+      return { ...tpl, recipient: { ...tpl.recipient, addressFontFamily: family } }
+    case 'senderName':
+      return { ...tpl, sender: { ...tpl.sender, nameFontFamily: family } }
+    case 'senderAddr':
+      return { ...tpl, sender: { ...tpl.sender, addressFontFamily: family } }
+    default:
+      return tpl
+  }
+}
+
+/** 太字フラグをトグル */
+function applyBold(tpl: Template, id: string, bold: boolean): Template {
+  switch (id) {
+    case 'postalCode':
+      if (!tpl.postalCode) return tpl
+      return { ...tpl, postalCode: { ...tpl.postalCode, bold } }
+    case 'recipientName':
+      return { ...tpl, recipient: { ...tpl.recipient, nameBold: bold } }
+    case 'recipientAddr':
+      return { ...tpl, recipient: { ...tpl.recipient, addressBold: bold } }
+    case 'senderName':
+      return { ...tpl, sender: { ...tpl.sender, nameBold: bold } }
+    case 'senderAddr':
+      return { ...tpl, sender: { ...tpl.sender, addressBold: bold } }
     default:
       return tpl
   }
@@ -281,20 +339,47 @@ export default function LabelEditorOverlay({ template, zoom, onTemplateChange }:
               userSelect: 'none',
             }}
           >
-            {/* フォントサイズバッジ (右上・半透明) */}
+            {/* コントロールバッジ (右上・半透明) */}
             <div
-              style={{ display: 'flex', alignItems: 'center', gap: 1, position: 'absolute', top: 1, right: 1 }}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, position: 'absolute', top: 1, right: 1 }}
               onMouseDown={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={(e) => { e.stopPropagation(); onTemplateChange(applyFontDelta(template, box.id, -0.5)) }}
-                style={{ fontSize: fs, padding: '0 2px', cursor: 'pointer', background: `${box.color}cc`, border: 'none', color: '#fff', borderRadius: 2, lineHeight: 1 }}
-              >−</button>
-              <span style={{ fontSize: fs, minWidth: 24, textAlign: 'center', background: `${box.color}cc`, color: '#fff', borderRadius: 2, padding: '0 2px', lineHeight: 1 }}>{box.fontPt}pt</span>
-              <button
-                onClick={(e) => { e.stopPropagation(); onTemplateChange(applyFontDelta(template, box.id, +0.5)) }}
-                style={{ fontSize: fs, padding: '0 2px', cursor: 'pointer', background: `${box.color}cc`, border: 'none', color: '#fff', borderRadius: 2, lineHeight: 1 }}
-              >＋</button>
+              {/* フォントサイズ行 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onTemplateChange(applyFontDelta(template, box.id, -0.5)) }}
+                  style={{ fontSize: fs, padding: '0 2px', cursor: 'pointer', background: `${box.color}cc`, border: 'none', color: '#fff', borderRadius: 2, lineHeight: 1 }}
+                >−</button>
+                <span style={{ fontSize: fs, minWidth: 24, textAlign: 'center', background: `${box.color}cc`, color: '#fff', borderRadius: 2, padding: '0 2px', lineHeight: 1 }}>{box.fontPt}pt</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onTemplateChange(applyFontDelta(template, box.id, +0.5)) }}
+                  style={{ fontSize: fs, padding: '0 2px', cursor: 'pointer', background: `${box.color}cc`, border: 'none', color: '#fff', borderRadius: 2, lineHeight: 1 }}
+                >＋</button>
+              </div>
+              {/* フォントスタイル行 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {/* 太字トグル */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); onTemplateChange(applyBold(template, box.id, !box.bold)) }}
+                  title="太字"
+                  style={{ fontSize: fs, padding: '0 3px', cursor: 'pointer', border: 'none', color: '#fff', borderRadius: 2, lineHeight: 1, fontWeight: 'bold',
+                    background: box.bold ? box.color : `${box.color}88` }}
+                >B</button>
+                {/* 明朝トグル */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); onTemplateChange(applyFontFamily(template, box.id, 'serif')) }}
+                  title="明朝体"
+                  style={{ fontSize: fs, padding: '0 2px', cursor: 'pointer', border: 'none', color: '#fff', borderRadius: 2, lineHeight: 1,
+                    background: box.fontFamily === 'serif' ? box.color : `${box.color}88` }}
+                >明</button>
+                {/* ゴシックトグル */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); onTemplateChange(applyFontFamily(template, box.id, 'sans-serif')) }}
+                  title="ゴシック体"
+                  style={{ fontSize: fs, padding: '0 2px', cursor: 'pointer', border: 'none', color: '#fff', borderRadius: 2, lineHeight: 1,
+                    background: box.fontFamily === 'sans-serif' ? box.color : `${box.color}88` }}
+                >ゴ</button>
+              </div>
             </div>
 
             {/* リサイズハンドル (右下) */}

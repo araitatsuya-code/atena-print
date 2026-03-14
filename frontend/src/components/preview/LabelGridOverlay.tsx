@@ -44,11 +44,11 @@ export default function LabelGridOverlay({
     >
       {/* 縦線 */}
       {vLines.map((x) => (
-        <line key={`v${x}`} x1={x} y1={0} x2={x} y2={h} stroke="#94a3b8" strokeWidth={0.5} strokeDasharray="2,2" opacity={0.6} />
+        <line key={`v${x}`} x1={x} y1={0} x2={x} y2={h} stroke="#94a3b8" strokeWidth={1} opacity={0.4} />
       ))}
       {/* 横線 */}
       {hLines.map((y) => (
-        <line key={`h${y}`} x1={0} y1={y} x2={w} y2={y} stroke="#94a3b8" strokeWidth={0.5} strokeDasharray="2,2" opacity={0.6} />
+        <line key={`h${y}`} x1={0} y1={y} x2={w} y2={y} stroke="#94a3b8" strokeWidth={1} opacity={0.4} />
       ))}
       {/* mm ラベル (5mm 刻みで表示、小さいズームでは省略) */}
       {zoom >= 0.8 &&
