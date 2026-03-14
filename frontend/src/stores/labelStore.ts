@@ -45,6 +45,15 @@ export const useLabelStore = create<LabelState>()(
     {
       name: 'atena-label-layout',
       partialize: (state) => ({ layout: state.layout, orientation: state.orientation }),
+      // 旧バージョンの保存データに offsetX/offsetY がない場合でも安全にマージ
+      merge: (persisted, current) => {
+        const saved = persisted as Partial<LabelState>
+        return {
+          ...current,
+          layout: { ...defaultLayout, ...saved.layout },
+          orientation: saved.orientation ?? current.orientation,
+        }
+      },
     },
   ),
 )

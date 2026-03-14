@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useContactStore } from '../../stores/contactStore'
 import { usePreviewStore } from '../../stores/previewStore'
@@ -65,34 +65,36 @@ export default function PreviewArea() {
   const zoomOut = () => setZoom(Math.max(ZOOM_MIN, Math.round((zoom - ZOOM_STEP) * 100) / 100))
   const zoomReset = () => setZoom(1)
 
-  // ドラッグ状態
+  // ドラッグ中のライブオフセット（表示用）。mouseup 時にのみ store へ書き込む
+  const [dragLive, setDragLive] = useState<{ x: number; y: number } | null>(null)
   const dragStart = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
-  const isDragging = useRef(false)
 
   function handleMouseDown(e: React.MouseEvent) {
     e.preventDefault()
-    dragStart.current = {
+    const start = {
       x: e.clientX,
       y: e.clientY,
       ox: layout.offsetX,
       oy: layout.offsetY,
     }
-    isDragging.current = false
+    dragStart.current = start
 
-    const onMove = (me: MouseEvent) => {
-      if (!dragStart.current) return
-      const dx = me.clientX - dragStart.current.x
-      const dy = me.clientY - dragStart.current.y
-      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
-        isDragging.current = true
-      }
+    const calcOffset = (me: MouseEvent) => {
       const pxPerMm = zoom * MM_TO_PX
-      const newOx = Math.round((dragStart.current.ox + dx / pxPerMm) * 10) / 10
-      const newOy = Math.round((dragStart.current.oy + dy / pxPerMm) * 10) / 10
-      setLayout({ offsetX: newOx, offsetY: newOy })
+      return {
+        x: Math.round((start.ox + (me.clientX - start.x) / pxPerMm) * 10) / 10,
+        y: Math.round((start.oy + (me.clientY - start.y) / pxPerMm) * 10) / 10,
+      }
     }
 
-    const onUp = () => {
+    const onMove = (me: MouseEvent) => {
+      setDragLive(calcOffset(me))
+    }
+
+    const onUp = (me: MouseEvent) => {
+      const final = calcOffset(me)
+      setLayout({ offsetX: final.x, offsetY: final.y })
+      setDragLive(null)
       dragStart.current = null
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
@@ -102,7 +104,9 @@ export default function PreviewArea() {
     window.addEventListener('mouseup', onUp)
   }
 
-  const hasOffset = layout.offsetX !== 0 || layout.offsetY !== 0
+  // ツールバー表示: ドラッグ中はライブ値、それ以外はストアの値
+  const displayOffset = dragLive ?? { x: layout.offsetX, y: layout.offsetY }
+  const hasOffset = displayOffset.x !== 0 || displayOffset.y !== 0
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#f0f0f0]">
@@ -120,7 +124,7 @@ export default function PreviewArea() {
         {currentContact && hasOffset && (
           <div className="flex items-center gap-1 text-xs text-amber-600">
             <span>
-              補正: X {layout.offsetX.toFixed(1)} / Y {layout.offsetY.toFixed(1)} mm
+              補正: X {displayOffset.x.toFixed(1)} / Y {displayOffset.y.toFixed(1)} mm
             </span>
             <button
               onClick={resetOffset}
