@@ -68,6 +68,17 @@ export default function PreviewArea() {
   // ドラッグ中のライブオフセット（表示用）。mouseup 時にのみ store へ書き込む
   const [dragLive, setDragLive] = useState<{ x: number; y: number } | null>(null)
   const dragStart = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
+  const onMoveRef = useRef<((me: MouseEvent) => void) | null>(null)
+  const onUpRef = useRef<((me: MouseEvent) => void) | null>(null)
+
+  // アンマウント時にリスナーを確実に除去
+  useEffect(() => {
+    return () => {
+      if (onMoveRef.current) window.removeEventListener('mousemove', onMoveRef.current)
+      if (onUpRef.current) window.removeEventListener('mouseup', onUpRef.current)
+      dragStart.current = null
+    }
+  }, [])
 
   function handleMouseDown(e: React.MouseEvent) {
     e.preventDefault()
@@ -98,8 +109,12 @@ export default function PreviewArea() {
       dragStart.current = null
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
+      onMoveRef.current = null
+      onUpRef.current = null
     }
 
+    onMoveRef.current = onMove
+    onUpRef.current = onUp
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
   }
