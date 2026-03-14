@@ -49,8 +49,12 @@ func main() {
 	pdfGen := pdfpkg.NewGenerator("")
 	printUC := usecase.NewPrintUseCase(contactRepo, senderRepo, pdfGen, &printer.OSPrinter{})
 
+	printHistoryRepo := dbpkg.NewPrintHistoryRepo(db)
+	printHistoryUC := usecase.NewPrintHistoryUseCase(printHistoryRepo)
+
+	dbPath := filepath.Join(appDataDir, "atena.db")
 	postalRepo := postal.NewRepo()
-	app := NewApp(contactUC, csvUC, groupUC, watermarkUC, qrCodeUC, printUC, senderUC, postalRepo)
+	app := NewApp(contactUC, csvUC, groupUC, watermarkUC, qrCodeUC, printUC, senderUC, postalRepo, printHistoryUC, db, dbPath)
 
 	err = wails.Run(&options.App{
 		Title:  "Atena ラベル印刷",

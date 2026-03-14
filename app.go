@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -14,22 +17,40 @@ import (
 	"atena-label/internal/usecase"
 )
 
+// AppVersion はアプリのバージョン文字列。
+const AppVersion = "1.0.0"
+
 // App struct
 type App struct {
-	ctx              context.Context
-	contactUseCase   *usecase.ContactUseCase
-	csvUseCase       *usecase.CSVUseCase
-	groupUseCase     *usecase.GroupUseCase
-	watermarkUseCase *usecase.WatermarkUseCase
-	qrCodeUseCase    *usecase.QRCodeUseCase
-	printUseCase     *usecase.PrintUseCase
-	senderUseCase    *usecase.SenderUseCase
-	postalRepo       repository.PostalRepository
+	ctx                 context.Context
+	contactUseCase      *usecase.ContactUseCase
+	csvUseCase          *usecase.CSVUseCase
+	groupUseCase        *usecase.GroupUseCase
+	watermarkUseCase    *usecase.WatermarkUseCase
+	qrCodeUseCase       *usecase.QRCodeUseCase
+	printUseCase        *usecase.PrintUseCase
+	senderUseCase       *usecase.SenderUseCase
+	postalRepo          repository.PostalRepository
+	printHistoryUseCase *usecase.PrintHistoryUseCase
+	db                  *sql.DB
+	dbPath              string
 }
 
 // NewApp creates a new App application struct
-func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, printUC *usecase.PrintUseCase, senderUC *usecase.SenderUseCase, postalRepo repository.PostalRepository) *App {
-	return &App{contactUseCase: contactUC, csvUseCase: csvUC, groupUseCase: groupUC, watermarkUseCase: watermarkUC, qrCodeUseCase: qrCodeUC, printUseCase: printUC, senderUseCase: senderUC, postalRepo: postalRepo}
+func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, printUC *usecase.PrintUseCase, senderUC *usecase.SenderUseCase, postalRepo repository.PostalRepository, printHistoryUC *usecase.PrintHistoryUseCase, db *sql.DB, dbPath string) *App {
+	return &App{
+		contactUseCase:      contactUC,
+		csvUseCase:          csvUC,
+		groupUseCase:        groupUC,
+		watermarkUseCase:    watermarkUC,
+		qrCodeUseCase:       qrCodeUC,
+		printUseCase:        printUC,
+		senderUseCase:       senderUC,
+		postalRepo:          postalRepo,
+		printHistoryUseCase: printHistoryUC,
+		db:                  db,
+		dbPath:              dbPath,
+	}
 }
 
 // startup is called when the app starts. The context is saved
@@ -240,6 +261,15 @@ func (a *App) GenerateLabelPDF(job entity.PrintJob, outPath string) (string, err
 	if err != nil {
 		return "", fmt.Errorf("GenerateLabelPDF: %w", err)
 	}
+	// 印刷ログを記録 (失敗してもPDF生成結果は返す)
+	watermarkID := ""
+	if job.Watermark != nil {
+		watermarkID = job.Watermark.ID
+	}
+	qrEnabled := job.QRConfig != nil && job.QRConfig.Enabled
+	if herr := a.printHistoryUseCase.Record(len(job.ContactIDs), job.Template.ID, watermarkID, qrEnabled); herr != nil {
+		log.Printf("GenerateLabelPDF: 印刷履歴の保存に失敗しました: %v", herr)
+	}
 	return path, nil
 }
 
@@ -303,4 +333,100 @@ func (a *App) SavePDFFileDialog(defaultFilename string) (string, error) {
 		return "", fmt.Errorf("SavePDFFileDialog: %w", err)
 	}
 	return path, nil
+}
+
+// GetPrintHistory returns the most recent print history entries.
+func (a *App) GetPrintHistory(limit int) ([]entity.PrintHistory, error) {
+	list, err := a.printHistoryUseCase.GetRecent(limit)
+	if err != nil {
+		return nil, fmt.Errorf("GetPrintHistory: %w", err)
+	}
+	if list == nil {
+		list = []entity.PrintHistory{}
+	}
+	return list, nil
+}
+
+// GetDashboardStats returns summary counts for the dashboard.
+func (a *App) GetDashboardStats() (entity.DashboardStats, error) {
+	contacts, err := a.contactUseCase.List("")
+	if err != nil {
+		return entity.DashboardStats{}, fmt.Errorf("GetDashboardStats contacts: %w", err)
+	}
+	groups, err := a.groupUseCase.List()
+	if err != nil {
+		return entity.DashboardStats{}, fmt.Errorf("GetDashboardStats groups: %w", err)
+	}
+	return entity.DashboardStats{
+		ContactCount: len(contacts),
+		GroupCount:   len(groups),
+	}, nil
+}
+
+// GetAppVersion returns the application version string.
+func (a *App) GetAppVersion() string {
+	return AppVersion
+}
+
+// ExportDB opens a save dialog and exports the database using SQLite's VACUUM INTO
+// for a consistent online snapshot without interrupting the live connection.
+func (a *App) ExportDB() (string, error) {
+	dest, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "データをバックアップ",
+		DefaultFilename: "atena-backup.db",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "SQLiteデータベース (*.db)", Pattern: "*.db"},
+		},
+	})
+	if err != nil || dest == "" {
+		return "", nil
+	}
+	// 既存ファイルを一旦削除しないと VACUUM INTO が失敗する
+	_ = os.Remove(dest)
+	if _, err := a.db.ExecContext(a.ctx, "VACUUM INTO ?", dest); err != nil {
+		return "", fmt.Errorf("ExportDB: %w", err)
+	}
+	return dest, nil
+}
+
+// ImportDB opens a file dialog and atomically replaces the database file.
+// Returns true if the import was performed, false if the user cancelled.
+// The application must be restarted for the new DB to take effect.
+func (a *App) ImportDB() (bool, error) {
+	src, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "バックアップから復元",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "SQLiteデータベース (*.db)", Pattern: "*.db"},
+		},
+	})
+	if err != nil || src == "" {
+		return false, nil
+	}
+	// 一時ファイルに書き出してからアトミックにリネーム (src == dbPath でも安全)
+	tmp := a.dbPath + ".import.tmp"
+	if err := copyFile(src, tmp); err != nil {
+		return false, fmt.Errorf("ImportDB コピー失敗: %w", err)
+	}
+	if err := os.Rename(tmp, a.dbPath); err != nil {
+		_ = os.Remove(tmp)
+		return false, fmt.Errorf("ImportDB 配置失敗: %w", err)
+	}
+	return true, nil
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+	return out.Sync()
 }

@@ -7,12 +7,14 @@ import DecorationSidebar from './components/decoration/DecorationSidebar'
 import LabelSettingsPanel from './components/label/LabelSettingsPanel'
 import PrintConfirmDialog from './components/PrintConfirmDialog'
 import SenderManager from './components/sender/SenderManager'
+import Dashboard from './components/Dashboard'
+import Settings from './components/Settings'
 import { useDecorationStore } from './stores/decorationStore'
 import { useLabelStore } from './stores/labelStore'
 import { useContactStore } from './stores/contactStore'
 
 function App() {
-  const [view, setView] = useState<View>('contacts')
+  const [view, setView] = useState<View>('dashboard')
   const [showPrintDialog, setShowPrintDialog] = useState(false)
 
   const { showDecoPanel, toggleDecoPanel } = useDecorationStore(
@@ -30,6 +32,9 @@ function App() {
       {/* サイドバー */}
       <nav className="w-48 bg-white border-r border-gray-200 flex flex-col p-3 gap-1 shrink-0">
         <h1 className="text-sm font-bold px-2 py-3 text-gray-700">Atena ラベル印刷</h1>
+        <NavButton active={view === 'dashboard'} onClick={() => setView('dashboard')}>
+          ダッシュボード
+        </NavButton>
         <NavButton active={view === 'contacts'} onClick={() => setView('contacts')}>
           住所録
         </NavButton>
@@ -46,6 +51,9 @@ function App() {
 
       {/* メインコンテンツ */}
       <main className="flex-1 flex overflow-hidden">
+        {view === 'dashboard' && (
+          <Dashboard onNavigate={(v) => setView(v as View)} />
+        )}
         {view === 'contacts' && (
           <div className="w-72 border-r border-gray-200 bg-white flex flex-col h-full">
             <ContactList />
@@ -104,12 +112,7 @@ function App() {
             <SenderManager />
           </div>
         )}
-        {view === 'settings' && (
-          <div className="flex-1 p-6">
-            <h2 className="text-xl font-semibold mb-4">設定</h2>
-            <p className="text-gray-500">Phase 6 で実装予定</p>
-          </div>
-        )}
+        {view === 'settings' && <Settings />}
       </main>
 
       {showPrintDialog && <PrintConfirmDialog onClose={() => setShowPrintDialog(false)} />}
