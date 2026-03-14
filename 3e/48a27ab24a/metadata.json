@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "3e48a27ab24a",
+  "strategy": "manual-commit",
+  "branch": "feature/issue-30-horizontal-label",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "frontend/src/components/PrintConfirmDialog.tsx",
+    "frontend/src/components/label/LabelSettingsPanel.tsx",
+    "frontend/src/components/preview/LabelCanvas.tsx",
+    "frontend/src/components/preview/PreviewArea.tsx",
+    "frontend/src/stores/labelStore.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/3e/48a27ab24a/0/metadata.json",
+      "transcript": "/3e/48a27ab24a/0/full.jsonl",
+      "context": "/3e/48a27ab24a/0/context.md",
+      "content_hash": "/3e/48a27ab24a/0/content_hash.txt",
+      "prompt": "/3e/48a27ab24a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 57,
+    "cache_creation_tokens": 66779,
+    "cache_read_tokens": 2576602,
+    "output_tokens": 15003,
+    "api_call_count": 49
+  }
+}
