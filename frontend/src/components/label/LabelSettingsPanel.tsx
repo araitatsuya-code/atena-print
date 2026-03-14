@@ -89,8 +89,13 @@ function matchPreset(layout: LabelLayout): string {
 }
 
 export default function LabelSettingsPanel() {
-  const { layout, setLayout } = useLabelStore(
-    useShallow((s) => ({ layout: s.layout, setLayout: s.setLayout })),
+  const { layout, setLayout, orientation, setOrientation } = useLabelStore(
+    useShallow((s) => ({
+      layout: s.layout,
+      setLayout: s.setLayout,
+      orientation: s.orientation,
+      setOrientation: s.setOrientation,
+    })),
   )
 
   const currentPreset = matchPreset(layout)
@@ -128,6 +133,26 @@ export default function LabelSettingsPanel() {
 
   return (
     <div className="space-y-4">
+      {/* 書字方向 */}
+      <div>
+        <p className="text-xs font-medium text-gray-700 mb-1">書字方向</p>
+        <div className="flex rounded border border-gray-300 overflow-hidden text-xs">
+          {(['vertical', 'horizontal'] as const).map((o) => (
+            <button
+              key={o}
+              onClick={() => setOrientation(o)}
+              className={`flex-1 py-1 transition-colors ${
+                orientation === o
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {o === 'vertical' ? '縦書き' : '横書き'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* 用紙タイプ */}
       <div>
         <label className="block text-xs font-medium text-gray-700 mb-1">用紙タイプ</label>

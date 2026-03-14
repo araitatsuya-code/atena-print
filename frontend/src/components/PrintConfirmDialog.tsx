@@ -22,7 +22,9 @@ export default function PrintConfirmDialog({ onClose }: Props) {
   const { watermark, qrConfig } = useDecorationStore(
     useShallow((s) => ({ watermark: s.watermark, qrConfig: s.qrConfig })),
   )
-  const layout = useLabelStore((s) => s.layout)
+  const { layout, orientation } = useLabelStore(
+    useShallow((s) => ({ layout: s.layout, orientation: s.orientation })),
+  )
   const { senders, setSenders } = useSenderStore(
     useShallow((s) => ({ senders: s.senders, setSenders: s.setSenders })),
   )
@@ -49,7 +51,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
       template: {
         id: '',
         name: 'default',
-        orientation: 'vertical',
+        orientation,
         labelWidth: layout.labelWidth,
         labelHeight: layout.labelHeight,
         recipient: { nameX: 0, nameY: 0, nameFont: 0, addressX: 0, addressY: 0, addressFont: 0 },
