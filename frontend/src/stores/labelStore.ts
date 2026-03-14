@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { LabelLayout, Sender } from '../types'
 
 const defaultLayout: LabelLayout = {
@@ -12,6 +13,8 @@ const defaultLayout: LabelLayout = {
   marginLeft: 10,
   gapX: 0,
   gapY: 0,
+  offsetX: 0,
+  offsetY: 0,
 }
 
 interface LabelState {
@@ -23,15 +26,25 @@ interface LabelState {
   setOrientation: (orientation: 'vertical' | 'horizontal') => void
   setSelectedSender: (sender: Sender | null) => void
   togglePanel: () => void
+  resetOffset: () => void
 }
 
-export const useLabelStore = create<LabelState>((set, get) => ({
-  layout: defaultLayout,
-  orientation: 'vertical',
-  selectedSender: null,
-  showPanel: false,
-  setLayout: (layout) => set({ layout: { ...get().layout, ...layout } }),
-  setOrientation: (orientation) => set({ orientation }),
-  setSelectedSender: (sender) => set({ selectedSender: sender }),
-  togglePanel: () => set({ showPanel: !get().showPanel }),
-}))
+export const useLabelStore = create<LabelState>()(
+  persist(
+    (set, get) => ({
+      layout: defaultLayout,
+      orientation: 'vertical',
+      selectedSender: null,
+      showPanel: false,
+      setLayout: (layout) => set({ layout: { ...get().layout, ...layout } }),
+      setOrientation: (orientation) => set({ orientation }),
+      setSelectedSender: (sender) => set({ selectedSender: sender }),
+      togglePanel: () => set({ showPanel: !get().showPanel }),
+      resetOffset: () => set({ layout: { ...get().layout, offsetX: 0, offsetY: 0 } }),
+    }),
+    {
+      name: 'atena-label-layout',
+      partialize: (state) => ({ layout: state.layout, orientation: state.orientation }),
+    },
+  ),
+)

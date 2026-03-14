@@ -4,7 +4,7 @@ import type { LabelLayout } from '../../types'
 
 interface Preset {
   name: string
-  layout?: LabelLayout
+  layout?: Omit<LabelLayout, 'offsetX' | 'offsetY'>
 }
 
 const PRESETS: Preset[] = [
@@ -89,12 +89,13 @@ function matchPreset(layout: LabelLayout): string {
 }
 
 export default function LabelSettingsPanel() {
-  const { layout, setLayout, orientation, setOrientation } = useLabelStore(
+  const { layout, setLayout, orientation, setOrientation, resetOffset } = useLabelStore(
     useShallow((s) => ({
       layout: s.layout,
       setLayout: s.setLayout,
       orientation: s.orientation,
       setOrientation: s.setOrientation,
+      resetOffset: s.resetOffset,
     })),
   )
 
@@ -103,6 +104,7 @@ export default function LabelSettingsPanel() {
   function handlePresetChange(name: string) {
     const preset = PRESETS.find((p) => p.name === name)
     if (preset?.layout) {
+      // オフセットは維持したままレイアウトを変更
       setLayout(preset.layout)
     }
   }
@@ -121,6 +123,22 @@ export default function LabelSettingsPanel() {
           className="w-20 border border-gray-300 rounded px-2 py-0.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-blue-400"
         />
         <span className="text-xs text-gray-400">{unit}</span>
+      </div>
+    )
+  }
+
+  function offsetInput(field: 'offsetX' | 'offsetY', label: string) {
+    return (
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-gray-600 w-20 shrink-0">{label}</label>
+        <input
+          type="number"
+          step={0.1}
+          value={(layout[field] as number).toFixed(1)}
+          onChange={(e) => setLayout({ [field]: parseFloat(e.target.value) || 0 })}
+          className="w-20 border border-gray-300 rounded px-2 py-0.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-blue-400"
+        />
+        <span className="text-xs text-gray-400">mm</span>
       </div>
     )
   }
@@ -195,6 +213,28 @@ export default function LabelSettingsPanel() {
           {numInput('marginLeft', '左余白')}
           {numInput('gapX', '横間隔')}
           {numInput('gapY', '縦間隔')}
+        </div>
+      </div>
+
+      {/* 印刷位置補正 */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs font-medium text-gray-700">印刷位置補正</p>
+          {(layout.offsetX !== 0 || layout.offsetY !== 0) && (
+            <button
+              onClick={resetOffset}
+              className="text-[10px] text-blue-500 hover:text-blue-700 underline"
+            >
+              初期値に戻す
+            </button>
+          )}
+        </div>
+        <p className="text-[10px] text-gray-400 mb-1">
+          プレビューをドラッグするか数値で補正できます
+        </p>
+        <div className="space-y-1">
+          {offsetInput('offsetX', 'X補正')}
+          {offsetInput('offsetY', 'Y補正')}
         </div>
       </div>
 

@@ -11,4 +11,6 @@ type LabelLayout struct {
 	MarginLeft  float64 `json:"marginLeft"` // mm
 	GapX        float64 `json:"gapX"`       // mm
 	GapY        float64 `json:"gapY"`       // mm
+	OffsetX     float64 `json:"offsetX"`    // mm 印刷位置補正
+	OffsetY     float64 `json:"offsetY"`    // mm 印刷位置補正
 }

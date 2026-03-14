@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useContactStore } from '../../stores/contactStore'
 import { usePreviewStore } from '../../stores/previewStore'
@@ -8,6 +8,9 @@ import WatermarkLayer from './WatermarkLayer'
 import QROverlay from './QROverlay'
 import { useLabelStore } from '../../stores/labelStore'
 import type { Contact, Template, Watermark, QRConfig } from '../../types'
+
+/** 1mm あたりのピクセル数 (96 dpi 基準) — LabelCanvas と同じ定数 */
+const MM_TO_PX = 96 / 25.4
 
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 4.0
@@ -30,7 +33,14 @@ export default function PreviewArea() {
   const { watermark, qrConfig } = useDecorationStore(
     useShallow((s) => ({ watermark: s.watermark, qrConfig: s.qrConfig })),
   )
-  const orientation = useLabelStore((s) => s.orientation)
+  const { orientation, layout, setLayout, resetOffset } = useLabelStore(
+    useShallow((s) => ({
+      orientation: s.orientation,
+      layout: s.layout,
+      setLayout: s.setLayout,
+      resetOffset: s.resetOffset,
+    })),
+  )
 
   const selectedContacts = contacts.filter((c) => selectedIds.has(c.id))
 
@@ -55,6 +65,45 @@ export default function PreviewArea() {
   const zoomOut = () => setZoom(Math.max(ZOOM_MIN, Math.round((zoom - ZOOM_STEP) * 100) / 100))
   const zoomReset = () => setZoom(1)
 
+  // ドラッグ状態
+  const dragStart = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
+  const isDragging = useRef(false)
+
+  function handleMouseDown(e: React.MouseEvent) {
+    e.preventDefault()
+    dragStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      ox: layout.offsetX,
+      oy: layout.offsetY,
+    }
+    isDragging.current = false
+
+    const onMove = (me: MouseEvent) => {
+      if (!dragStart.current) return
+      const dx = me.clientX - dragStart.current.x
+      const dy = me.clientY - dragStart.current.y
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+        isDragging.current = true
+      }
+      const pxPerMm = zoom * MM_TO_PX
+      const newOx = Math.round((dragStart.current.ox + dx / pxPerMm) * 10) / 10
+      const newOy = Math.round((dragStart.current.oy + dy / pxPerMm) * 10) / 10
+      setLayout({ offsetX: newOx, offsetY: newOy })
+    }
+
+    const onUp = () => {
+      dragStart.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  const hasOffset = layout.offsetX !== 0 || layout.offsetY !== 0
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#f0f0f0]">
       {/* ツールバー */}
@@ -67,6 +116,21 @@ export default function PreviewArea() {
             </span>
           )}
         </span>
+        {/* オフセット表示 */}
+        {currentContact && hasOffset && (
+          <div className="flex items-center gap-1 text-xs text-amber-600">
+            <span>
+              補正: X {layout.offsetX.toFixed(1)} / Y {layout.offsetY.toFixed(1)} mm
+            </span>
+            <button
+              onClick={resetOffset}
+              className="underline hover:text-amber-800"
+              title="補正を初期値に戻す"
+            >
+              リセット
+            </button>
+          </div>
+        )}
         {/* ズームコントロール */}
         <div className="flex items-center gap-1">
           <button
@@ -97,13 +161,19 @@ export default function PreviewArea() {
       {/* キャンバスエリア */}
       <div className="flex-1 overflow-auto flex items-center justify-center p-6">
         {currentContact ? (
-          <LabelStack
-            contact={currentContact}
-            template={template}
-            zoom={zoom}
-            watermark={watermark}
-            qrConfig={qrConfig}
-          />
+          <div
+            onMouseDown={handleMouseDown}
+            style={{ cursor: 'grab' }}
+            title="ドラッグで印刷位置を微調整"
+          >
+            <LabelStack
+              contact={currentContact}
+              template={template}
+              zoom={zoom}
+              watermark={watermark}
+              qrConfig={qrConfig}
+            />
+          </div>
         ) : (
           <p className="text-gray-400 text-sm">住所録から連絡先を選択してください</p>
         )}

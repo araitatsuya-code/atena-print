@@ -123,8 +123,8 @@ func (g *Generator) GenerateLabelPDF(
 		col := pageIdx % layout.Columns
 		row := pageIdx / layout.Columns
 
-		originX := layout.MarginLeft + float64(col)*(layout.LabelWidth+layout.GapX)
-		originY := layout.MarginTop + float64(row)*(layout.LabelHeight+layout.GapY)
+		originX := layout.MarginLeft + float64(col)*(layout.LabelWidth+layout.GapX) + layout.OffsetX
+		originY := layout.MarginTop + float64(row)*(layout.LabelHeight+layout.GapY) + layout.OffsetY
 
 		// Watermark background.
 		if job.Watermark != nil && job.Watermark.FilePath != "" {

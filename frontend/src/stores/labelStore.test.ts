@@ -13,6 +13,8 @@ const defaultLayout = {
   marginLeft: 10,
   gapX: 0,
   gapY: 0,
+  offsetX: 0,
+  offsetY: 0,
 }
 
 const makeSender = (): Sender => ({
