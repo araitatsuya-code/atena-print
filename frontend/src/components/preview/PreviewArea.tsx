@@ -4,6 +4,7 @@ import { useContactStore } from '../../stores/contactStore'
 import { usePreviewStore } from '../../stores/previewStore'
 import { useDecorationStore } from '../../stores/decorationStore'
 import LabelCanvas, { DEFAULT_TEMPLATE, DEFAULT_TEMPLATE_HORIZONTAL } from './LabelCanvas'
+import LabelEditorOverlay from './LabelEditorOverlay'
 import WatermarkLayer from './WatermarkLayer'
 import QROverlay from './QROverlay'
 import { useLabelStore } from '../../stores/labelStore'
@@ -20,16 +21,23 @@ export default function PreviewArea() {
   const { contacts, selectedIds } = useContactStore(
     useShallow((s) => ({ contacts: s.contacts, selectedIds: s.selectedIds })),
   )
-  const { zoom, selectedTemplate, previewContactIndex, setZoom, setPreviewContactIndex } =
-    usePreviewStore(
-      useShallow((s) => ({
-        zoom: s.zoom,
-        selectedTemplate: s.selectedTemplate,
-        previewContactIndex: s.previewContactIndex,
-        setZoom: s.setZoom,
-        setPreviewContactIndex: s.setPreviewContactIndex,
-      })),
-    )
+  const {
+    zoom,
+    selectedTemplate,
+    previewContactIndex,
+    setZoom,
+    setPreviewContactIndex,
+    setSelectedTemplate,
+  } = usePreviewStore(
+    useShallow((s) => ({
+      zoom: s.zoom,
+      selectedTemplate: s.selectedTemplate,
+      previewContactIndex: s.previewContactIndex,
+      setZoom: s.setZoom,
+      setPreviewContactIndex: s.setPreviewContactIndex,
+      setSelectedTemplate: s.setSelectedTemplate,
+    })),
+  )
   const { watermark, qrConfig } = useDecorationStore(
     useShallow((s) => ({ watermark: s.watermark, qrConfig: s.qrConfig })),
   )
@@ -65,7 +73,13 @@ export default function PreviewArea() {
   const zoomOut = () => setZoom(Math.max(ZOOM_MIN, Math.round((zoom - ZOOM_STEP) * 100) / 100))
   const zoomReset = () => setZoom(1)
 
-  // ドラッグ中のライブオフセット（表示用）。mouseup 時にのみ store へ書き込む
+  // 要素配置変更ハンドラ
+  function handleTemplateChange(updated: Template) {
+    setSelectedTemplate(updated)
+  }
+
+  // ── 背景ドラッグ: 印刷位置補正オフセット ─────────────────────────────────
+
   const [dragLive, setDragLive] = useState<{ x: number; y: number } | null>(null)
   const dragStart = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
   const onMoveRef = useRef<((me: MouseEvent) => void) | null>(null)
@@ -180,10 +194,18 @@ export default function PreviewArea() {
       {/* キャンバスエリア */}
       <div className="flex-1 overflow-auto flex items-center justify-center p-6">
         {currentContact ? (
+          // オフセット補正を CSS transform で可視化。
+          // 背景ドラッグ → 印刷位置補正 / カラーハンドルドラッグ → 要素個別配置
           <div
             onMouseDown={handleMouseDown}
-            style={{ cursor: 'grab' }}
-            title="ドラッグで印刷位置を微調整"
+            style={{
+              position: 'relative',
+              display: 'inline-block',
+              transform: `translate(${displayOffset.x * zoom * MM_TO_PX}px, ${displayOffset.y * zoom * MM_TO_PX}px)`,
+              transition: dragLive ? 'none' : 'transform 0.1s ease',
+              cursor: dragLive ? 'grabbing' : 'grab',
+            }}
+            title="背景ドラッグ: 印刷位置補正 / カラーハンドルドラッグ: 要素の位置調整"
           >
             <LabelStack
               contact={currentContact}
@@ -192,6 +214,14 @@ export default function PreviewArea() {
               watermark={watermark}
               qrConfig={qrConfig}
             />
+            {/* 要素配置ハンドル (pointer-events: none のラッパー内で各ハンドルだけ auto) */}
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+              <LabelEditorOverlay
+                template={template}
+                zoom={zoom}
+                onTemplateChange={handleTemplateChange}
+              />
+            </div>
           </div>
         ) : (
           <p className="text-gray-400 text-sm">住所録から連絡先を選択してください</p>
@@ -212,7 +242,6 @@ export default function PreviewArea() {
               }`}
               title={`${c.familyName} ${c.givenName}`}
             >
-              {/* サムネイル */}
               <div className="overflow-hidden rounded" style={{ transform: 'scale(1)', transformOrigin: 'top left' }}>
                 <LabelStack
                   contact={c}
