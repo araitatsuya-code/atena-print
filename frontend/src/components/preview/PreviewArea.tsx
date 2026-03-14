@@ -3,9 +3,10 @@ import { useShallow } from 'zustand/shallow'
 import { useContactStore } from '../../stores/contactStore'
 import { usePreviewStore } from '../../stores/previewStore'
 import { useDecorationStore } from '../../stores/decorationStore'
-import LabelCanvas, { DEFAULT_TEMPLATE } from './LabelCanvas'
+import LabelCanvas, { DEFAULT_TEMPLATE, DEFAULT_TEMPLATE_HORIZONTAL } from './LabelCanvas'
 import WatermarkLayer from './WatermarkLayer'
 import QROverlay from './QROverlay'
+import { useLabelStore } from '../../stores/labelStore'
 import type { Contact, Template, Watermark, QRConfig } from '../../types'
 
 const ZOOM_MIN = 0.5
@@ -29,6 +30,7 @@ export default function PreviewArea() {
   const { watermark, qrConfig } = useDecorationStore(
     useShallow((s) => ({ watermark: s.watermark, qrConfig: s.qrConfig })),
   )
+  const orientation = useLabelStore((s) => s.orientation)
 
   const selectedContacts = contacts.filter((c) => selectedIds.has(c.id))
 
@@ -44,7 +46,10 @@ export default function PreviewArea() {
   const safeIndex = Math.max(0, Math.min(previewContactIndex, selectedContacts.length - 1))
   const currentContact: Contact | null = selectedContacts[safeIndex] ?? null
 
-  const template: Template = selectedTemplate ?? DEFAULT_TEMPLATE
+  const defaultTpl = orientation === 'horizontal' ? DEFAULT_TEMPLATE_HORIZONTAL : DEFAULT_TEMPLATE
+  const template: Template = selectedTemplate
+    ? { ...selectedTemplate, orientation }
+    : { ...defaultTpl, orientation }
 
   const zoomIn = () => setZoom(Math.min(ZOOM_MAX, Math.round((zoom + ZOOM_STEP) * 100) / 100))
   const zoomOut = () => setZoom(Math.max(ZOOM_MIN, Math.round((zoom - ZOOM_STEP) * 100) / 100))

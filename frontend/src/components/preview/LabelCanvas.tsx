@@ -6,7 +6,7 @@ import { drawVerticalBlock } from '../../lib/verticalText'
 const MM_TO_PX = 96 / 25.4 // ≈ 3.78
 
 /**
- * デフォルトテンプレート: A4 12面ラベル (86.4×42.3mm)
+ * デフォルトテンプレート: A4 12面ラベル (86.4×42.3mm) 縦書き
  * テンプレート選択 UI が実装されるまでのフォールバック用。
  */
 export const DEFAULT_TEMPLATE: Template = {
@@ -35,6 +35,39 @@ export const DEFAULT_TEMPLATE: Template = {
     nameFont: 6.5,
     addressX: 8,  // 差出人住所ブロック右端 (mm)
     addressY: 24,
+    addressFont: 5.5,
+  },
+}
+
+/**
+ * デフォルトテンプレート: A4 12面ラベル (86.4×42.3mm) 横書き
+ */
+export const DEFAULT_TEMPLATE_HORIZONTAL: Template = {
+  id: 'default-a4-12-h',
+  name: '標準 (A4 12面) 横書き',
+  orientation: 'horizontal',
+  labelWidth: 86.4,
+  labelHeight: 42.3,
+  postalCode: {
+    x: 5,
+    y: 3,
+    digitSpacing: 7,
+    fontSize: 9,
+  },
+  recipient: {
+    nameX: 5,
+    nameY: 13,
+    nameFont: 12,
+    addressX: 5,
+    addressY: 24,
+    addressFont: 8.5,
+  },
+  sender: {
+    nameX: 50,
+    nameY: 33,
+    nameFont: 6.5,
+    addressX: 50,
+    addressY: 37,
     addressFont: 5.5,
   },
 }
@@ -139,6 +172,20 @@ function renderLabel(
     }
   }
 
+  if (tpl.orientation === 'horizontal') {
+    renderHorizontalLabel(ctx, contact, tpl, s)
+  } else {
+    renderVerticalLabel(ctx, contact, tpl, s)
+  }
+}
+
+/** 縦書きラベルの宛先・差出人描画 */
+function renderVerticalLabel(
+  ctx: CanvasRenderingContext2D,
+  contact: Contact,
+  tpl: Template,
+  s: number,
+): void {
   // ─── 宛先 氏名 ───────────────────────────────────────────
   {
     const rc = tpl.recipient
@@ -181,14 +228,52 @@ function renderLabel(
       convertNumbers: true,
     })
   }
+}
 
-  // ─── 差出人（会社名があれば部署・会社を優先） ──────────────
-  const senderName = contact.company
-    ? `${contact.company}${contact.department ? `　${contact.department}` : ''}`
-    : null
+/** 横書きラベルの宛先・差出人描画 */
+function renderHorizontalLabel(
+  ctx: CanvasRenderingContext2D,
+  contact: Contact,
+  tpl: Template,
+  s: number,
+): void {
+  const serifFont = '"Hiragino Mincho ProN", "Yu Mincho", "MS PMincho", serif'
 
-  // 差出人エリアは将来 Sender エンティティで置き換える
-  // (Phase 6: 差出人管理) — 現状は連絡先の会社情報をダミーで表示しない
+  // ─── 宛先 氏名 ───────────────────────────────────────────
+  {
+    const rc = tpl.recipient
+    const nameFontPx = mm(rc.nameFont / 2.835, s)
+    const honorific = contact.honorific || '様'
+    const fullName = `${contact.familyName}${contact.givenName}　${honorific}`
+
+    ctx.fillStyle = '#111827'
+    ctx.font = `${nameFontPx}px ${serifFont}`
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'top'
+    ctx.fillText(fullName, mm(rc.nameX, s), mm(rc.nameY, s))
+  }
+
+  // ─── 宛先 住所 ───────────────────────────────────────────
+  {
+    const rc = tpl.recipient
+    const addrFontPx = mm(rc.addressFont / 2.835, s)
+    const lineH = addrFontPx * 1.5
+
+    const addrLines = [
+      `${contact.prefecture}${contact.city}`,
+      `${contact.street}${contact.building ? `　${contact.building}` : ''}`,
+    ].filter(Boolean)
+
+    ctx.fillStyle = '#111827'
+    ctx.font = `${addrFontPx}px ${serifFont}`
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'top'
+
+    addrLines.forEach((line, i) => {
+      ctx.fillText(line, mm(rc.addressX, s), mm(rc.addressY, s) + i * lineH)
+    })
+  }
+
+  // ─── 差出人エリアは将来 Sender エンティティで置き換える ──────
   // 仕様: 差出人は別エンティティなので、ここでは表示領域の余白のみ確保
-  void senderName // 未使用警告抑制
 }
