@@ -1,13 +1,17 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
 import { useContactStore } from '../../stores/contactStore'
 import { usePreviewStore } from '../../stores/previewStore'
 import { useDecorationStore } from '../../stores/decorationStore'
 import LabelCanvas, { DEFAULT_TEMPLATE, DEFAULT_TEMPLATE_HORIZONTAL } from './LabelCanvas'
+import LabelEditorOverlay from './LabelEditorOverlay'
 import WatermarkLayer from './WatermarkLayer'
 import QROverlay from './QROverlay'
 import { useLabelStore } from '../../stores/labelStore'
 import type { Contact, Template, Watermark, QRConfig } from '../../types'
+
+/** 1mm あたりのピクセル数 (96 dpi 基準) — LabelCanvas と同じ定数 */
+const MM_TO_PX = 96 / 25.4
 
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 4.0
@@ -17,20 +21,34 @@ export default function PreviewArea() {
   const { contacts, selectedIds } = useContactStore(
     useShallow((s) => ({ contacts: s.contacts, selectedIds: s.selectedIds })),
   )
-  const { zoom, selectedTemplate, previewContactIndex, setZoom, setPreviewContactIndex } =
-    usePreviewStore(
-      useShallow((s) => ({
-        zoom: s.zoom,
-        selectedTemplate: s.selectedTemplate,
-        previewContactIndex: s.previewContactIndex,
-        setZoom: s.setZoom,
-        setPreviewContactIndex: s.setPreviewContactIndex,
-      })),
-    )
+  const {
+    zoom,
+    selectedTemplate,
+    previewContactIndex,
+    setZoom,
+    setPreviewContactIndex,
+    setSelectedTemplate,
+  } = usePreviewStore(
+    useShallow((s) => ({
+      zoom: s.zoom,
+      selectedTemplate: s.selectedTemplate,
+      previewContactIndex: s.previewContactIndex,
+      setZoom: s.setZoom,
+      setPreviewContactIndex: s.setPreviewContactIndex,
+      setSelectedTemplate: s.setSelectedTemplate,
+    })),
+  )
   const { watermark, qrConfig } = useDecorationStore(
     useShallow((s) => ({ watermark: s.watermark, qrConfig: s.qrConfig })),
   )
-  const orientation = useLabelStore((s) => s.orientation)
+  const { orientation, layout, setLayout, resetOffset } = useLabelStore(
+    useShallow((s) => ({
+      orientation: s.orientation,
+      layout: s.layout,
+      setLayout: s.setLayout,
+      resetOffset: s.resetOffset,
+    })),
+  )
 
   const selectedContacts = contacts.filter((c) => selectedIds.has(c.id))
 
@@ -55,6 +73,70 @@ export default function PreviewArea() {
   const zoomOut = () => setZoom(Math.max(ZOOM_MIN, Math.round((zoom - ZOOM_STEP) * 100) / 100))
   const zoomReset = () => setZoom(1)
 
+  // 要素配置変更ハンドラ
+  function handleTemplateChange(updated: Template) {
+    setSelectedTemplate(updated)
+  }
+
+  // ── 背景ドラッグ: 印刷位置補正オフセット ─────────────────────────────────
+
+  const [dragLive, setDragLive] = useState<{ x: number; y: number } | null>(null)
+  const dragStart = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
+  const onMoveRef = useRef<((me: MouseEvent) => void) | null>(null)
+  const onUpRef = useRef<((me: MouseEvent) => void) | null>(null)
+
+  // アンマウント時にリスナーを確実に除去
+  useEffect(() => {
+    return () => {
+      if (onMoveRef.current) window.removeEventListener('mousemove', onMoveRef.current)
+      if (onUpRef.current) window.removeEventListener('mouseup', onUpRef.current)
+      dragStart.current = null
+    }
+  }, [])
+
+  function handleMouseDown(e: React.MouseEvent) {
+    e.preventDefault()
+    const start = {
+      x: e.clientX,
+      y: e.clientY,
+      ox: layout.offsetX,
+      oy: layout.offsetY,
+    }
+    dragStart.current = start
+
+    const calcOffset = (me: MouseEvent) => {
+      const pxPerMm = zoom * MM_TO_PX
+      return {
+        x: Math.round((start.ox + (me.clientX - start.x) / pxPerMm) * 10) / 10,
+        y: Math.round((start.oy + (me.clientY - start.y) / pxPerMm) * 10) / 10,
+      }
+    }
+
+    const onMove = (me: MouseEvent) => {
+      setDragLive(calcOffset(me))
+    }
+
+    const onUp = (me: MouseEvent) => {
+      const final = calcOffset(me)
+      setLayout({ offsetX: final.x, offsetY: final.y })
+      setDragLive(null)
+      dragStart.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      onMoveRef.current = null
+      onUpRef.current = null
+    }
+
+    onMoveRef.current = onMove
+    onUpRef.current = onUp
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  // ツールバー表示: ドラッグ中はライブ値、それ以外はストアの値
+  const displayOffset = dragLive ?? { x: layout.offsetX, y: layout.offsetY }
+  const hasOffset = displayOffset.x !== 0 || displayOffset.y !== 0
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#f0f0f0]">
       {/* ツールバー */}
@@ -67,6 +149,21 @@ export default function PreviewArea() {
             </span>
           )}
         </span>
+        {/* オフセット表示 */}
+        {currentContact && hasOffset && (
+          <div className="flex items-center gap-1 text-xs text-amber-600">
+            <span>
+              補正: X {displayOffset.x.toFixed(1)} / Y {displayOffset.y.toFixed(1)} mm
+            </span>
+            <button
+              onClick={resetOffset}
+              className="underline hover:text-amber-800"
+              title="補正を初期値に戻す"
+            >
+              リセット
+            </button>
+          </div>
+        )}
         {/* ズームコントロール */}
         <div className="flex items-center gap-1">
           <button
@@ -97,13 +194,35 @@ export default function PreviewArea() {
       {/* キャンバスエリア */}
       <div className="flex-1 overflow-auto flex items-center justify-center p-6">
         {currentContact ? (
-          <LabelStack
-            contact={currentContact}
-            template={template}
-            zoom={zoom}
-            watermark={watermark}
-            qrConfig={qrConfig}
-          />
+          // オフセット補正を CSS transform で可視化。
+          // 背景ドラッグ → 印刷位置補正 / カラーハンドルドラッグ → 要素個別配置
+          <div
+            onMouseDown={handleMouseDown}
+            style={{
+              position: 'relative',
+              display: 'inline-block',
+              transform: `translate(${displayOffset.x * zoom * MM_TO_PX}px, ${displayOffset.y * zoom * MM_TO_PX}px)`,
+              transition: dragLive ? 'none' : 'transform 0.1s ease',
+              cursor: dragLive ? 'grabbing' : 'grab',
+            }}
+            title="背景ドラッグ: 印刷位置補正 / カラーハンドルドラッグ: 要素の位置調整"
+          >
+            <LabelStack
+              contact={currentContact}
+              template={template}
+              zoom={zoom}
+              watermark={watermark}
+              qrConfig={qrConfig}
+            />
+            {/* 要素配置ハンドル (pointer-events: none のラッパー内で各ハンドルだけ auto) */}
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+              <LabelEditorOverlay
+                template={template}
+                zoom={zoom}
+                onTemplateChange={handleTemplateChange}
+              />
+            </div>
+          </div>
         ) : (
           <p className="text-gray-400 text-sm">住所録から連絡先を選択してください</p>
         )}
@@ -123,7 +242,6 @@ export default function PreviewArea() {
               }`}
               title={`${c.familyName} ${c.givenName}`}
             >
-              {/* サムネイル */}
               <div className="overflow-hidden rounded" style={{ transform: 'scale(1)', transformOrigin: 'top left' }}>
                 <LabelStack
                   contact={c}

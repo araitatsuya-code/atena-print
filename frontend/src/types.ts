@@ -63,6 +63,8 @@ export interface LabelLayout {
   marginLeft: number
   gapX: number
   gapY: number
+  offsetX: number // mm 印刷位置補正
+  offsetY: number // mm 印刷位置補正
 }
 
 export interface PostalConfig {
