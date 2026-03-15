@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "d7c4fdf5d352",
+  "strategy": "manual-commit",
+  "branch": "feat/issue37-pdf-font-fix",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "frontend/wailsjs/go/models.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/d7/c4fdf5d352/0/metadata.json",
+      "transcript": "/d7/c4fdf5d352/0/full.jsonl",
+      "context": "/d7/c4fdf5d352/0/context.md",
+      "content_hash": "/d7/c4fdf5d352/0/content_hash.txt",
+      "prompt": "/d7/c4fdf5d352/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 6,
+    "cache_creation_tokens": 21431,
+    "cache_read_tokens": 77837,
+    "output_tokens": 1372,
+    "api_call_count": 4
+  }
+}
