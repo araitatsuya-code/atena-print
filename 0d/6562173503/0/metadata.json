@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "0d6562173503",
+  "session_id": "e8709847-bb64-4c05-96eb-3922e7dfa911",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-15T05:52:18.236653Z",
+  "branch": "feat/issue31-label-editor",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "frontend/src/components/preview/LabelEditorOverlay.tsx"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "f09fd28ed47c",
+  "token_usage": {
+    "input_tokens": 214,
+    "cache_creation_tokens": 490112,
+    "cache_read_tokens": 14011076,
+    "output_tokens": 104173,
+    "api_call_count": 182
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-15T05:52:17.791457Z",
+    "agent_lines": 0,
+    "human_added": 0,
+    "human_modified": 13,
+    "human_removed": 41,
+    "total_committed": 0,
+    "agent_percentage": 0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "0d6562173503",
+  "strategy": "manual-commit",
+  "branch": "feat/issue31-label-editor",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "frontend/src/components/preview/LabelEditorOverlay.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0d/6562173503/0/metadata.json",
+      "transcript": "/0d/6562173503/0/full.jsonl",
+      "context": "/0d/6562173503/0/context.md",
+      "content_hash": "/0d/6562173503/0/content_hash.txt",
+      "prompt": "/0d/6562173503/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 214,
+    "cache_creation_tokens": 490112,
+    "cache_read_tokens": 14011076,
+    "output_tokens": 104173,
+    "api_call_count": 182
+  }
+}
