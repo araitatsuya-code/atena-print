@@ -17,6 +17,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedSenderId, setSelectedSenderId] = useState('')
+  const [repeatFill, setRepeatFill] = useState(false)
 
   const { contacts, selectedIds } = useContactStore(
     useShallow((s) => ({ contacts: s.contacts, selectedIds: s.selectedIds })),
@@ -47,6 +48,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
 
   const selectedContacts = contacts.filter((c) => selectedIds.has(c.id))
   const count = selectedContacts.length
+  const labelsPerPage = layout.columns * layout.rows
 
   const paperLabel = `${layout.paperWidth}×${layout.paperHeight}mm (${layout.columns}列×${layout.rows}行)`
 
@@ -55,8 +57,19 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     const tpl = selectedTemplate
       ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
       : { ...defaultTpl, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
+
+    let ids = selectedContacts.map((c) => c.id)
+    if (repeatFill && ids.length > 0 && ids.length < labelsPerPage) {
+      // シートが埋まるまで繰り返す
+      const filled: string[] = []
+      while (filled.length < labelsPerPage) {
+        filled.push(...ids)
+      }
+      ids = filled.slice(0, labelsPerPage)
+    }
+
     return entity.PrintJob.createFrom({
-      contactIds: selectedContacts.map((c) => c.id),
+      contactIds: ids,
       template: tpl,
       senderId: selectedSenderId,
       labelLayout: layout,
@@ -103,13 +116,26 @@ export default function PrintConfirmDialog({ onClose }: Props) {
 
         <div className="space-y-2 text-sm text-gray-700">
           <div className="flex justify-between">
-            <span className="text-gray-500">印刷枚数</span>
-            <span className="font-medium">{count} 件</span>
+            <span className="text-gray-500">印刷件数</span>
+            <span className="font-medium">{repeatFill && count < labelsPerPage ? labelsPerPage : count} 件</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">用紙</span>
             <span className="font-medium text-right">{paperLabel}</span>
           </div>
+          {count < labelsPerPage && (
+            <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+              <input
+                type="checkbox"
+                checked={repeatFill}
+                onChange={(e) => setRepeatFill(e.target.checked)}
+                className="w-3.5 h-3.5 accent-blue-600"
+              />
+              <span className="text-gray-600">
+                シートを埋めるまで繰り返す（{labelsPerPage} 面）
+              </span>
+            </label>
+          )}
         </div>
 
         {/* 差出人選択 */}
