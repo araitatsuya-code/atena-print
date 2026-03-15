@@ -5,6 +5,7 @@ import { usePreviewStore } from '../../stores/previewStore'
 import { useDecorationStore } from '../../stores/decorationStore'
 import LabelCanvas, { DEFAULT_TEMPLATE, DEFAULT_TEMPLATE_HORIZONTAL } from './LabelCanvas'
 import LabelEditorOverlay from './LabelEditorOverlay'
+import LabelGridOverlay from './LabelGridOverlay'
 import WatermarkLayer from './WatermarkLayer'
 import QROverlay from './QROverlay'
 import { useLabelStore } from '../../stores/labelStore'
@@ -66,8 +67,8 @@ export default function PreviewArea() {
 
   const defaultTpl = orientation === 'horizontal' ? DEFAULT_TEMPLATE_HORIZONTAL : DEFAULT_TEMPLATE
   const template: Template = selectedTemplate
-    ? { ...selectedTemplate, orientation }
-    : { ...defaultTpl, orientation }
+    ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
+    : { ...defaultTpl, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
 
   const zoomIn = () => setZoom(Math.min(ZOOM_MAX, Math.round((zoom + ZOOM_STEP) * 100) / 100))
   const zoomOut = () => setZoom(Math.max(ZOOM_MIN, Math.round((zoom - ZOOM_STEP) * 100) / 100))
@@ -77,6 +78,9 @@ export default function PreviewArea() {
   function handleTemplateChange(updated: Template) {
     setSelectedTemplate(updated)
   }
+
+  // グリッド表示フラグ (ローカル状態)
+  const [showGrid, setShowGrid] = useState(false)
 
   // ── 背景ドラッグ: 印刷位置補正オフセット ─────────────────────────────────
 
@@ -164,6 +168,18 @@ export default function PreviewArea() {
             </button>
           </div>
         )}
+        {/* グリッドトグル */}
+        <button
+          onClick={() => setShowGrid((v) => !v)}
+          className={`px-2 py-1 text-xs rounded border transition-colors ${
+            showGrid
+              ? 'bg-slate-600 text-white border-slate-600'
+              : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+          }`}
+          title="グリッド表示切り替え (5mm)"
+        >
+          グリッド
+        </button>
         {/* ズームコントロール */}
         <div className="flex items-center gap-1">
           <button
@@ -214,6 +230,14 @@ export default function PreviewArea() {
               watermark={watermark}
               qrConfig={qrConfig}
             />
+            {/* グリッドオーバーレイ */}
+            {showGrid && (
+              <LabelGridOverlay
+                labelWidthMm={template.labelWidth}
+                labelHeightMm={template.labelHeight}
+                zoom={zoom}
+              />
+            )}
             {/* 要素配置ハンドル (pointer-events: none のラッパー内で各ハンドルだけ auto) */}
             <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
               <LabelEditorOverlay

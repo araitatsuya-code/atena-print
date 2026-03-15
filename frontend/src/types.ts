@@ -72,15 +72,21 @@ export interface PostalConfig {
   y: number
   digitSpacing: number
   fontSize: number
+  fontFamily?: 'serif' | 'sans-serif'
+  bold?: boolean
 }
 
 export interface TextConfig {
   nameX: number
   nameY: number
   nameFont: number
+  nameFontFamily?: 'serif' | 'sans-serif'
+  nameBold?: boolean
   addressX: number
   addressY: number
   addressFont: number
+  addressFontFamily?: 'serif' | 'sans-serif'
+  addressBold?: boolean
 }
 
 export interface Template {
