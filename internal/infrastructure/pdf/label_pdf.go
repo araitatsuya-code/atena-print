@@ -592,48 +592,9 @@ func drawLabel(
 		}
 	}
 
-	// ── 差出人 ───────────────────────────────────────────────────────────────
-	if sender != nil {
-		snd := tmpl.Sender
-		senderName := sender.FamilyName + sender.GivenName
-		if sender.Company != "" {
-			senderName = sender.Company + " " + senderName
-		}
-		sndLine1 := sender.Prefecture + sender.City
-		sndLine2 := sender.Street
-		if sender.Building != "" {
-			sndLine2 += "\u3000" + sender.Building
-		}
-		sndAddrLines := []string{}
-		if sndLine1 != "" {
-			sndAddrLines = append(sndAddrLines, sndLine1)
-		}
-		if sndLine2 != "" {
-			sndAddrLines = append(sndAddrLines, sndLine2)
-		}
-
-		if tmpl.Orientation == "vertical" {
-			setFont(snd.NameFont)
-			drawVerticalText(pdf, senderName, ox+snd.NameX, oy+snd.NameY, snd.NameFont)
-			setFont(snd.AddressFont)
-			colW := snd.AddressFont * 0.5
-			xOff := ox + snd.AddressX
-			for _, line := range sndAddrLines {
-				drawVerticalText(pdf, line, xOff, oy+snd.AddressY, snd.AddressFont)
-				xOff -= colW
-			}
-		} else {
-			setFont(snd.NameFont)
-			pdf.SetXY(ox+snd.NameX, oy+snd.NameY)
-			pdf.CellFormat(0, snd.NameFont*0.5, senderName, "", 0, "L", false, 0, "")
-			setFont(snd.AddressFont)
-			addrLineH := snd.AddressFont * 0.55
-			for i, line := range sndAddrLines {
-				pdf.SetXY(ox+snd.AddressX, oy+snd.AddressY+float64(i)*addrLineH)
-				pdf.CellFormat(0, addrLineH, line, "", 0, "L", false, 0, "")
-			}
-		}
-	}
+	// TODO: 差出人描画はアプリプレビュー (LabelCanvas) が対応次第ここに実装する。
+	// 現時点では LabelCanvas が差出人を描画しないため、PDF でも非表示にしてプレビューと一致させる。
+	_ = sender
 }
 
 // drawVerticalText places each rune top-to-bottom in a single column.
