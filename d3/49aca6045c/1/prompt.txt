@@ -1,0 +1,257 @@
+https://github.com/araitatsuya-code/atena-print/issues/31
+
+こちらの対応お願いします
+
+---
+
+# Issue を実装
+
+指定された GitHub Issue を実装してください。
+
+## 手順
+
+1. `gh issue view <番号>` で Issue の内容を確認
+2. ブランチを作成: `git checkout -b issue-<番号>-<slug>`
+3. 必要な仕様を docs/ から参照して実装
+4. テスト実行:
+   - Go: `go test ./internal/...`
+   - Frontend: `cd frontend && npx vitest --run`
+5. 変更をコミット (コミットメッセージに `refs #<番号>` を含める)
+6. Push して PR 作成:
+
+ARGUMENTS: https://github.com/araitatsuya-code/atena-print/issues/31
+
+---
+
+https://github.com/araitatsuya-code/atena-print/pull/35
+
+レビュー対応お願いします
+
+---
+
+Verify each finding against the current code and only fix it if needed.
+
+In `@frontend/src/components/preview/PreviewArea.tsx` around lines 72 - 105, The
+mousemove/mouseup listeners added in handleMouseDown (onMove/onUp) are only
+removed inside onUp, so if the component unmounts during a drag the listeners
+remain; fix by making the handlers stable (or store them in refs) and add a
+useEffect cleanup that always removes window.removeEventListener('mousemove',
+onMove) and window.removeEventListener('mouseup', onUp) on unmount; reference
+the existing handleMouseDown, onMove, onUp and dragStart current so the cleanup
+can safely remove the same listener functions and clear dragStart/setDragLive as
+needed.
+
+---
+
+ドラッグしてもラベル内の文字が動きませんね
+
+また郵便番号、名前、住所の１行目２行目など自動整列のほか、個別に自由に配置したい
+
+---
+
+いいですね、通常の四角いボックスのようなものでサイズなども管理したいです
+
+---
+
+[Request interrupted by user for tool use]
+
+---
+
+これだと何の文字か見えないのでラベルはいらないかなと
+
+---
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   - **Issue #31**: Implement drag-based print position offset adjustment. Features: drag on preview to adjust X/Y offset (mm), numeric input for manual adjustment, persist offset across restarts, apply to PDF generation, "reset to default" button.
+   - **PR #35 review responses**: Two CodeRabbit issues addressed: (1) localStorage written on every mousemove → write only on mouseup; (2) old persisted data missing offsetX/offsetY → add `merge` option to persist config.
+   - **Unmount listener cleanup**: A third review comment required adding `useEffect` cleanup to remove drag listeners when the component unmounts.
+   - **Visual feedback + individual element drag**: User said "ドラッグしてもラベル内の文字が動きません" and "郵便番号、名前、住所の１行目２行目など自動整列のほか、個別に自由に配置したい" → add CSS transform to show offset visually, create `LabelEditorOverlay` with draggable handles per element.
+   - **Bounding boxes with size management**: User said "通常の四角いボックスのようなものでサイズなども管理したいです" → redesign handles as proper bounding boxes with colored header (name + font size controls) and resize handle.
+   - **Grid display**: User asked "あと表示の際にグリッド表示も欲しいです" → create `LabelGridOverlay` SVG component, 5mm grid, toggleable from toolbar.
+   - **Remove text labels from boxes** (CURRENT): User showed screenshot and said "これだと何の文字か見えないのでラベルはいらないかなと" → the colored header strips obscure the label content; remove the text labels from the boxes.
+
+2. Key Technical Concepts:
+   - **Wails v2 desktop app**: Go backend + React/TypeScript frontend
+   - **Zustand** state management with `persist` middleware (localStorage)
+   - **MM_TO_PX = 96 / 25.4** — common mm-to-pixel constant used across LabelCanvas, PreviewArea, LabelEditorOverlay
+   - **Template coordinate system**: `nameX`/`addressX` = rightX for vertical, leftX for horizontal. Font sizes in pt (pt/2.835 = mm).
+   - **CSS transform translate** for visual offset feedback
+   - **SVG grid overlay** for 5mm grid lines
+   - **Drag implementation pattern**: capture `start` position in closure, `onMove` computes delta, `onUp` finalizes; refs store listeners for cleanup
+   - **stopPropagation** separates background offset drag from element handle drag
+   - **Bounding box positioning**: for vertical text, `visualXMm = templateX - boxWidthMm`; for horizontal, `visualXMm = templateX`
+
+3. Files and Code Sections:
+
+   - **`internal/entity/label_layout.go`** — Added `OffsetX`/`OffsetY float64` fields:
+     ```go
+     OffsetX float64 `json:"offsetX"` // mm 印刷位置補正
+     OffsetY float64 `json:"offsetY"` // mm 印刷位置補正
+     ```
+
+   - **`internal/infrastructure/pdf/label_pdf.go`** — Apply offset to label origin:
+     ```go
+     originX := layout.MarginLeft + float64(col)*(layout.LabelWidth+layout.GapX) + layout.OffsetX
+     originY := layout.MarginTop + float64(row)*(layout.LabelHeight+layout.GapY) + layout.OffsetY
+     ```
+
+   - **`frontend/src/types.ts`** — Added to `LabelLayout`:
+     ```ts
+     offsetX: number // mm 印刷位置補正
+     offsetY: number // mm 印刷位置補正
+     ```
+
+   - **`frontend/src/stores/labelStore.ts`** — Added offsetX/offsetY to defaultLayout, `resetOffset` action, zustand `persist` with `merge` for backward compatibility:
+     ```ts
+     export const useLabelStore = create<LabelState>()(
+       persist(
+         (set, get) => ({
+           layout: defaultLayout, // includes offsetX:0, offsetY:0
+           resetOffset: () => set({ layout: { ...get().layout, offsetX: 0, offsetY: 0 } }),
+           ...
+         }),
+         {
+           name: 'atena-label-layout',
+           partialize: (state) => ({ layout: state.layout, orientation: state.orientation }),
+           merge: (persisted, current) => {
+             const saved = persisted as Partial<LabelState>
+             return {
+               ...current,
+               layout: { ...defaultLayout, ...saved.layout },
+               orientation: saved.orientation ?? current.orientation,
+             }
+           },
+         },
+       ),
+     )
+     ```
+
+   - **`frontend/src/stores/labelStore.test.ts`** — Added `offsetX: 0, offsetY: 0` to `defaultLayout` test fixture.
+
+   - **`frontend/src/components/label/LabelSettingsPanel.tsx`** — Added offset section with X/Y inputs and conditional reset button; changed `Preset.layout` type to `Omit<LabelLayout, 'offsetX' | 'offsetY'>`.
+
+   - **`frontend/src/components/preview/PreviewArea.tsx`** — Major updates:
+     - Imports `LabelEditorOverlay`, `LabelGridOverlay`
+     - Gets `setSelectedTemplate` from previewStore
+     - `showGrid` local state + toolbar toggle button
+     - `dragLive` useState + `onMoveRef`/`onUpRef` refs + `useEffect` cleanup
+     - CSS `transform: translate()` on label container for visual offset feedback
+     - `handleTemplateChange` calls `setSelectedTemplate`
+     - Renders `LabelGridOverlay` (when `showGrid`) and `LabelEditorOverlay` as siblings inside the label container
+     ```tsx
+     // Outer container with transform:
+     <div
+       onMouseDown={handleMouseDown}
+       style={{
+         position: 'relative',
+         display: 'inline-block',
+         transform: `translate(${displayOffset.x * zoom * MM_TO_PX}px, ${displayOffset.y * zoom * MM_TO_PX}px)`,
+         transition: dragLive ? 'none' : 'transform 0.1s ease',
+         cursor: dragLive ? 'grabbing' : 'grab',
+       }}
+     >
+       <LabelStack ... />
+       {showGrid && <LabelGridOverlay labelWidthMm={...} labelHeightMm={...} zoom={zoom} />}
+       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+         <LabelEditorOverlay template={template} zoom={zoom} onTemplateChange={handleTemplateChange} />
+       </div>
+     </div>
+     ```
+
+   - **`frontend/src/components/preview/LabelEditorOverlay.tsx`** — (CURRENT STATE — needs header removal) Full bounding boxes with:
+     - `buildBoxes(tpl)`: computes visual position and size per element (vertical: `visualXMm = nameX - width`, horizontal: `visualXMm = nameX`)
+     - `applyMove(tpl, id, dxMm, dyMm)`: updates template x/y coords
+     - `applyFontDelta(tpl, id, delta)`: updates font pt (0.5pt steps, min 4pt)
+     - `startMove`: drag body → position update
+     - `startResize`: drag bottom-right corner → font size change (1.2pt/mm)
+     - Render: dashed border box + **colored header strip** (element name + −/[pt]/＋ buttons) + resize handle (10×10px, bottom-right)
+     - The colored header strips are what the user wants removed
+
+   - **`frontend/src/components/preview/LabelGridOverlay.tsx`** — SVG grid overlay (newly created, working):
+     ```tsx
+     // SVG lines every stepMm (default 5) with mm labels at zoom >= 0.8
+     // stroke="#94a3b8", strokeDasharray="2,2", opacity=0.6
+     // pointerEvents: 'none'
+     ```
+
+4. Errors and fixes:
+   - **TypeScript error in labelStore.test.ts**: `defaultLayout` missing `offsetX`/`offsetY` → added both fields with value `0`.
+   - **`npm run lint` not found**: script is `test:run` / `build`; used `npx tsc --noEmit` for type checking.
+   - **CodeRabbit: localStorage written every frame**: Fixed by replacing per-mousemove `setLayout` with local `useState(dragLive)` for display, only calling `setLayout` on mouseup.
+   - **CodeRabbit: old persisted data missing offset fields**: Fixed by adding `merge` option to zustand persist config: `layout: { ...defaultLayout, ...saved.layout }`.
+   - **CodeRabbit: unmount listener leak**: Fixed by adding `onMoveRef`/`onUpRef` + `useEffect` cleanup that calls `removeEventListener` on both refs.
+   - **User feedback - text not visible**: The colored header strips in `LabelEditorOverlay` cover the underlying label content. User said the labels (text name tags) are not needed. **This is the pending fix.**
+
+5. Problem Solving:
+   - Offset drag visual feedback: CSS `transform: translate()` applied to the label wrapper div, making the entire label visually shift by the offset amount.
+   - Element-level drag without interfering with offset drag: `e.stopPropagation()` in each handle's `onMouseDown`.
+   - Bounding box positioning for vertical vs horizontal text: vertical uses `visualXMm = nameX - boxWidth` (nameX is rightX), horizontal uses `visualXMm = nameX` directly.
+   - Font size management via drag: right-edge drag maps dxMm × 1.2 → pt change.
+   - Grid overlay: pure SVG with `pointerEvents: none`, lines every 5mm, mm labels shown when zoom ≥ 0.8.
+
+6. All user messages:
+   - "https://github.com/araitatsuya-code/atena-print/issues/31 こちらの対応お願いします"
+   - "https://github.com/araitatsuya-code/atena-print/pull/35 レビュー対応お願いします"
+   - "Verify each finding against the current code and only fix it if needed. In `@frontend/src/components/preview/PreviewArea.tsx` around lines 82-93: During dragging the onMove handler currently calls setLayout every mouse move... In `@frontend/src/stores/labelStore.ts` around line 32-49: The persisted state can contain old layout objects missing offsetX/offsetY..."
+   - "In `@frontend/src/components/preview/PreviewArea.tsx` around lines 72 - 105, The mousemove/mouseup listeners added in handleMouseDown (onMove/onUp) are only removed inside onUp, so if the component unmounts during a drag the listeners remain..."
+   - "ドラッグしてもラベル内の文字が動きませんね また郵便番号、名前、住所の１行目２行目など自動整列のほか、個別に自由に配置したい"
+   - "いいですね、通常の四角いボックスのようなものでサイズなども管理したいです"
+   - "あと表示の際にグリッド表示も欲しいです" (sent while working on bounding boxes)
+   - "[image] これだと何の文字か見えないのでラベルはいらないかなと" (with screenshot — current feedback)
+
+7. Pending Tasks:
+   - **Remove text label headers from `LabelEditorOverlay`**: The colored header strips (showing 宛名, 住所, etc.) obscure the label text underneath. User wants them removed. Keep: dashed border outline, font size indicator (small/minimal), resize handle (bottom-right corner).
+   - **Commit all current changes**: The last `git commit` was rejected by the user. Changes to `LabelEditorOverlay.tsx`, `LabelGridOverlay.tsx` (new), and `PreviewArea.tsx` are on disk but not yet committed.
+
+8. Current Work:
+   The immediate task before the summary request was editing `LabelEditorOverlay.tsx` to remove the colored header strips. The user shared a screenshot showing that the colored header bands (e.g., "〒 郵便番号", "宛名", "住所") with solid-color backgrounds cover and obscure the actual label text content. The user said: "これだと何の文字か見えないのでラベルはいらないかなと" — meaning they want the text label names removed from the box UI.
+
+   The current render section of `LabelEditorOverlay.tsx` (lines 257–344) has this structure that needs changing:
+   ```tsx
+   <div key={box.id} onMouseDown={startMove} style={{ border: `1.5px dashed ${box.color}`, ... }}>
+     {/* THIS NEEDS REMOVAL: colored header strip */}
+     <div style={{ background: box.color, ... }}>
+       <span>{box.label}</span>   ← REMOVE
+       <div>−/pt/＋ buttons</div>  ← keep but reposition
+     </div>
+     {/* KEEP: resize handle */}
+     <div onMouseDown={startResize} style={{ position: 'absolute', right:0, bottom:0, ... }} />
+   </div>
+   ```
+   The fix: remove the colored header `<div>` entirely, and replace with a minimal font size badge (e.g., small semi-transparent tag at top-right corner or bottom-left) that doesn't obstruct the label content.
+
+9. Optional Next Step:
+   Edit `LabelEditorOverlay.tsx` to remove the colored header strips per user feedback: "これだと何の文字か見えないのでラベルはいらないかなと". Replace the full header band with a minimal, small font-size badge (e.g., `[pt]` with −/＋ positioned at the corner of the box using absolute positioning, semi-transparent), and keep only the dashed border outline and resize handle. Then commit all pending changes (LabelEditorOverlay, LabelGridOverlay, PreviewArea) together.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/ta/.claude/projects/-Users-ta-workspace-atena-print/e8709847-bb64-4c05-96eb-3922e7dfa911.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+
+---
+
+いいですね、個別にフォントやサイズ、太字などにしたいです
+あとグリッドは数字だけでなく薄い線が欲しいです
+
+---
+
+Verify each finding against the current code and only fix it if needed.
+
+In `@frontend/src/components/preview/PreviewArea.tsx` around lines 183 - 195, The
+preview container isn't applying the live drag offset so the UI doesn't follow
+the pointer; update the div that wraps LabelStack (the element with
+onMouseDown={handleMouseDown}) to read the current dragLive state and, only
+while dragging, apply a temporary CSS transform (e.g., translateX/translateY
+from dragLive.x/dragLive.y) and set the cursor to grabbing; ensure this logic
+uses the same dragLive handling used elsewhere (also update the similar wrapper
+at the other occurrence around lines 122-124) so the LabelStack, template, zoom,
+watermark and qrConfig visually follow during drag.
+
+---
+
+フォントサイズの変更などができなくなっているのですが確認できますか？
+
+---
+
+フィーチャーブランチに戻して PR を作成
