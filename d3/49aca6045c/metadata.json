@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "d349aca6045c",
+  "strategy": "manual-commit",
+  "branch": "issue-31-drag-offset-adjustment",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "frontend/src/components/preview/PreviewArea.tsx"
+  ],
+  "sessions": [
+    {
+      "metadata": "/d3/49aca6045c/0/metadata.json",
+      "transcript": "/d3/49aca6045c/0/full.jsonl",
+      "context": "/d3/49aca6045c/0/context.md",
+      "content_hash": "/d3/49aca6045c/0/content_hash.txt",
+      "prompt": "/d3/49aca6045c/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 6,
+    "cache_creation_tokens": 21431,
+    "cache_read_tokens": 77837,
+    "output_tokens": 1372,
+    "api_call_count": 4
+  }
+}
