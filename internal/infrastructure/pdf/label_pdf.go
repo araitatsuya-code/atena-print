@@ -120,11 +120,12 @@ func loadAndValidateFont(path string) ([]byte, error) {
 	return fontBytes, nil
 }
 
-// extractTTFFromTTC extracts the first embeddable TrueType face from a TTC.
-// It iterates all faces in the collection and skips OpenType CFF ("OTTO") faces.
-// In a TTC the table-data offsets are absolute (from the TTC start), so the
-// extracted bytes are rebuilt with offsets relative to the new file start.
-// Returns nil when the TTC contains no usable TrueType face.
+// extractTTFFromTTC extracts the TrueType face with the best Japanese character
+// coverage from a TTC file. It scores each TrueType face by scanning its cmap
+// for a set of traditional CJK characters (often missing from Simplified Chinese
+// faces) and returns the highest-scoring face. This ensures that, for example,
+// Songti.ttc returns the Traditional Chinese face rather than the Simplified one.
+// Returns nil when the TTC contains no embeddable TrueType face.
 func extractTTFFromTTC(ttcBytes []byte) []byte {
 	if len(ttcBytes) < 12 || string(ttcBytes[:4]) != "ttcf" {
 		return nil
@@ -134,80 +135,186 @@ func extractTTFFromTTC(ttcBytes []byte) []byte {
 		return nil
 	}
 
-	// Iterate all faces; pick the first TrueType (non-CFF) one.
+	var bestFace []byte
+	bestScore := -1
 	for fi := 0; fi < numFonts; fi++ {
-		fontOff := int(binary.BigEndian.Uint32(ttcBytes[12+fi*4 : 16+fi*4]))
-		if fontOff+12 > len(ttcBytes) {
+		face := extractTTCFace(ttcBytes, fi)
+		if face == nil {
 			continue
 		}
-		// Skip OpenType CFF faces — gofpdf cannot embed them.
-		if string(ttcBytes[fontOff:fontOff+4]) == "OTTO" {
-			continue
+		score := japaneseCmapScore(face)
+		if score > bestScore {
+			bestScore = score
+			bestFace = face
 		}
-
-		numTables := int(binary.BigEndian.Uint16(ttcBytes[fontOff+4 : fontOff+6]))
-		dirSize := 12 + numTables*16
-		if fontOff+dirSize > len(ttcBytes) {
-			continue
-		}
-
-		type tableInfo struct {
-			tag      [4]byte
-			checksum uint32
-			srcOff   uint32
-			length   uint32
-		}
-		tables := make([]tableInfo, numTables)
-		valid := true
-		for i := 0; i < numTables; i++ {
-			b := fontOff + 12 + i*16
-			copy(tables[i].tag[:], ttcBytes[b:b+4])
-			tables[i].checksum = binary.BigEndian.Uint32(ttcBytes[b+4 : b+8])
-			tables[i].srcOff = binary.BigEndian.Uint32(ttcBytes[b+8 : b+12])
-			tables[i].length = binary.BigEndian.Uint32(ttcBytes[b+12 : b+16])
-			if int(tables[i].srcOff)+int(tables[i].length) > len(ttcBytes) {
-				valid = false
-				break
-			}
-		}
-		if !valid {
-			continue
-		}
-
-		// Assign new packed, 4-byte-aligned offsets starting right after the directory.
-		newOffsets := make([]uint32, numTables)
-		cur := uint32(dirSize)
-		for i, t := range tables {
-			newOffsets[i] = cur
-			cur += (t.length + 3) &^ 3
-		}
-
-		result := make([]byte, int(cur))
-
-		// Offset table header.
-		copy(result[0:4], ttcBytes[fontOff:fontOff+4]) // sfVersion
-		binary.BigEndian.PutUint16(result[4:6], uint16(numTables))
-		es := uint16(0)
-		for n := numTables; n > 1; n >>= 1 {
-			es++
-		}
-		sr := uint16(1<<es) * 16
-		binary.BigEndian.PutUint16(result[6:8], sr)
-		binary.BigEndian.PutUint16(result[8:10], es)
-		binary.BigEndian.PutUint16(result[10:12], uint16(numTables)*16-sr)
-
-		// Table directory and data.
-		for i, t := range tables {
-			b := 12 + i*16
-			copy(result[b:b+4], t.tag[:])
-			binary.BigEndian.PutUint32(result[b+4:b+8], t.checksum)
-			binary.BigEndian.PutUint32(result[b+8:b+12], newOffsets[i])
-			binary.BigEndian.PutUint32(result[b+12:b+16], t.length)
-			copy(result[newOffsets[i]:newOffsets[i]+t.length], ttcBytes[t.srcOff:t.srcOff+t.length])
-		}
-		return result
 	}
-	return nil
+	return bestFace
+}
+
+// extractTTCFace extracts raw TTF bytes for the face at faceIdx in a TTC.
+// Table-data offsets are absolute in TTC, so the extracted bytes are rebuilt
+// with offsets relative to the new file start. Returns nil for CFF faces or
+// out-of-bounds indices.
+func extractTTCFace(ttcBytes []byte, faceIdx int) []byte {
+	numFonts := int(binary.BigEndian.Uint32(ttcBytes[8:12]))
+	if faceIdx < 0 || faceIdx >= numFonts {
+		return nil
+	}
+	fontOff := int(binary.BigEndian.Uint32(ttcBytes[12+faceIdx*4 : 16+faceIdx*4]))
+	if fontOff+12 > len(ttcBytes) {
+		return nil
+	}
+	if string(ttcBytes[fontOff:fontOff+4]) == "OTTO" {
+		return nil // OpenType CFF — gofpdf cannot embed
+	}
+
+	numTables := int(binary.BigEndian.Uint16(ttcBytes[fontOff+4 : fontOff+6]))
+	dirSize := 12 + numTables*16
+	if fontOff+dirSize > len(ttcBytes) {
+		return nil
+	}
+
+	type tableInfo struct {
+		tag      [4]byte
+		checksum uint32
+		srcOff   uint32
+		length   uint32
+	}
+	tables := make([]tableInfo, numTables)
+	for i := 0; i < numTables; i++ {
+		b := fontOff + 12 + i*16
+		copy(tables[i].tag[:], ttcBytes[b:b+4])
+		tables[i].checksum = binary.BigEndian.Uint32(ttcBytes[b+4 : b+8])
+		tables[i].srcOff = binary.BigEndian.Uint32(ttcBytes[b+8 : b+12])
+		tables[i].length = binary.BigEndian.Uint32(ttcBytes[b+12 : b+16])
+		if int(tables[i].srcOff)+int(tables[i].length) > len(ttcBytes) {
+			return nil
+		}
+	}
+
+	newOffsets := make([]uint32, numTables)
+	cur := uint32(dirSize)
+	for i, t := range tables {
+		newOffsets[i] = cur
+		cur += (t.length + 3) &^ 3
+	}
+
+	result := make([]byte, int(cur))
+	copy(result[0:4], ttcBytes[fontOff:fontOff+4]) // sfVersion
+	binary.BigEndian.PutUint16(result[4:6], uint16(numTables))
+	es := uint16(0)
+	for n := numTables; n > 1; n >>= 1 {
+		es++
+	}
+	sr := uint16(1<<es) * 16
+	binary.BigEndian.PutUint16(result[6:8], sr)
+	binary.BigEndian.PutUint16(result[8:10], es)
+	binary.BigEndian.PutUint16(result[10:12], uint16(numTables)*16-sr)
+
+	for i, t := range tables {
+		b := 12 + i*16
+		copy(result[b:b+4], t.tag[:])
+		binary.BigEndian.PutUint32(result[b+4:b+8], t.checksum)
+		binary.BigEndian.PutUint32(result[b+8:b+12], newOffsets[i])
+		binary.BigEndian.PutUint32(result[b+12:b+16], t.length)
+		copy(result[newOffsets[i]:newOffsets[i]+t.length], ttcBytes[t.srcOff:t.srcOff+t.length])
+	}
+	return result
+}
+
+// japaneseCoverageChars are traditional CJK characters that are present in
+// Traditional Chinese / Japanese fonts but absent from Simplified Chinese fonts
+// (whose simplified equivalents use different Unicode codepoints).
+var japaneseCoverageChars = []rune{
+	'東', '達', '橋', '様', '際', '応', '辺', '澤', '廣', '邊',
+}
+
+// japaneseCmapScore returns the number of japaneseCoverageChars mapped in the
+// font's Unicode BMP cmap (Format 4). A higher score indicates better Japanese
+// character coverage.
+func japaneseCmapScore(ttfBytes []byte) int {
+	if len(ttfBytes) < 12 {
+		return 0
+	}
+	numTables := int(binary.BigEndian.Uint16(ttfBytes[4:6]))
+
+	var cmapOff, cmapLen uint32
+	for i := 0; i < numTables; i++ {
+		b := 12 + i*16
+		if b+16 > len(ttfBytes) {
+			break
+		}
+		if string(ttfBytes[b:b+4]) == "cmap" {
+			cmapOff = binary.BigEndian.Uint32(ttfBytes[b+8 : b+12])
+			cmapLen = binary.BigEndian.Uint32(ttfBytes[b+12 : b+16])
+			break
+		}
+	}
+	if cmapOff == 0 || int(cmapOff+cmapLen) > len(ttfBytes) {
+		return 0
+	}
+	cmap := ttfBytes[cmapOff : cmapOff+cmapLen]
+	if len(cmap) < 4 {
+		return 0
+	}
+
+	// Locate the Unicode BMP subtable (prefer platform 3 encoding 1).
+	numSubtables := int(binary.BigEndian.Uint16(cmap[2:4]))
+	var subOff uint32
+	for i := 0; i < numSubtables; i++ {
+		base := 4 + i*8
+		if base+8 > len(cmap) {
+			break
+		}
+		platformID := binary.BigEndian.Uint16(cmap[base : base+2])
+		encodingID := binary.BigEndian.Uint16(cmap[base+2 : base+4])
+		off := binary.BigEndian.Uint32(cmap[base+4 : base+8])
+		if (platformID == 3 && encodingID == 1) || (platformID == 0 && encodingID >= 3) {
+			subOff = off
+			break
+		}
+	}
+	if subOff == 0 || int(subOff)+14 > len(cmap) {
+		return 0
+	}
+	sub := cmap[subOff:]
+	if len(sub) < 14 || binary.BigEndian.Uint16(sub[0:2]) != 4 {
+		return 0 // only Format 4 handled
+	}
+
+	segCount := int(binary.BigEndian.Uint16(sub[6:8])) / 2
+	endBase := 14
+	startBase := 14 + segCount*2 + 2
+	deltaBase := 14 + segCount*4 + 2
+	rangeBase := 14 + segCount*6 + 2
+	if rangeBase+segCount*2 > len(sub) {
+		return 0
+	}
+
+	count := 0
+	for _, ch := range japaneseCoverageChars {
+		cp := uint16(ch)
+		for s := 0; s < segCount; s++ {
+			end := binary.BigEndian.Uint16(sub[endBase+s*2 : endBase+s*2+2])
+			if cp > end {
+				continue // segment endCode < cp, try next
+			}
+			start := binary.BigEndian.Uint16(sub[startBase+s*2 : startBase+s*2+2])
+			if cp >= start {
+				rangeOff := binary.BigEndian.Uint16(sub[rangeBase+s*2 : rangeBase+s*2+2])
+				if rangeOff == 0 {
+					delta := int16(binary.BigEndian.Uint16(sub[deltaBase+s*2 : deltaBase+s*2+2]))
+					if (int(cp)+int(delta))&0xFFFF != 0 {
+						count++
+					}
+				} else {
+					count++ // glyphIdArray path — assume mapped
+				}
+			}
+			break // segments are sorted by endCode; no further match possible
+		}
+	}
+	return count
 }
 
 // GenerateLabelPDF generates an A4 label PDF and returns the raw bytes.
