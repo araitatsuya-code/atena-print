@@ -197,19 +197,21 @@ export default function LabelEditorOverlay({ template, zoom, onTemplateChange }:
   const boxes = buildBoxes(template)
 
   // 移動ドラッグ用 refs
-  const moveListeners = useRef<{ move: (e: MouseEvent) => void; up: (e: MouseEvent) => void } | null>(null)
+  const moveListeners = useRef<{ move: (e: MouseEvent) => void; up: () => void; blur: () => void } | null>(null)
   // リサイズドラッグ用 refs
-  const resizeListeners = useRef<{ move: (e: MouseEvent) => void; up: (e: MouseEvent) => void } | null>(null)
+  const resizeListeners = useRef<{ move: (e: MouseEvent) => void; up: () => void; blur: () => void } | null>(null)
 
   useEffect(() => {
     return () => {
       if (moveListeners.current) {
         window.removeEventListener('mousemove', moveListeners.current.move)
         window.removeEventListener('mouseup', moveListeners.current.up)
+        window.removeEventListener('blur', moveListeners.current.blur)
       }
       if (resizeListeners.current) {
         window.removeEventListener('mousemove', resizeListeners.current.move)
         window.removeEventListener('mouseup', resizeListeners.current.up)
+        window.removeEventListener('blur', resizeListeners.current.blur)
       }
     }
   }, [])
@@ -218,6 +220,13 @@ export default function LabelEditorOverlay({ template, zoom, onTemplateChange }:
   function startMove(e: React.MouseEvent, id: string) {
     e.stopPropagation()
     e.preventDefault()
+    // 前回のドラッグリスナーが残っていれば先に除去
+    if (moveListeners.current) {
+      window.removeEventListener('mousemove', moveListeners.current.move)
+      window.removeEventListener('mouseup', moveListeners.current.up)
+      window.removeEventListener('blur', moveListeners.current.blur)
+      moveListeners.current = null
+    }
     const startX = e.clientX
     const startY = e.clientY
     const pxPerMm = zoom * MM_TO_PX
@@ -226,20 +235,29 @@ export default function LabelEditorOverlay({ template, zoom, onTemplateChange }:
     const onMove = (me: MouseEvent) => {
       onTemplateChange(applyMove(base, id, (me.clientX - startX) / pxPerMm, (me.clientY - startY) / pxPerMm))
     }
-    const onUp = () => {
+    const cleanup = () => {
       window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('mouseup', cleanup)
+      window.removeEventListener('blur', cleanup)
       moveListeners.current = null
     }
-    moveListeners.current = { move: onMove, up: onUp }
+    moveListeners.current = { move: onMove, up: cleanup, blur: cleanup }
     window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
+    window.addEventListener('mouseup', cleanup)
+    window.addEventListener('blur', cleanup)
   }
 
   /** 右下ハンドルドラッグ → フォントサイズ変更 (1.2pt/mm) */
   function startResize(e: React.MouseEvent, id: string, baseFontPt: number) {
     e.stopPropagation()
     e.preventDefault()
+    // 前回のドラッグリスナーが残っていれば先に除去
+    if (resizeListeners.current) {
+      window.removeEventListener('mousemove', resizeListeners.current.move)
+      window.removeEventListener('mouseup', resizeListeners.current.up)
+      window.removeEventListener('blur', resizeListeners.current.blur)
+      resizeListeners.current = null
+    }
     const startX = e.clientX
     const pxPerMm = zoom * MM_TO_PX
     const base = template
@@ -249,14 +267,16 @@ export default function LabelEditorOverlay({ template, zoom, onTemplateChange }:
       const newFont = Math.max(4, Math.round((baseFontPt + dxMm * 1.2) * 2) / 2)
       onTemplateChange(applyFontDelta(base, id, newFont - baseFontPt))
     }
-    const onUp = () => {
+    const cleanup = () => {
       window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('mouseup', cleanup)
+      window.removeEventListener('blur', cleanup)
       resizeListeners.current = null
     }
-    resizeListeners.current = { move: onMove, up: onUp }
+    resizeListeners.current = { move: onMove, up: cleanup, blur: cleanup }
     window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
+    window.addEventListener('mouseup', cleanup)
+    window.addEventListener('blur', cleanup)
   }
 
   return (
