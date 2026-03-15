@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { Template } from '../types'
 
 interface PreviewState {
@@ -10,11 +11,19 @@ interface PreviewState {
   setPreviewContactIndex: (index: number) => void
 }
 
-export const usePreviewStore = create<PreviewState>((set) => ({
-  selectedTemplate: null,
-  zoom: 1,
-  previewContactIndex: 0,
-  setSelectedTemplate: (template) => set({ selectedTemplate: template }),
-  setZoom: (zoom) => set({ zoom }),
-  setPreviewContactIndex: (index) => set({ previewContactIndex: index }),
-}))
+export const usePreviewStore = create<PreviewState>()(
+  persist(
+    (set) => ({
+      selectedTemplate: null,
+      zoom: 1,
+      previewContactIndex: 0,
+      setSelectedTemplate: (template) => set({ selectedTemplate: template }),
+      setZoom: (zoom) => set({ zoom }),
+      setPreviewContactIndex: (index) => set({ previewContactIndex: index }),
+    }),
+    {
+      name: 'atena-preview',
+      partialize: (state) => ({ selectedTemplate: state.selectedTemplate, zoom: state.zoom }),
+    },
+  ),
+)
