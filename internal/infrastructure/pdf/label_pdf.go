@@ -23,8 +23,13 @@ type Generator struct {
 func NewGenerator(fontPath string) *Generator {
 	g := &Generator{}
 	if fontPath != "" {
-		g.fontPath = fontPath
-		g.fontBytes, _ = loadAndValidateFont(fontPath)
+		if fb, ok := loadAndValidateFont(fontPath); ok {
+			g.fontPath = fontPath
+			g.fontBytes = fb
+		} else {
+			// Explicit path is unusable; fall back to system font detection.
+			g.fontBytes, g.fontPath = detectAndLoadJapaneseFont()
+		}
 	} else {
 		g.fontBytes, g.fontPath = detectAndLoadJapaneseFont()
 	}
