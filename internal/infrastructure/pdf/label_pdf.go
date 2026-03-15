@@ -427,6 +427,13 @@ func (g *Generator) GenerateLabelPDF(
 			}
 		}
 
+		// ラベル枠線
+		if job.ShowBorder {
+			pdf.SetDrawColor(180, 180, 180) // 薄いグレー
+			pdf.SetLineWidth(0.2)
+			pdf.Rect(originX, originY, layout.LabelWidth, layout.LabelHeight, "D")
+		}
+
 		// Label content.
 		drawLabel(pdf, setFont, &contact, sender, tmpl, originX, originY)
 

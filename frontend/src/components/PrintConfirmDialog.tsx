@@ -18,6 +18,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [selectedSenderId, setSelectedSenderId] = useState('')
   const [repeatFill, setRepeatFill] = useState(false)
+  const [showBorder, setShowBorder] = useState(false)
 
   const { contacts, selectedIds } = useContactStore(
     useShallow((s) => ({ contacts: s.contacts, selectedIds: s.selectedIds })),
@@ -75,6 +76,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
       labelLayout: layout,
       watermark: watermark ?? undefined,
       qrConfig: qrConfig.enabled ? qrConfig : undefined,
+      showBorder,
     })
   }
 
@@ -136,6 +138,15 @@ export default function PrintConfirmDialog({ onClose }: Props) {
               </span>
             </label>
           )}
+          <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+            <input
+              type="checkbox"
+              checked={showBorder}
+              onChange={(e) => setShowBorder(e.target.checked)}
+              className="w-3.5 h-3.5 accent-blue-600"
+            />
+            <span className="text-gray-600">ラベル枠線を印刷する</span>
+          </label>
         </div>
 
         {/* 差出人選択 */}
