@@ -487,23 +487,48 @@ func drawLabel(
 ) {
 	pdf.SetTextColor(0, 0, 0)
 
-	// Postal code digits.
+	// ── 郵便番号 ────────────────────────────────────────────────────────────
+	// アプリプレビューと同様に〒マーク＋"NNN-NNNN"形式で1文字ずつ描画する。
 	if tmpl.PostalCode != nil && contact.PostalCode != "" {
 		setFont(tmpl.PostalCode.FontSize)
-		digits := strings.ReplaceAll(contact.PostalCode, "-", "")
 		spacing := tmpl.PostalCode.DigitSpacing
 		if spacing <= 0 {
 			spacing = 4
 		}
 		cellH := tmpl.PostalCode.FontSize * 0.4
-		for i, ch := range digits {
-			xPos := ox + tmpl.PostalCode.X + float64(i)*spacing
-			pdf.SetXY(xPos, oy+tmpl.PostalCode.Y)
-			pdf.CellFormat(spacing, cellH, string(ch), "", 0, "C", false, 0, "")
+		baseX := ox + tmpl.PostalCode.X
+		baseY := oy + tmpl.PostalCode.Y
+
+		// 〒マーク
+		pdf.SetXY(baseX-spacing*0.3, baseY)
+		pdf.CellFormat(spacing*0.8, cellH, "〒", "", 0, "C", false, 0, "")
+
+		// 数字部分を "NNN-NNNN" に整形してから1文字ずつ描画
+		digits := strings.Map(func(r rune) rune {
+			if r >= '0' && r <= '9' {
+				return r
+			}
+			return -1
+		}, contact.PostalCode)
+		formatted := digits
+		if len(digits) == 7 {
+			formatted = digits[:3] + "-" + digits[3:]
+		}
+		curX := baseX + spacing*0.5
+		for _, ch := range formatted {
+			if ch == '-' {
+				pdf.SetXY(curX, baseY)
+				pdf.CellFormat(spacing*0.5, cellH, "-", "", 0, "C", false, 0, "")
+				curX += spacing * 0.5
+			} else {
+				pdf.SetXY(curX, baseY)
+				pdf.CellFormat(spacing, cellH, string(ch), "", 0, "C", false, 0, "")
+				curX += spacing
+			}
 		}
 	}
 
-	// Recipient name.
+	// ── 宛先氏名 ─────────────────────────────────────────────────────────────
 	rec := tmpl.Recipient
 	honorific := contact.Honorific
 	if honorific == "" {
@@ -517,55 +542,96 @@ func drawLabel(
 			nameLines = append(nameLines, contact.Department)
 		}
 	}
-	fullName := contact.FamilyName + contact.GivenName + " " + honorific
+	// 横書きはアプリ同様に全角スペースで姓名と敬称を区切る
+	fullName := contact.FamilyName + contact.GivenName + "\u3000" + honorific
 	nameLines = append(nameLines, fullName)
 
-	addr := buildAddress(contact)
+	// ── 住所を2行(横書き) / 2カラム(縦書き)に分割 ─────────────────────────
+	// アプリプレビューと同じく「都道府県+市区町村」/「番地+建物名」で分割する。
+	addrLine1 := contact.Prefecture + contact.City
+	addrLine2 := contact.Street
+	if contact.Building != "" {
+		addrLine2 += "\u3000" + contact.Building
+	}
+	addrLines := []string{}
+	if addrLine1 != "" {
+		addrLines = append(addrLines, addrLine1)
+	}
+	if addrLine2 != "" {
+		addrLines = append(addrLines, addrLine2)
+	}
 
 	if tmpl.Orientation == "vertical" {
 		setFont(rec.NameFont)
 		xOff := ox + rec.NameX
 		for _, line := range nameLines {
 			drawVerticalText(pdf, line, xOff, oy+rec.NameY, rec.NameFont)
-			xOff -= rec.NameFont * 0.5 // next column to the left
+			xOff -= rec.NameFont * 0.5 // 次カラムは左へ
 		}
 
 		setFont(rec.AddressFont)
-		drawVerticalText(pdf, addr, ox+rec.AddressX, oy+rec.AddressY, rec.AddressFont)
+		colW := rec.AddressFont * 0.5 // 縦書きカラム幅
+		xOff = ox + rec.AddressX
+		for _, line := range addrLines {
+			drawVerticalText(pdf, line, xOff, oy+rec.AddressY, rec.AddressFont)
+			xOff -= colW
+		}
 	} else {
 		setFont(rec.NameFont)
-		lineH := rec.NameFont * 0.5
+		nameLineH := rec.NameFont * 0.5
 		for i, line := range nameLines {
-			pdf.SetXY(ox+rec.NameX, oy+rec.NameY+float64(i)*lineH)
-			pdf.CellFormat(0, lineH, line, "", 0, "L", false, 0, "")
+			pdf.SetXY(ox+rec.NameX, oy+rec.NameY+float64(i)*nameLineH)
+			pdf.CellFormat(0, nameLineH, line, "", 0, "L", false, 0, "")
 		}
 
 		setFont(rec.AddressFont)
-		pdf.SetXY(ox+rec.AddressX, oy+rec.AddressY)
-		pdf.CellFormat(0, rec.AddressFont*0.5, addr, "", 0, "L", false, 0, "")
+		addrLineH := rec.AddressFont * 0.55
+		for i, line := range addrLines {
+			pdf.SetXY(ox+rec.AddressX, oy+rec.AddressY+float64(i)*addrLineH)
+			pdf.CellFormat(0, addrLineH, line, "", 0, "L", false, 0, "")
+		}
 	}
 
-	// Sender.
+	// ── 差出人 ───────────────────────────────────────────────────────────────
 	if sender != nil {
 		snd := tmpl.Sender
 		senderName := sender.FamilyName + sender.GivenName
 		if sender.Company != "" {
 			senderName = sender.Company + " " + senderName
 		}
-		senderAddr := buildSenderAddress(sender)
+		sndLine1 := sender.Prefecture + sender.City
+		sndLine2 := sender.Street
+		if sender.Building != "" {
+			sndLine2 += "\u3000" + sender.Building
+		}
+		sndAddrLines := []string{}
+		if sndLine1 != "" {
+			sndAddrLines = append(sndAddrLines, sndLine1)
+		}
+		if sndLine2 != "" {
+			sndAddrLines = append(sndAddrLines, sndLine2)
+		}
 
 		if tmpl.Orientation == "vertical" {
 			setFont(snd.NameFont)
 			drawVerticalText(pdf, senderName, ox+snd.NameX, oy+snd.NameY, snd.NameFont)
 			setFont(snd.AddressFont)
-			drawVerticalText(pdf, senderAddr, ox+snd.AddressX, oy+snd.AddressY, snd.AddressFont)
+			colW := snd.AddressFont * 0.5
+			xOff := ox + snd.AddressX
+			for _, line := range sndAddrLines {
+				drawVerticalText(pdf, line, xOff, oy+snd.AddressY, snd.AddressFont)
+				xOff -= colW
+			}
 		} else {
 			setFont(snd.NameFont)
 			pdf.SetXY(ox+snd.NameX, oy+snd.NameY)
 			pdf.CellFormat(0, snd.NameFont*0.5, senderName, "", 0, "L", false, 0, "")
 			setFont(snd.AddressFont)
-			pdf.SetXY(ox+snd.AddressX, oy+snd.AddressY)
-			pdf.CellFormat(0, snd.AddressFont*0.5, senderAddr, "", 0, "L", false, 0, "")
+			addrLineH := snd.AddressFont * 0.55
+			for i, line := range sndAddrLines {
+				pdf.SetXY(ox+snd.AddressX, oy+snd.AddressY+float64(i)*addrLineH)
+				pdf.CellFormat(0, addrLineH, line, "", 0, "L", false, 0, "")
+			}
 		}
 	}
 }
