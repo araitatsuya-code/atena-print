@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "d7c4fdf5d352",
+  "session_id": "cf16a74a-d012-46d9-8b4d-4c0458da526e",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-15T09:18:41.853471Z",
+  "branch": "feat/issue37-pdf-font-fix",
+  "checkpoints_count": 12,
+  "files_touched": [
+    "frontend/wailsjs/go/models.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "c754e127e05e",
+  "token_usage": {
+    "input_tokens": 203,
+    "cache_creation_tokens": 359475,
+    "cache_read_tokens": 14442452,
+    "output_tokens": 146663,
+    "api_call_count": 165
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-15T09:18:41.485161Z",
+    "agent_lines": 96,
+    "human_added": 534,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 630,
+    "agent_percentage": 15.238095238095239
+  }
+}

@@ -3,7 +3,7 @@
   "checkpoint_id": "d7c4fdf5d352",
   "strategy": "manual-commit",
   "branch": "feat/issue37-pdf-font-fix",
-  "checkpoints_count": 1,
+  "checkpoints_count": 13,
   "files_touched": [
     "frontend/wailsjs/go/models.ts"
   ],
@@ -14,13 +14,20 @@
       "context": "/d7/c4fdf5d352/0/context.md",
       "content_hash": "/d7/c4fdf5d352/0/content_hash.txt",
       "prompt": "/d7/c4fdf5d352/0/prompt.txt"
+    },
+    {
+      "metadata": "/d7/c4fdf5d352/1/metadata.json",
+      "transcript": "/d7/c4fdf5d352/1/full.jsonl",
+      "context": "/d7/c4fdf5d352/1/context.md",
+      "content_hash": "/d7/c4fdf5d352/1/content_hash.txt",
+      "prompt": "/d7/c4fdf5d352/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 6,
-    "cache_creation_tokens": 21431,
-    "cache_read_tokens": 77837,
-    "output_tokens": 1372,
-    "api_call_count": 4
+    "input_tokens": 209,
+    "cache_creation_tokens": 380906,
+    "cache_read_tokens": 14520289,
+    "output_tokens": 148035,
+    "api_call_count": 169
   }
 }
