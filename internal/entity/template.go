@@ -16,13 +16,19 @@ type PostalConfig struct {
 	Y            float64 `json:"y"`
 	DigitSpacing float64 `json:"digitSpacing"`
 	FontSize     float64 `json:"fontSize"`
+	FontFamily   string  `json:"fontFamily,omitempty"` // "serif" | "sans-serif"
+	Bold         bool    `json:"bold,omitempty"`
 }
 
 type TextConfig struct {
-	NameX       float64 `json:"nameX"`
-	NameY       float64 `json:"nameY"`
-	NameFont    float64 `json:"nameFont"`
-	AddressX    float64 `json:"addressX"`
-	AddressY    float64 `json:"addressY"`
-	AddressFont float64 `json:"addressFont"`
+	NameX             float64 `json:"nameX"`
+	NameY             float64 `json:"nameY"`
+	NameFont          float64 `json:"nameFont"`
+	NameFontFamily    string  `json:"nameFontFamily,omitempty"` // "serif" | "sans-serif"
+	NameBold          bool    `json:"nameBold,omitempty"`
+	AddressX          float64 `json:"addressX"`
+	AddressY          float64 `json:"addressY"`
+	AddressFont       float64 `json:"addressFont"`
+	AddressFontFamily string  `json:"addressFontFamily,omitempty"` // "serif" | "sans-serif"
+	AddressBold       bool    `json:"addressBold,omitempty"`
 }
