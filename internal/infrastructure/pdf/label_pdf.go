@@ -258,9 +258,11 @@ func japaneseCmapScore(ttfBytes []byte) int {
 		return 0
 	}
 
-	// Locate the Unicode BMP subtable (prefer platform 3 encoding 1).
+	// Locate the best Unicode subtable: prefer Format 4 (BMP) but also accept
+	// Format 12 (full Unicode), which newer fonts like Songti TC use exclusively.
+	// Priority: platform 3 enc 1 (Format 4) > platform 0 enc 4 (Format 12) > others.
 	numSubtables := int(binary.BigEndian.Uint16(cmap[2:4]))
-	var subOff uint32
+	var fmt4Off, fmt12Off uint32
 	for i := 0; i < numSubtables; i++ {
 		base := 4 + i*8
 		if base+8 > len(cmap) {
@@ -269,51 +271,84 @@ func japaneseCmapScore(ttfBytes []byte) int {
 		platformID := binary.BigEndian.Uint16(cmap[base : base+2])
 		encodingID := binary.BigEndian.Uint16(cmap[base+2 : base+4])
 		off := binary.BigEndian.Uint32(cmap[base+4 : base+8])
-		if (platformID == 3 && encodingID == 1) || (platformID == 0 && encodingID >= 3) {
-			subOff = off
-			break
+		if off+2 > uint32(len(cmap)) {
+			continue
 		}
-	}
-	if subOff == 0 || int(subOff)+14 > len(cmap) {
-		return 0
-	}
-	sub := cmap[subOff:]
-	if len(sub) < 14 || binary.BigEndian.Uint16(sub[0:2]) != 4 {
-		return 0 // only Format 4 handled
-	}
-
-	segCount := int(binary.BigEndian.Uint16(sub[6:8])) / 2
-	endBase := 14
-	startBase := 14 + segCount*2 + 2
-	deltaBase := 14 + segCount*4 + 2
-	rangeBase := 14 + segCount*6 + 2
-	if rangeBase+segCount*2 > len(sub) {
-		return 0
+		format := binary.BigEndian.Uint16(cmap[off : off+2])
+		if format == 4 && platformID == 3 && encodingID == 1 {
+			fmt4Off = off
+		} else if format == 4 && platformID == 0 && encodingID >= 3 && fmt4Off == 0 {
+			fmt4Off = off
+		} else if format == 12 && (platformID == 3 && encodingID == 10 || platformID == 0 && encodingID == 4) {
+			if fmt12Off == 0 {
+				fmt12Off = off
+			}
+		}
 	}
 
 	count := 0
-	for _, ch := range japaneseCoverageChars {
-		cp := uint16(ch)
-		for s := 0; s < segCount; s++ {
-			end := binary.BigEndian.Uint16(sub[endBase+s*2 : endBase+s*2+2])
-			if cp > end {
-				continue // segment endCode < cp, try next
-			}
-			start := binary.BigEndian.Uint16(sub[startBase+s*2 : startBase+s*2+2])
-			if cp >= start {
-				rangeOff := binary.BigEndian.Uint16(sub[rangeBase+s*2 : rangeBase+s*2+2])
-				if rangeOff == 0 {
-					delta := int16(binary.BigEndian.Uint16(sub[deltaBase+s*2 : deltaBase+s*2+2]))
-					if (int(cp)+int(delta))&0xFFFF != 0 {
-						count++
+
+	if fmt4Off != 0 && int(fmt4Off)+14 <= len(cmap) {
+		sub := cmap[fmt4Off:]
+		segCount := int(binary.BigEndian.Uint16(sub[6:8])) / 2
+		endBase := 14
+		startBase := 14 + segCount*2 + 2
+		deltaBase := 14 + segCount*4 + 2
+		rangeBase := 14 + segCount*6 + 2
+		if rangeBase+segCount*2 <= len(sub) {
+			for _, ch := range japaneseCoverageChars {
+				cp := uint16(ch)
+				for s := 0; s < segCount; s++ {
+					end := binary.BigEndian.Uint16(sub[endBase+s*2 : endBase+s*2+2])
+					if cp > end {
+						continue
 					}
-				} else {
-					count++ // glyphIdArray path — assume mapped
+					start := binary.BigEndian.Uint16(sub[startBase+s*2 : startBase+s*2+2])
+					if cp >= start {
+						rangeOff := binary.BigEndian.Uint16(sub[rangeBase+s*2 : rangeBase+s*2+2])
+						if rangeOff == 0 {
+							delta := int16(binary.BigEndian.Uint16(sub[deltaBase+s*2 : deltaBase+s*2+2]))
+							if (int(cp)+int(delta))&0xFFFF != 0 {
+								count++
+							}
+						} else {
+							count++
+						}
+					}
+					break
 				}
 			}
-			break // segments are sorted by endCode; no further match possible
 		}
 	}
+
+	if count == 0 && fmt12Off != 0 && int(fmt12Off)+16 <= len(cmap) {
+		// Format 12: fixed header (16 bytes) followed by numGroups × 12-byte groups.
+		// Each group: startCharCode (4), endCharCode (4), startGlyphId (4).
+		sub := cmap[fmt12Off:]
+		if len(sub) < 16 {
+			return 0
+		}
+		numGroups := int(binary.BigEndian.Uint32(sub[12:16]))
+		if 16+numGroups*12 > len(sub) {
+			return 0
+		}
+		for _, ch := range japaneseCoverageChars {
+			cp := uint32(ch)
+			for g := 0; g < numGroups; g++ {
+				base := 16 + g*12
+				startCC := binary.BigEndian.Uint32(sub[base : base+4])
+				endCC := binary.BigEndian.Uint32(sub[base+4 : base+8])
+				if cp < startCC {
+					break // groups are sorted
+				}
+				if cp <= endCC {
+					count++
+					break
+				}
+			}
+		}
+	}
+
 	return count
 }
 
