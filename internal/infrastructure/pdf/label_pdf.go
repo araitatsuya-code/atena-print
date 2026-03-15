@@ -15,47 +15,86 @@ import (
 
 // Generator implements PDF generation using gofpdf.
 type Generator struct {
-	fontPath string // path to a Japanese TrueType font (.ttf/.ttc)
+	fontPath  string // path to a Japanese TrueType font (.ttf/.ttc)
+	fontBytes []byte // pre-loaded and validated font bytes, nil if unavailable
 }
 
 // NewGenerator creates a Generator. Pass an empty fontPath for auto-detection.
 func NewGenerator(fontPath string) *Generator {
-	if fontPath == "" {
-		fontPath = detectJapaneseFont()
+	g := &Generator{}
+	if fontPath != "" {
+		g.fontPath = fontPath
+		g.fontBytes, _ = loadAndValidateFont(fontPath)
+	} else {
+		g.fontBytes, g.fontPath = detectAndLoadJapaneseFont()
 	}
-	return &Generator{fontPath: fontPath}
+	return g
 }
 
-// detectJapaneseFont returns the first available Japanese TTF/TTC path on the system.
-func detectJapaneseFont() string {
-	var candidates []string
+// detectAndLoadJapaneseFont tries each candidate font and returns the first
+// that can be successfully used by gofpdf.
+func detectAndLoadJapaneseFont() ([]byte, string) {
+	for _, p := range japaneseFontCandidates() {
+		if fb, ok := loadAndValidateFont(p); ok {
+			return fb, p
+		}
+	}
+	return nil, ""
+}
+
+// japaneseFontCandidates returns platform-specific font paths to try.
+func japaneseFontCandidates() []string {
 	switch runtime.GOOS {
 	case "darwin":
-		candidates = []string{
+		return []string{
 			"/System/Library/Fonts/ヒラギノ明朝 ProN.ttc",
 			"/Library/Fonts/Hiragino Mincho ProN W3.otf",
 			"/System/Library/Fonts/Hiragino Mincho ProN.ttc",
 			"/Library/Fonts/YuMincho.ttc",
+			"/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
+			"/System/Library/Fonts/Supplemental/Songti.ttc",
 		}
 	case "windows":
-		candidates = []string{
+		return []string{
 			`C:\Windows\Fonts\msmincho.ttc`,
 			`C:\Windows\Fonts\YuMincho.ttc`,
 			`C:\Windows\Fonts\mingliu.ttc`,
+			`C:\Windows\Fonts\msgothic.ttc`,
 		}
 	default:
-		candidates = []string{
+		return []string{
 			"/usr/share/fonts/truetype/noto/NotoSerifCJK-Regular.ttc",
 			"/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
 			"/usr/share/fonts/truetype/fonts-japanese-mincho.ttf",
 		}
 	}
-	for _, p := range candidates {
-		if _, err := os.Stat(p); err == nil {
-			return p
-		}
+}
+
+// loadAndValidateFont reads font bytes and verifies that gofpdf can actually
+// embed the font in a PDF. Returns (nil, false) if the font is unusable.
+// TTC/OTF files may register without error but fail at PDF output time, so
+// we perform a full test render rather than relying on pdf.Error() alone.
+func loadAndValidateFont(path string) ([]byte, bool) {
+	fontBytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil, false
 	}
-	return ""
+	const testName = "jfont_validate"
+	testPDF := gofpdf.New("P", "mm", "A4", "")
+	testPDF.AddUTF8FontFromBytes(testName, "", fontBytes)
+	if testPDF.Error() != nil {
+		return nil, false
+	}
+	testPDF.AddPage()
+	testPDF.SetFont(testName, "", 10)
+	if testPDF.Error() != nil {
+		return nil, false
+	}
+	var buf bytes.Buffer
+	if testPDF.Output(&buf) != nil {
+		return nil, false
+	}
+	return fontBytes, true
 }
 
 // GenerateLabelPDF generates an A4 label PDF and returns the raw bytes.
@@ -70,16 +109,14 @@ func (g *Generator) GenerateLabelPDF(
 	pdf.SetCompression(true)
 
 	// Register Japanese font if available.
-	// Use AddUTF8FontFromBytes to avoid gofpdf's internal filepath.Join
-	// mangling absolute paths when its fontpath is non-empty.
+	// Use pre-validated fontBytes to avoid TTC/OTF files that register
+	// without error but fail at pdf.Output() with "undefined font".
 	const fontName = "jfont"
 	hasJFont := false
-	if g.fontPath != "" {
-		if fontBytes, err := os.ReadFile(g.fontPath); err == nil {
-			pdf.AddUTF8FontFromBytes(fontName, "", fontBytes)
-			if pdf.Error() == nil {
-				hasJFont = true
-			}
+	if g.fontBytes != nil {
+		pdf.AddUTF8FontFromBytes(fontName, "", g.fontBytes)
+		if pdf.Error() == nil {
+			hasJFont = true
 		}
 	}
 
