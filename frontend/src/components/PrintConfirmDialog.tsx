@@ -4,7 +4,9 @@ import { entity } from '../../wailsjs/go/models'
 import { useContactStore } from '../stores/contactStore'
 import { useDecorationStore } from '../stores/decorationStore'
 import { useLabelStore } from '../stores/labelStore'
+import { usePreviewStore } from '../stores/previewStore'
 import { useSenderStore } from '../stores/senderStore'
+import { DEFAULT_TEMPLATE, DEFAULT_TEMPLATE_HORIZONTAL } from './preview/LabelCanvas'
 import { useShallow } from 'zustand/shallow'
 
 interface Props {
@@ -24,6 +26,9 @@ export default function PrintConfirmDialog({ onClose }: Props) {
   )
   const { layout, orientation } = useLabelStore(
     useShallow((s) => ({ layout: s.layout, orientation: s.orientation })),
+  )
+  const { selectedTemplate } = usePreviewStore(
+    useShallow((s) => ({ selectedTemplate: s.selectedTemplate })),
   )
   const { senders, setSenders } = useSenderStore(
     useShallow((s) => ({ senders: s.senders, setSenders: s.setSenders })),
@@ -46,17 +51,13 @@ export default function PrintConfirmDialog({ onClose }: Props) {
   const paperLabel = `${layout.paperWidth}×${layout.paperHeight}mm (${layout.columns}列×${layout.rows}行)`
 
   function buildJob(): entity.PrintJob {
+    const defaultTpl = orientation === 'horizontal' ? DEFAULT_TEMPLATE_HORIZONTAL : DEFAULT_TEMPLATE
+    const tpl = selectedTemplate
+      ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
+      : { ...defaultTpl, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
     return entity.PrintJob.createFrom({
       contactIds: selectedContacts.map((c) => c.id),
-      template: {
-        id: '',
-        name: 'default',
-        orientation,
-        labelWidth: layout.labelWidth,
-        labelHeight: layout.labelHeight,
-        recipient: { nameX: 0, nameY: 0, nameFont: 0, addressX: 0, addressY: 0, addressFont: 0 },
-        sender: { nameX: 0, nameY: 0, nameFont: 0, addressX: 0, addressY: 0, addressFont: 0 },
-      },
+      template: tpl,
       senderId: selectedSenderId,
       labelLayout: layout,
       watermark: watermark ?? undefined,
