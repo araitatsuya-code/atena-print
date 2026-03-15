@@ -101,60 +101,7 @@ function buildBoxes(tpl: Template): Box[] {
     })
   }
 
-  const snd = tpl.sender
-  if (isV) {
-    const snw = (snd.nameFont / 2.835) * 2.5
-    boxes.push({
-      id: 'senderName',
-      label: '差出人名',
-      visualXMm: snd.nameX - snw,
-      visualYMm: snd.nameY,
-      widthMm: snw,
-      heightMm: Math.max(3, Math.min(15, lh - snd.nameY - 1)),
-      fontPt: snd.nameFont,
-      fontFamily: snd.nameFontFamily ?? 'serif',
-      bold: snd.nameBold ?? false,
-      color: '#8b5cf6',
-    })
-    const saw = (snd.addressFont / 2.835) * 2.5
-    boxes.push({
-      id: 'senderAddr',
-      label: '差出人住所',
-      visualXMm: snd.addressX - saw,
-      visualYMm: snd.addressY,
-      widthMm: saw,
-      heightMm: Math.max(3, Math.min(12, lh - snd.addressY - 1)),
-      fontPt: snd.addressFont,
-      fontFamily: snd.addressFontFamily ?? 'serif',
-      bold: snd.addressBold ?? false,
-      color: '#ec4899',
-    })
-  } else {
-    boxes.push({
-      id: 'senderName',
-      label: '差出人名',
-      visualXMm: snd.nameX,
-      visualYMm: snd.nameY,
-      widthMm: Math.max(10, lw - snd.nameX - 2),
-      heightMm: (snd.nameFont / 2.835) * 1.8,
-      fontPt: snd.nameFont,
-      fontFamily: snd.nameFontFamily ?? 'serif',
-      bold: snd.nameBold ?? false,
-      color: '#8b5cf6',
-    })
-    boxes.push({
-      id: 'senderAddr',
-      label: '差出人住所',
-      visualXMm: snd.addressX,
-      visualYMm: snd.addressY,
-      widthMm: Math.max(10, lw - snd.addressX - 2),
-      heightMm: (snd.addressFont / 2.835) * 1.8,
-      fontPt: snd.addressFont,
-      fontFamily: snd.addressFontFamily ?? 'serif',
-      bold: snd.addressBold ?? false,
-      color: '#ec4899',
-    })
-  }
+  // 差出人は LabelCanvas に描画実装後に有効化する (TODO: sender rendering)
 
   return boxes
 }
