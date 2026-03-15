@@ -2,6 +2,7 @@ package pdf
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"os"
 	"runtime"
@@ -52,12 +53,13 @@ func japaneseFontCandidates() []string {
 	switch runtime.GOOS {
 	case "darwin":
 		return []string{
+			// TrueType fonts that gofpdf can embed (tested to work)
+			"/System/Library/Fonts/Supplemental/Songti.ttc",        // CJK TrueType — reliable fallback
+			"/System/Library/Fonts/Supplemental/STHeiti Medium.ttc", // CJK TrueType
+			// Hiragino / Yu fonts are OpenType CFF and will be skipped automatically
 			"/System/Library/Fonts/ヒラギノ明朝 ProN.ttc",
-			"/Library/Fonts/Hiragino Mincho ProN W3.otf",
-			"/System/Library/Fonts/Hiragino Mincho ProN.ttc",
-			"/Library/Fonts/YuMincho.ttc",
 			"/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
-			"/System/Library/Fonts/Supplemental/Songti.ttc",
+			"/Library/Fonts/YuMincho.ttc",
 		}
 	case "windows":
 		return []string{
@@ -77,12 +79,29 @@ func japaneseFontCandidates() []string {
 
 // loadAndValidateFont reads font bytes and verifies that gofpdf can actually
 // embed the font in a PDF. Returns (nil, false) if the font is unusable.
-// TTC/OTF files may register without error but fail at PDF output time, so
-// we perform a full test render rather than relying on pdf.Error() alone.
+// TTC files contain absolute offsets into the container and must be extracted
+// to standalone TTF bytes before gofpdf can embed them correctly.
 func loadAndValidateFont(path string) ([]byte, bool) {
 	fontBytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, false
+	}
+	// TTC files need to be unwrapped; OpenType CFF (OTTO) is not supported by gofpdf.
+	if len(fontBytes) >= 4 {
+		switch string(fontBytes[:4]) {
+		case "ttcf":
+			extracted := extractTTFFromTTC(fontBytes)
+			if extracted == nil {
+				return nil, false
+			}
+			// The first font inside the TTC may itself be CFF (e.g. Hiragino).
+			if len(extracted) >= 4 && string(extracted[:4]) == "OTTO" {
+				return nil, false
+			}
+			fontBytes = extracted
+		case "OTTO": // OpenType CFF — gofpdf cannot embed these
+			return nil, false
+		}
 	}
 	const testName = "jfont_validate"
 	testPDF := gofpdf.New("P", "mm", "A4", "")
@@ -100,6 +119,82 @@ func loadAndValidateFont(path string) ([]byte, bool) {
 		return nil, false
 	}
 	return fontBytes, true
+}
+
+// extractTTFFromTTC extracts the first TTF font from a TrueType Collection.
+// In a TTC file the table data offsets in each font's directory are absolute
+// (from the start of the TTC), so the extracted bytes must be rebuilt with
+// offsets relative to the new file start before gofpdf can parse them.
+// Returns nil when the input is not a valid TTC.
+func extractTTFFromTTC(ttcBytes []byte) []byte {
+	if len(ttcBytes) < 12 || string(ttcBytes[:4]) != "ttcf" {
+		return nil
+	}
+	numFonts := int(binary.BigEndian.Uint32(ttcBytes[8:12]))
+	if numFonts < 1 || len(ttcBytes) < 12+4*numFonts {
+		return nil
+	}
+	fontOff := int(binary.BigEndian.Uint32(ttcBytes[12:16]))
+	if fontOff+12 > len(ttcBytes) {
+		return nil
+	}
+
+	numTables := int(binary.BigEndian.Uint16(ttcBytes[fontOff+4 : fontOff+6]))
+	dirSize := 12 + numTables*16
+	if fontOff+dirSize > len(ttcBytes) {
+		return nil
+	}
+
+	type tableInfo struct {
+		tag      [4]byte
+		checksum uint32
+		srcOff   uint32
+		length   uint32
+	}
+	tables := make([]tableInfo, numTables)
+	for i := 0; i < numTables; i++ {
+		b := fontOff + 12 + i*16
+		copy(tables[i].tag[:], ttcBytes[b:b+4])
+		tables[i].checksum = binary.BigEndian.Uint32(ttcBytes[b+4 : b+8])
+		tables[i].srcOff = binary.BigEndian.Uint32(ttcBytes[b+8 : b+12])
+		tables[i].length = binary.BigEndian.Uint32(ttcBytes[b+12 : b+16])
+		if int(tables[i].srcOff)+int(tables[i].length) > len(ttcBytes) {
+			return nil
+		}
+	}
+
+	// Assign new packed, 4-byte-aligned offsets starting right after the directory.
+	newOffsets := make([]uint32, numTables)
+	cur := uint32(dirSize)
+	for i, t := range tables {
+		newOffsets[i] = cur
+		cur += (t.length + 3) &^ 3
+	}
+
+	result := make([]byte, int(cur))
+
+	// Offset table header.
+	copy(result[0:4], ttcBytes[fontOff:fontOff+4]) // sfVersion
+	binary.BigEndian.PutUint16(result[4:6], uint16(numTables))
+	es := uint16(0)
+	for n := numTables; n > 1; n >>= 1 {
+		es++
+	}
+	sr := uint16(1<<es) * 16
+	binary.BigEndian.PutUint16(result[6:8], sr)
+	binary.BigEndian.PutUint16(result[8:10], es)
+	binary.BigEndian.PutUint16(result[10:12], uint16(numTables)*16-sr)
+
+	// Table directory and data.
+	for i, t := range tables {
+		b := 12 + i*16
+		copy(result[b:b+4], t.tag[:])
+		binary.BigEndian.PutUint32(result[b+4:b+8], t.checksum)
+		binary.BigEndian.PutUint32(result[b+8:b+12], newOffsets[i])
+		binary.BigEndian.PutUint32(result[b+12:b+16], t.length)
+		copy(result[newOffsets[i]:newOffsets[i]+t.length], ttcBytes[t.srcOff:t.srcOff+t.length])
+	}
+	return result
 }
 
 // GenerateLabelPDF generates an A4 label PDF and returns the raw bytes.
