@@ -53,12 +53,12 @@ func TestExtractTTFFromTTCRoundtrip(t *testing.T) {
 		t.Fatal("extractTTFFromTTC returned nil")
 	}
 
-	fb, err := loadAndValidateFont(ttcPath)
+	fb, err := validateFontBytes(face, "extracted-face")
 	if err != nil {
-		t.Fatalf("loadAndValidateFont failed: %v", err)
+		t.Fatalf("validateFontBytes on extracted face failed: %v", err)
 	}
 	if len(fb) == 0 {
-		t.Fatal("empty font bytes from loadAndValidateFont")
+		t.Fatal("empty font bytes from validateFontBytes")
 	}
 	t.Logf("Font bytes: %d", len(fb))
 }

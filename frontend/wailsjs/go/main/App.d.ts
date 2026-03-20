@@ -8,13 +8,19 @@ export function DeleteContacts(arg1:Array<string>):Promise<void>;
 
 export function DeleteGroup(arg1:string):Promise<void>;
 
+export function DeleteSender(arg1:string):Promise<void>;
+
 export function DeleteWatermark(arg1:string):Promise<void>;
 
 export function ExportCSV(arg1:Array<string>,arg2:string):Promise<void>;
 
+export function ExportDB():Promise<string>;
+
 export function GenerateLabelPDF(arg1:entity.PrintJob,arg2:string):Promise<string>;
 
 export function GenerateQRPreview(arg1:entity.QRConfig):Promise<Array<number>>;
+
+export function GetAppVersion():Promise<string>;
 
 export function GetContact(arg1:string):Promise<entity.Contact>;
 
@@ -22,17 +28,25 @@ export function GetContactGroups(arg1:string):Promise<Array<entity.Group>>;
 
 export function GetContacts(arg1:string):Promise<Array<entity.Contact>>;
 
+export function GetDashboardStats():Promise<entity.DashboardStats>;
+
 export function GetGroups():Promise<Array<entity.Group>>;
+
+export function GetPrintHistory(arg1:number):Promise<Array<entity.PrintHistory>>;
+
+export function GetSenders():Promise<Array<entity.Sender>>;
+
+export function GetTempPDFPath():Promise<string>;
 
 export function GetWatermarkPresets():Promise<Array<entity.Watermark>>;
 
 export function ImportCSV(arg1:string):Promise<entity.ImportResult>;
 
+export function ImportDB():Promise<boolean>;
+
 export function LookupPostal(arg1:string):Promise<entity.Address>;
 
 export function OpenCSVFileDialog():Promise<string>;
-
-export function GetTempPDFPath():Promise<string>;
 
 export function PrintPDF(arg1:string):Promise<void>;
 
@@ -46,26 +60,12 @@ export function SaveGroup(arg1:entity.Group):Promise<entity.Group>;
 
 export function SavePDFFileDialog(arg1:string):Promise<string>;
 
+export function SaveSender(arg1:entity.Sender):Promise<entity.Sender>;
+
 export function SearchContacts(arg1:string):Promise<Array<entity.Contact>>;
 
 export function SetContactGroups(arg1:string,arg2:Array<string>):Promise<void>;
 
-export function UploadWatermark(arg1:string):Promise<entity.Watermark>;
-
-export function GetSenders():Promise<Array<entity.Sender>>;
-
-export function SaveSender(arg1:entity.Sender):Promise<entity.Sender>;
-
-export function DeleteSender(arg1:string):Promise<void>;
-
 export function SetDefaultSender(arg1:string):Promise<void>;
 
-export function GetPrintHistory(arg1:number):Promise<Array<entity.PrintHistory>>;
-
-export function GetDashboardStats():Promise<entity.DashboardStats>;
-
-export function GetAppVersion():Promise<string>;
-
-export function ExportDB():Promise<string>;
-
-export function ImportDB():Promise<boolean>;
+export function UploadWatermark(arg1:string):Promise<entity.Watermark>;
