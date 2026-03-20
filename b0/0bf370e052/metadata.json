@@ -3,9 +3,13 @@
   "checkpoint_id": "b00bf370e052",
   "strategy": "manual-commit",
   "branch": "feat/issue37-pdf-font-fix",
-  "checkpoints_count": 2,
+  "checkpoints_count": 5,
   "files_touched": [
-    "frontend/package.json.md5"
+    "frontend/package.json.md5",
+    "frontend/wailsjs/go/main/App.d.ts",
+    "frontend/wailsjs/go/main/App.js",
+    "go.mod",
+    "internal/infrastructure/pdf/label_pdf_test.go"
   ],
   "sessions": [
     {
@@ -14,13 +18,20 @@
       "context": "/b0/0bf370e052/0/context.md",
       "content_hash": "/b0/0bf370e052/0/content_hash.txt",
       "prompt": "/b0/0bf370e052/0/prompt.txt"
+    },
+    {
+      "metadata": "/b0/0bf370e052/1/metadata.json",
+      "transcript": "/b0/0bf370e052/1/full.jsonl",
+      "context": "/b0/0bf370e052/1/context.md",
+      "content_hash": "/b0/0bf370e052/1/content_hash.txt",
+      "prompt": "/b0/0bf370e052/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 14,
-    "cache_creation_tokens": 60553,
-    "cache_read_tokens": 620341,
-    "output_tokens": 3816,
-    "api_call_count": 10
+    "input_tokens": 314,
+    "cache_creation_tokens": 786982,
+    "cache_read_tokens": 22069602,
+    "output_tokens": 216300,
+    "api_call_count": 246
   }
 }
