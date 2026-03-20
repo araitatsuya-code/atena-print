@@ -14,6 +14,10 @@ export function DeleteGroup(arg1) {
   return window['go']['main']['App']['DeleteGroup'](arg1);
 }
 
+export function DeleteSender(arg1) {
+  return window['go']['main']['App']['DeleteSender'](arg1);
+}
+
 export function DeleteWatermark(arg1) {
   return window['go']['main']['App']['DeleteWatermark'](arg1);
 }
@@ -22,12 +26,20 @@ export function ExportCSV(arg1, arg2) {
   return window['go']['main']['App']['ExportCSV'](arg1, arg2);
 }
 
+export function ExportDB() {
+  return window['go']['main']['App']['ExportDB']();
+}
+
 export function GenerateLabelPDF(arg1, arg2) {
   return window['go']['main']['App']['GenerateLabelPDF'](arg1, arg2);
 }
 
 export function GenerateQRPreview(arg1) {
   return window['go']['main']['App']['GenerateQRPreview'](arg1);
+}
+
+export function GetAppVersion() {
+  return window['go']['main']['App']['GetAppVersion']();
 }
 
 export function GetContact(arg1) {
@@ -42,8 +54,24 @@ export function GetContacts(arg1) {
   return window['go']['main']['App']['GetContacts'](arg1);
 }
 
+export function GetDashboardStats() {
+  return window['go']['main']['App']['GetDashboardStats']();
+}
+
 export function GetGroups() {
   return window['go']['main']['App']['GetGroups']();
+}
+
+export function GetPrintHistory(arg1) {
+  return window['go']['main']['App']['GetPrintHistory'](arg1);
+}
+
+export function GetSenders() {
+  return window['go']['main']['App']['GetSenders']();
+}
+
+export function GetTempPDFPath() {
+  return window['go']['main']['App']['GetTempPDFPath']();
 }
 
 export function GetWatermarkPresets() {
@@ -54,16 +82,16 @@ export function ImportCSV(arg1) {
   return window['go']['main']['App']['ImportCSV'](arg1);
 }
 
+export function ImportDB() {
+  return window['go']['main']['App']['ImportDB']();
+}
+
 export function LookupPostal(arg1) {
   return window['go']['main']['App']['LookupPostal'](arg1);
 }
 
 export function OpenCSVFileDialog() {
   return window['go']['main']['App']['OpenCSVFileDialog']();
-}
-
-export function GetTempPDFPath() {
-  return window['go']['main']['App']['GetTempPDFPath']();
 }
 
 export function PrintPDF(arg1) {
@@ -90,6 +118,10 @@ export function SavePDFFileDialog(arg1) {
   return window['go']['main']['App']['SavePDFFileDialog'](arg1);
 }
 
+export function SaveSender(arg1) {
+  return window['go']['main']['App']['SaveSender'](arg1);
+}
+
 export function SearchContacts(arg1) {
   return window['go']['main']['App']['SearchContacts'](arg1);
 }
@@ -98,42 +130,10 @@ export function SetContactGroups(arg1, arg2) {
   return window['go']['main']['App']['SetContactGroups'](arg1, arg2);
 }
 
-export function UploadWatermark(arg1) {
-  return window['go']['main']['App']['UploadWatermark'](arg1);
-}
-
-export function GetSenders() {
-  return window['go']['main']['App']['GetSenders']();
-}
-
-export function SaveSender(arg1) {
-  return window['go']['main']['App']['SaveSender'](arg1);
-}
-
-export function DeleteSender(arg1) {
-  return window['go']['main']['App']['DeleteSender'](arg1);
-}
-
 export function SetDefaultSender(arg1) {
   return window['go']['main']['App']['SetDefaultSender'](arg1);
 }
 
-export function GetPrintHistory(arg1) {
-  return window['go']['main']['App']['GetPrintHistory'](arg1);
-}
-
-export function GetDashboardStats() {
-  return window['go']['main']['App']['GetDashboardStats']();
-}
-
-export function GetAppVersion() {
-  return window['go']['main']['App']['GetAppVersion']();
-}
-
-export function ExportDB() {
-  return window['go']['main']['App']['ExportDB']();
-}
-
-export function ImportDB() {
-  return window['go']['main']['App']['ImportDB']();
+export function UploadWatermark(arg1) {
+  return window['go']['main']['App']['UploadWatermark'](arg1);
 }

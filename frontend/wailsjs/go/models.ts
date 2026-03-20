@@ -78,6 +78,20 @@ export namespace entity {
 		    return a;
 		}
 	}
+	export class DashboardStats {
+	    contactCount: number;
+	    groupCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DashboardStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.contactCount = source["contactCount"];
+	        this.groupCount = source["groupCount"];
+	    }
+	}
 	export class Group {
 	    id: string;
 	    name: string;
@@ -119,6 +133,8 @@ export namespace entity {
 	    marginLeft: number;
 	    gapX: number;
 	    gapY: number;
+	    offsetX: number;
+	    offsetY: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new LabelLayout(source);
@@ -136,6 +152,8 @@ export namespace entity {
 	        this.marginLeft = source["marginLeft"];
 	        this.gapX = source["gapX"];
 	        this.gapY = source["gapY"];
+	        this.offsetX = source["offsetX"];
+	        this.offsetY = source["offsetY"];
 	    }
 	}
 	export class PostalConfig {
@@ -143,6 +161,8 @@ export namespace entity {
 	    y: number;
 	    digitSpacing: number;
 	    fontSize: number;
+	    fontFamily?: string;
+	    bold?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new PostalConfig(source);
@@ -154,7 +174,50 @@ export namespace entity {
 	        this.y = source["y"];
 	        this.digitSpacing = source["digitSpacing"];
 	        this.fontSize = source["fontSize"];
+	        this.fontFamily = source["fontFamily"];
+	        this.bold = source["bold"];
 	    }
+	}
+	export class PrintHistory {
+	    id: string;
+	    // Go type: time
+	    printedAt: any;
+	    contactCount: number;
+	    templateId: string;
+	    watermarkId: string;
+	    qrEnabled: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PrintHistory(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.printedAt = this.convertValues(source["printedAt"], null);
+	        this.contactCount = source["contactCount"];
+	        this.templateId = source["templateId"];
+	        this.watermarkId = source["watermarkId"];
+	        this.qrEnabled = source["qrEnabled"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class QRConfig {
 	    enabled: boolean;
@@ -172,36 +235,6 @@ export namespace entity {
 	        this.content = source["content"];
 	        this.size = source["size"];
 	        this.position = source["position"];
-	    }
-	}
-	export class Sender {
-	    id: string;
-	    familyName: string;
-	    givenName: string;
-	    postalCode: string;
-	    prefecture: string;
-	    city: string;
-	    street: string;
-	    building: string;
-	    company: string;
-	    isDefault: boolean;
-
-	    static createFrom(source: any = {}) {
-	        return new Sender(source);
-	    }
-
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.familyName = source["familyName"];
-	        this.givenName = source["givenName"];
-	        this.postalCode = source["postalCode"];
-	        this.prefecture = source["prefecture"];
-	        this.city = source["city"];
-	        this.street = source["street"];
-	        this.building = source["building"];
-	        this.company = source["company"];
-	        this.isDefault = source["isDefault"];
 	    }
 	}
 	export class Watermark {
@@ -228,9 +261,13 @@ export namespace entity {
 	    nameX: number;
 	    nameY: number;
 	    nameFont: number;
+	    nameFontFamily?: string;
+	    nameBold?: boolean;
 	    addressX: number;
 	    addressY: number;
 	    addressFont: number;
+	    addressFontFamily?: string;
+	    addressBold?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new TextConfig(source);
@@ -241,9 +278,13 @@ export namespace entity {
 	        this.nameX = source["nameX"];
 	        this.nameY = source["nameY"];
 	        this.nameFont = source["nameFont"];
+	        this.nameFontFamily = source["nameFontFamily"];
+	        this.nameBold = source["nameBold"];
 	        this.addressX = source["addressX"];
 	        this.addressY = source["addressY"];
 	        this.addressFont = source["addressFont"];
+	        this.addressFontFamily = source["addressFontFamily"];
+	        this.addressBold = source["addressBold"];
 	    }
 	}
 	export class Template {
@@ -297,6 +338,7 @@ export namespace entity {
 	    labelLayout: LabelLayout;
 	    watermark?: Watermark;
 	    qrConfig?: QRConfig;
+	    showBorder: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new PrintJob(source);
@@ -310,6 +352,7 @@ export namespace entity {
 	        this.labelLayout = this.convertValues(source["labelLayout"], LabelLayout);
 	        this.watermark = this.convertValues(source["watermark"], Watermark);
 	        this.qrConfig = this.convertValues(source["qrConfig"], QRConfig);
+	        this.showBorder = source["showBorder"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -330,44 +373,39 @@ export namespace entity {
 		    return a;
 		}
 	}
-
-	export class PrintHistory {
+	
+	export class Sender {
 	    id: string;
-	    printedAt: string;
-	    contactCount: number;
-	    templateId: string;
-	    watermarkId: string;
-	    qrEnabled: boolean;
-
+	    familyName: string;
+	    givenName: string;
+	    postalCode: string;
+	    prefecture: string;
+	    city: string;
+	    street: string;
+	    building: string;
+	    company: string;
+	    isDefault: boolean;
+	
 	    static createFrom(source: any = {}) {
-	        return new PrintHistory(source);
+	        return new Sender(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
-	        this.printedAt = source["printedAt"];
-	        this.contactCount = source["contactCount"];
-	        this.templateId = source["templateId"];
-	        this.watermarkId = source["watermarkId"];
-	        this.qrEnabled = source["qrEnabled"];
+	        this.familyName = source["familyName"];
+	        this.givenName = source["givenName"];
+	        this.postalCode = source["postalCode"];
+	        this.prefecture = source["prefecture"];
+	        this.city = source["city"];
+	        this.street = source["street"];
+	        this.building = source["building"];
+	        this.company = source["company"];
+	        this.isDefault = source["isDefault"];
 	    }
 	}
-
-	export class DashboardStats {
-	    contactCount: number;
-	    groupCount: number;
-
-	    static createFrom(source: any = {}) {
-	        return new DashboardStats(source);
-	    }
-
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.contactCount = source["contactCount"];
-	        this.groupCount = source["groupCount"];
-	    }
-	}
+	
+	
 
 }
 

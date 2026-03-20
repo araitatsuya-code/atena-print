@@ -62,6 +62,13 @@ export default function PreviewArea() {
     }
   }, [selectedContacts.length, previewContactIndex, setPreviewContactIndex])
 
+  // 書字方向が変わったら保存済みテンプレートをリセット (縦書き用の座標を横書きに流用しない)
+  useEffect(() => {
+    if (selectedTemplate && selectedTemplate.orientation !== orientation) {
+      setSelectedTemplate(null)
+    }
+  }, [orientation, selectedTemplate, setSelectedTemplate])
+
   const safeIndex = Math.max(0, Math.min(previewContactIndex, selectedContacts.length - 1))
   const currentContact: Contact | null = selectedContacts[safeIndex] ?? null
 

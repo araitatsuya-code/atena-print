@@ -1,0 +1,9 @@
+Place Japanese TrueType font files here for better PDF rendering:
+
+  IPAGothic.ttf  — sans-serif (gothic), for nameFontFamily: "sans-serif"
+  IPAMincho.ttf  — serif (mincho),      for nameFontFamily: "serif"
+
+Download (IPA Font License, free):
+  https://moji.or.jp/ipafont/ipafontdownload/
+
+Without these files the app falls back to system fonts (Songti / STHeiti).
