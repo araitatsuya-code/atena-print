@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "ac2d99d87282",
+  "session_id": "cf16a74a-d012-46d9-8b4d-4c0458da526e",
+  "strategy": "manual-commit",
+  "created_at": "2026-03-20T06:22:06.400246Z",
+  "branch": "feat/issue37-pdf-font-fix",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "frontend/src/components/PrintConfirmDialog.tsx",
+    "internal/infrastructure/pdf/fonts/.gitkeep",
+    "internal/infrastructure/pdf/fonts/placeholder.txt",
+    "internal/infrastructure/pdf/label_pdf.go"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "7acf75221145",
+  "checkpoint_transcript_start": 720,
+  "transcript_lines_at_start": 720,
+  "token_usage": {
+    "input_tokens": 77,
+    "cache_creation_tokens": 338471,
+    "cache_read_tokens": 5777292,
+    "output_tokens": 62765,
+    "api_call_count": 55
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-03-20T06:22:05.805657Z",
+    "agent_lines": 285,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 285,
+    "agent_percentage": 100
+  }
+}

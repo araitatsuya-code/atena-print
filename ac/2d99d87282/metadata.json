@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "ac2d99d87282",
+  "strategy": "manual-commit",
+  "branch": "feat/issue37-pdf-font-fix",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "frontend/src/components/PrintConfirmDialog.tsx",
+    "internal/infrastructure/pdf/fonts/.gitkeep",
+    "internal/infrastructure/pdf/fonts/placeholder.txt",
+    "internal/infrastructure/pdf/label_pdf.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ac/2d99d87282/0/metadata.json",
+      "transcript": "/ac/2d99d87282/0/full.jsonl",
+      "context": "/ac/2d99d87282/0/context.md",
+      "content_hash": "/ac/2d99d87282/0/content_hash.txt",
+      "prompt": "/ac/2d99d87282/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 77,
+    "cache_creation_tokens": 338471,
+    "cache_read_tokens": 5777292,
+    "output_tokens": 62765,
+    "api_call_count": 55
+  }
+}
