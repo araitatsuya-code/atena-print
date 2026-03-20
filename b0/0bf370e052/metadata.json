@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "b00bf370e052",
+  "strategy": "manual-commit",
+  "branch": "feat/issue37-pdf-font-fix",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "frontend/package.json.md5"
+  ],
+  "sessions": [
+    {
+      "metadata": "/b0/0bf370e052/0/metadata.json",
+      "transcript": "/b0/0bf370e052/0/full.jsonl",
+      "context": "/b0/0bf370e052/0/context.md",
+      "content_hash": "/b0/0bf370e052/0/content_hash.txt",
+      "prompt": "/b0/0bf370e052/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 14,
+    "cache_creation_tokens": 60553,
+    "cache_read_tokens": 620341,
+    "output_tokens": 3816,
+    "api_call_count": 10
+  }
+}
