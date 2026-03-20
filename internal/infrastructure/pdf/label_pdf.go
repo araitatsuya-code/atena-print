@@ -2,6 +2,8 @@ package pdf
 
 import (
 	"bytes"
+	"embed"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -15,33 +17,74 @@ import (
 	"atena-label/internal/entity"
 )
 
+// fontFS holds font files placed under internal/infrastructure/pdf/fonts/.
+// If IPAGothic.ttf (sans-serif) and/or IPAMincho.ttf (serif) are present
+// they are used automatically, giving proper Japanese character shapes.
+// Download from https://moji.or.jp/ipafont/ipafontdownload/ (IPA Font License).
+//
+//go:embed fonts
+var fontFS embed.FS
+
 // Generator implements PDF generation using gofpdf.
 type Generator struct {
-	fontPath  string // path to a Japanese TrueType font (.ttf/.ttc)
-	fontBytes []byte // pre-loaded and validated font bytes, nil if unavailable
+	fontPath      string // serif font path
+	fontBytes     []byte // serif font bytes (nil if unavailable)
+	sansFontPath  string // sans-serif font path
+	sansFontBytes []byte // sans-serif font bytes (nil if unavailable)
 }
 
 // NewGenerator creates a Generator. Pass an empty fontPath for auto-detection.
 func NewGenerator(fontPath string) *Generator {
 	g := &Generator{}
-	if fontPath != "" {
-		fb, err := loadAndValidateFont(fontPath)
-		if err != nil {
-			log.Printf("pdf: explicit font path %q unusable (%v); falling back to system detection", fontPath, err)
-			fb, fontPath = detectAndLoadJapaneseFont()
-		}
-		g.fontPath = fontPath
-		g.fontBytes = fb
-	} else {
-		g.fontBytes, g.fontPath = detectAndLoadJapaneseFont()
+
+	// 1. Bundled fonts (fonts/ directory): proper Japanese shapes, highest priority.
+	g.fontBytes = loadBundledFontBytes("fonts/IPAMincho.ttf")
+	if g.fontBytes == nil {
+		g.fontBytes = loadBundledFontBytes("fonts/IPAGothic.ttf")
 	}
+	g.sansFontBytes = loadBundledFontBytes("fonts/IPAGothic.ttf")
+
+	// 2. Explicit font path (serif only).
+	if g.fontBytes == nil {
+		if fontPath != "" {
+			fb, err := loadAndValidateFont(fontPath)
+			if err != nil {
+				log.Printf("pdf: explicit font path %q unusable (%v); falling back to system detection", fontPath, err)
+				fb, fontPath = detectAndLoadFont(japaneseFontCandidates())
+			}
+			g.fontPath = fontPath
+			g.fontBytes = fb
+		} else {
+			g.fontBytes, g.fontPath = detectAndLoadFont(japaneseFontCandidates())
+		}
+	}
+
+	// 3. System sans-serif font if bundled font not available.
+	if g.sansFontBytes == nil {
+		g.sansFontBytes, g.sansFontPath = detectAndLoadFont(japaneseSansFontCandidates())
+	}
+
 	return g
 }
 
-// detectAndLoadJapaneseFont tries each candidate font and returns the first
-// that can be successfully used by gofpdf.
-func detectAndLoadJapaneseFont() ([]byte, string) {
-	for _, p := range japaneseFontCandidates() {
+// loadBundledFontBytes reads a font from the embedded fontFS and validates it.
+// Returns nil if the file is absent or cannot be used by gofpdf.
+func loadBundledFontBytes(name string) []byte {
+	data, err := fontFS.ReadFile(name)
+	if err != nil {
+		return nil // file not present — silently skip
+	}
+	fb, err := validateFontBytes(data, name)
+	if err != nil {
+		log.Printf("pdf: bundled font %q unusable: %v", name, err)
+		return nil
+	}
+	return fb
+}
+
+// detectAndLoadFont tries each candidate font path and returns the first usable one.
+func detectAndLoadFont(candidates []string) ([]byte, string) {
+	for _, p := range candidates {
 		fb, err := loadAndValidateFont(p)
 		if err == nil {
 			return fb, p
@@ -50,7 +93,7 @@ func detectAndLoadJapaneseFont() ([]byte, string) {
 	return nil, ""
 }
 
-// japaneseFontCandidates returns platform-specific font paths to try.
+// japaneseFontCandidates returns platform-specific serif font paths to try.
 func japaneseFontCandidates() []string {
 	switch runtime.GOOS {
 	case "darwin":
@@ -60,7 +103,6 @@ func japaneseFontCandidates() []string {
 			"/System/Library/Fonts/Supplemental/STHeiti Medium.ttc", // CJK TrueType
 			// Hiragino / Yu fonts are OpenType CFF and will be skipped automatically
 			"/System/Library/Fonts/ヒラギノ明朝 ProN.ttc",
-			"/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
 			"/Library/Fonts/YuMincho.ttc",
 		}
 	case "windows":
@@ -68,7 +110,6 @@ func japaneseFontCandidates() []string {
 			`C:\Windows\Fonts\msmincho.ttc`,
 			`C:\Windows\Fonts\YuMincho.ttc`,
 			`C:\Windows\Fonts\mingliu.ttc`,
-			`C:\Windows\Fonts\msgothic.ttc`,
 		}
 	default:
 		return []string{
@@ -79,43 +120,67 @@ func japaneseFontCandidates() []string {
 	}
 }
 
-// loadAndValidateFont reads font bytes and verifies that gofpdf can actually
-// embed the font in a PDF. Returns a meaningful error for every failure mode so
-// callers can distinguish explicit-path misconfiguration from "no font found".
-// TTC files contain absolute offsets into the container and must be extracted
-// to standalone TTF bytes before gofpdf can embed them correctly.
+// japaneseSansFontCandidates returns platform-specific sans-serif font paths to try.
+func japaneseSansFontCandidates() []string {
+	switch runtime.GOOS {
+	case "darwin":
+		return []string{
+			"/System/Library/Fonts/Supplemental/STHeiti Medium.ttc",  // CJK sans TrueType
+			"/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",             // OpenType CFF — will be skipped
+		}
+	case "windows":
+		return []string{
+			`C:\Windows\Fonts\msgothic.ttc`,
+			`C:\Windows\Fonts\YuGothM.ttc`,
+		}
+	default:
+		return []string{
+			"/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+			"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+			"/usr/share/fonts/truetype/fonts-japanese-gothic.ttf",
+		}
+	}
+}
+
+// loadAndValidateFont reads a font from disk and validates it via validateFontBytes.
 func loadAndValidateFont(path string) ([]byte, error) {
-	fontBytes, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read font %q: %w", path, err)
 	}
-	// TTC files need to be unwrapped; OpenType CFF (OTTO) is not supported by gofpdf.
+	return validateFontBytes(raw, path)
+}
+
+// validateFontBytes unwraps TTC containers, rejects CFF fonts, then verifies
+// that gofpdf can actually embed the bytes in a PDF.
+func validateFontBytes(raw []byte, label string) ([]byte, error) {
+	fontBytes := raw
 	if len(fontBytes) >= 4 {
 		switch string(fontBytes[:4]) {
 		case "ttcf":
 			extracted := extractTTFFromTTC(fontBytes)
 			if extracted == nil {
-				return nil, fmt.Errorf("font %q: TTC contains no embeddable TrueType face", path)
+				return nil, fmt.Errorf("font %q: TTC contains no embeddable TrueType face", label)
 			}
 			fontBytes = extracted
 		case "OTTO":
-			return nil, fmt.Errorf("font %q: OpenType CFF (OTTO) is not supported by gofpdf", path)
+			return nil, fmt.Errorf("font %q: OpenType CFF (OTTO) is not supported by gofpdf", label)
 		}
 	}
 	const testName = "jfont_validate"
 	testPDF := gofpdf.New("P", "mm", "A4", "")
 	testPDF.AddUTF8FontFromBytes(testName, "", fontBytes)
 	if testPDF.Error() != nil {
-		return nil, fmt.Errorf("font %q: register failed: %w", path, testPDF.Error())
+		return nil, fmt.Errorf("font %q: register failed: %w", label, testPDF.Error())
 	}
 	testPDF.AddPage()
 	testPDF.SetFont(testName, "", 10)
 	if testPDF.Error() != nil {
-		return nil, fmt.Errorf("font %q: SetFont failed: %w", path, testPDF.Error())
+		return nil, fmt.Errorf("font %q: SetFont failed: %w", label, testPDF.Error())
 	}
 	var buf bytes.Buffer
 	if err := testPDF.Output(&buf); err != nil {
-		return nil, fmt.Errorf("font %q: PDF output validation failed: %w", path, err)
+		return nil, fmt.Errorf("font %q: PDF output validation failed: %w", label, err)
 	}
 	return fontBytes, nil
 }
@@ -228,6 +293,12 @@ func extractTTCFace(ttcBytes []byte, faceIdx int) []byte {
 var japaneseCoverageChars = []rune{
 	'東', '達', '橋', '様', '際', '応', '辺', '澤', '廣', '邊',
 }
+
+// ptToMm converts typographic points to millimetres (1 pt = 25.4/72 mm ≈ 0.3528 mm).
+// Template font sizes are stored in pt; gofpdf SetFont takes pt but all coordinate
+// parameters (X, Y, cell widths/heights) are in mm — so sizes used as positions
+// must be converted.
+const ptToMm = 25.4 / 72.0
 
 // japaneseCmapScore returns the number of japaneseCoverageChars mapped in the
 // font's Unicode BMP cmap (Format 4). A higher score indicates better Japanese
@@ -363,22 +434,37 @@ func (g *Generator) GenerateLabelPDF(
 	pdf.SetAutoPageBreak(false, 0)
 	pdf.SetCompression(true)
 
-	// Register Japanese font if available.
+	// Register Japanese fonts (serif + sans-serif) if available.
 	// Use pre-validated fontBytes to avoid TTC/OTF files that register
 	// without error but fail at pdf.Output() with "undefined font".
-	const fontName = "jfont"
-	hasJFont := false
+	const (
+		serifFontName = "jfont"
+		sansFontName  = "jfont_sans"
+	)
+	hasSerifFont := false
 	if g.fontBytes != nil {
-		pdf.AddUTF8FontFromBytes(fontName, "", g.fontBytes)
+		pdf.AddUTF8FontFromBytes(serifFontName, "", g.fontBytes)
 		if pdf.Error() == nil {
-			hasJFont = true
+			hasSerifFont = true
+		}
+	}
+	hasSansFont := false
+	if g.sansFontBytes != nil {
+		pdf.AddUTF8FontFromBytes(sansFontName, "", g.sansFontBytes)
+		if pdf.Error() == nil {
+			hasSansFont = true
 		}
 	}
 
-	setFont := func(size float64) {
-		if hasJFont {
-			pdf.SetFont(fontName, "", size)
-		} else {
+	// setFont selects the appropriate registered font by family ("" or "serif" → serif, "sans-serif" → sans).
+	setFont := func(size float64, family string) {
+		useSans := family == "sans-serif" && hasSansFont
+		switch {
+		case useSans:
+			pdf.SetFont(sansFontName, "", size)
+		case hasSerifFont:
+			pdf.SetFont(serifFontName, "", size)
+		default:
 			pdf.SetFont("Courier", "", size)
 		}
 	}
@@ -406,6 +492,25 @@ func (g *Generator) GenerateLabelPDF(
 		}
 	}
 
+	// Pre-register watermark image from base64 data URL (set by frontend before printing).
+	// For preset watermarks the frontend renders an emoji canvas to PNG and sets FilePath to
+	// "data:image/png;base64,…"; for custom watermarks FilePath already contains a data URL.
+	var wmKey, wmImgType string
+	if job.Watermark != nil && strings.HasPrefix(job.Watermark.FilePath, "data:") {
+		parts := strings.SplitN(job.Watermark.FilePath, ",", 2)
+		if len(parts) == 2 {
+			imgBytes, err := base64.StdEncoding.DecodeString(parts[1])
+			if err == nil {
+				wmKey = "wm_img"
+				wmImgType = "PNG"
+				if strings.Contains(parts[0], "jpeg") || strings.Contains(parts[0], "jpg") {
+					wmImgType = "JPG"
+				}
+				pdf.RegisterImageOptionsReader(wmKey, gofpdf.ImageOptions{ImageType: wmImgType}, bytes.NewReader(imgBytes))
+			}
+		}
+	}
+
 	for i, contact := range contacts {
 		if i%labelsPerPage == 0 {
 			pdf.AddPage()
@@ -418,12 +523,13 @@ func (g *Generator) GenerateLabelPDF(
 		originX := layout.MarginLeft + float64(col)*(layout.LabelWidth+layout.GapX) + layout.OffsetX
 		originY := layout.MarginTop + float64(row)*(layout.LabelHeight+layout.GapY) + layout.OffsetY
 
-		// Watermark background.
-		if job.Watermark != nil && job.Watermark.FilePath != "" {
+		// Watermark background (base64 data URL pre-registered above, or file path fallback).
+		if wmKey != "" {
+			pdf.ImageOptions(wmKey, originX, originY, layout.LabelWidth, layout.LabelHeight, false, gofpdf.ImageOptions{ImageType: wmImgType}, 0, "")
+		} else if job.Watermark != nil && job.Watermark.FilePath != "" {
 			if _, err := os.Stat(job.Watermark.FilePath); err == nil {
 				imgType := imageType(job.Watermark.FilePath)
-				opts := gofpdf.ImageOptions{ImageType: imgType}
-				pdf.ImageOptions(job.Watermark.FilePath, originX, originY, layout.LabelWidth, layout.LabelHeight, false, opts, 0, "")
+				pdf.ImageOptions(job.Watermark.FilePath, originX, originY, layout.LabelWidth, layout.LabelHeight, false, gofpdf.ImageOptions{ImageType: imgType}, 0, "")
 			}
 		}
 
@@ -486,7 +592,7 @@ func drawQR(pdf *gofpdf.Fpdf, qr *entity.QRConfig, pngBytes []byte, originX, ori
 // drawLabel renders postal code, recipient and sender onto a single label cell.
 func drawLabel(
 	pdf *gofpdf.Fpdf,
-	setFont func(float64),
+	setFont func(float64, string),
 	contact *entity.Contact,
 	sender *entity.Sender,
 	tmpl entity.Template,
@@ -497,12 +603,12 @@ func drawLabel(
 	// ── 郵便番号 ────────────────────────────────────────────────────────────
 	// アプリプレビューと同様に〒マーク＋"NNN-NNNN"形式で1文字ずつ描画する。
 	if tmpl.PostalCode != nil && contact.PostalCode != "" {
-		setFont(tmpl.PostalCode.FontSize)
+		setFont(tmpl.PostalCode.FontSize, tmpl.PostalCode.FontFamily)
 		spacing := tmpl.PostalCode.DigitSpacing
 		if spacing <= 0 {
 			spacing = 4
 		}
-		cellH := tmpl.PostalCode.FontSize * 0.4
+		cellH := tmpl.PostalCode.FontSize * ptToMm * 1.3
 		baseX := ox + tmpl.PostalCode.X
 		baseY := oy + tmpl.PostalCode.Y
 
@@ -569,30 +675,34 @@ func drawLabel(
 	}
 
 	if tmpl.Orientation == "vertical" {
-		setFont(rec.NameFont)
-		xOff := ox + rec.NameX
-		for _, line := range nameLines {
-			drawVerticalText(pdf, line, xOff, oy+rec.NameY, rec.NameFont)
-			xOff -= rec.NameFont * 0.5 // 次カラムは左へ
-		}
+		// 縦書き: プレビュー drawVerticalBlock と同じ右端基準・列幅
+		setFont(rec.NameFont, rec.NameFontFamily)
+		nameFontMm := rec.NameFont * ptToMm
+		// プレビューと同じ列順: [敬称(最右列), 氏名]
+		drawVerticalBlockPDF(pdf, []string{honorific, contact.FamilyName + contact.GivenName},
+			ox+rec.NameX, oy+rec.NameY, nameFontMm)
 
-		setFont(rec.AddressFont)
-		colW := rec.AddressFont * 0.5 // 縦書きカラム幅
-		xOff = ox + rec.AddressX
-		for _, line := range addrLines {
-			drawVerticalText(pdf, line, xOff, oy+rec.AddressY, rec.AddressFont)
-			xOff -= colW
+		setFont(rec.AddressFont, rec.AddressFontFamily)
+		addrFontMm := rec.AddressFont * ptToMm
+		// 縦書き住所は数字を漢数字に変換 (プレビュー convertNumbers=true と一致)
+		var kanjiAddrLines []string
+		for _, l := range addrLines {
+			kanjiAddrLines = append(kanjiAddrLines, toKanjiNumerals(l))
 		}
+		drawVerticalBlockPDF(pdf, kanjiAddrLines, ox+rec.AddressX, oy+rec.AddressY, addrFontMm)
 	} else {
-		setFont(rec.NameFont)
-		nameLineH := rec.NameFont * 0.5
+		// 横書き: 行高をプレビューと同じ pt→mm 変換で計算
+		setFont(rec.NameFont, rec.NameFontFamily)
+		nameFontMm := rec.NameFont * ptToMm
+		nameLineH := nameFontMm * 1.4 // プレビューの nameFont は単一行なので余裕を持たせる
 		for i, line := range nameLines {
 			pdf.SetXY(ox+rec.NameX, oy+rec.NameY+float64(i)*nameLineH)
 			pdf.CellFormat(0, nameLineH, line, "", 0, "L", false, 0, "")
 		}
 
-		setFont(rec.AddressFont)
-		addrLineH := rec.AddressFont * 0.55
+		setFont(rec.AddressFont, rec.AddressFontFamily)
+		addrFontMm := rec.AddressFont * ptToMm
+		addrLineH := addrFontMm * 1.5 // プレビューの lineH = addrFontPx * 1.5 と一致
 		for i, line := range addrLines {
 			pdf.SetXY(ox+rec.AddressX, oy+rec.AddressY+float64(i)*addrLineH)
 			pdf.CellFormat(0, addrLineH, line, "", 0, "L", false, 0, "")
@@ -604,14 +714,49 @@ func drawLabel(
 	_ = sender
 }
 
-// drawVerticalText places each rune top-to-bottom in a single column.
-func drawVerticalText(pdf *gofpdf.Fpdf, text string, x, y, fontSize float64) {
-	charW := fontSize * 0.45
-	lineH := fontSize * 0.48
-	for i, ch := range text {
-		pdf.SetXY(x, y+float64(i)*lineH)
-		pdf.CellFormat(charW, lineH, string(ch), "", 0, "C", false, 0, "")
+// drawVerticalBlockPDF renders lines of text as vertical columns, matching the
+// preview's drawVerticalBlock semantics:
+//   - lines[0] = rightmost column, lines[1] = next to the left, …
+//   - rightX  = right edge of the entire block (in mm, relative to page origin)
+//   - topY    = top of the block (mm)
+//   - fontMm  = font size converted to mm (pt * ptToMm)
+func drawVerticalBlockPDF(pdf *gofpdf.Fpdf, lines []string, rightX, topY, fontMm float64) {
+	colGap := fontMm * 0.2  // matches preview: columnGap = fontSize * 0.2
+	colW := fontMm + colGap // = fontMm * 1.2
+	charH := fontMm * 1.05  // matches preview: cellHeight = fontSize * (1 + charGap=0.05)
+
+	for i, line := range lines {
+		if line == "" {
+			continue
+		}
+		// Column center, same formula as preview:
+		//   colCenterX = rightX - fontSize/2 - colWidth * i
+		centerX := rightX - fontMm/2.0 - colW*float64(i)
+		leftX := centerX - fontMm/2.0
+		for j, ch := range line {
+			pdf.SetXY(leftX, topY+float64(j)*charH)
+			pdf.CellFormat(fontMm, charH, string(ch), "", 0, "C", false, 0, "")
+		}
 	}
+}
+
+// arabicToKanji maps ASCII digits to kanji numerals for vertical-text address rendering,
+// matching the preview's convertNumbers=true behaviour.
+var arabicToKanji = map[rune]string{
+	'0': "〇", '1': "一", '2': "二", '3': "三", '4': "四",
+	'5': "五", '6': "六", '7': "七", '8': "八", '9': "九",
+}
+
+func toKanjiNumerals(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if k, ok := arabicToKanji[r]; ok {
+			b.WriteString(k)
+		} else {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 func buildAddress(c *entity.Contact) string {

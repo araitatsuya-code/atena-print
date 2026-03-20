@@ -13,6 +13,55 @@ interface Props {
   onClose: () => void
 }
 
+/** プリセット透かし絵文字マップ (WatermarkLayer と同じ定義) */
+const PRESET_EMOJIS: Record<string, string> = {
+  sakura: '🌸',
+  wave: '🌊',
+  bamboo: '🎋',
+  fuji: '🗻',
+  crane: '🦢',
+}
+
+/**
+ * 透かしをオフスクリーン canvas にレンダリングして base64 PNG data URL を返す。
+ * - preset: 絵文字タイルパターンを描画
+ * - custom: filePath が既に data URL のためそのまま返す
+ */
+async function renderWatermarkToDataURL(
+  wm: { type: string; id: string; filePath: string; opacity: number },
+  widthMm: number,
+  heightMm: number,
+): Promise<string> {
+  if (wm.type === 'custom' && wm.filePath) {
+    return wm.filePath // already a data URL
+  }
+  const emoji = PRESET_EMOJIS[wm.id]
+  if (!emoji) return ''
+
+  const pxPerMm = 3
+  const w = Math.round(widthMm * pxPerMm)
+  const h = Math.round(heightMm * pxPerMm)
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')!
+  ctx.globalAlpha = wm.opacity
+  const fontSize = 24
+  ctx.font = `${fontSize}px sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  const step = Math.round(fontSize * 2.2)
+  let row = 0
+  for (let y = fontSize; y < h + fontSize; y += step) {
+    const xStart = row % 2 === 0 ? fontSize : fontSize + step / 2
+    for (let x = xStart; x < w + fontSize; x += step) {
+      ctx.fillText(emoji, x, y)
+    }
+    row++
+  }
+  return canvas.toDataURL('image/png')
+}
+
 export default function PrintConfirmDialog({ onClose }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,7 +102,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
 
   const paperLabel = `${layout.paperWidth}×${layout.paperHeight}mm (${layout.columns}列×${layout.rows}行)`
 
-  function buildJob(): entity.PrintJob {
+  async function buildJob(): Promise<entity.PrintJob> {
     const defaultTpl = orientation === 'horizontal' ? DEFAULT_TEMPLATE_HORIZONTAL : DEFAULT_TEMPLATE
     const tpl = selectedTemplate
       ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
@@ -69,12 +118,21 @@ export default function PrintConfirmDialog({ onClose }: Props) {
       ids = filled.slice(0, labelsPerPage)
     }
 
+    // 透かしを PDF 用 base64 PNG に変換（プリセットは canvas レンダリング、カスタムは既存 data URL）
+    let wmValue: typeof watermark = watermark
+    if (watermark && watermark.id !== 'none') {
+      const dataUrl = await renderWatermarkToDataURL(watermark, layout.labelWidth, layout.labelHeight)
+      if (dataUrl) {
+        wmValue = { ...watermark, filePath: dataUrl }
+      }
+    }
+
     return entity.PrintJob.createFrom({
       contactIds: ids,
       template: tpl,
       senderId: selectedSenderId,
       labelLayout: layout,
-      watermark: watermark ?? undefined,
+      watermark: wmValue ?? undefined,
       qrConfig: qrConfig.enabled ? qrConfig : undefined,
       showBorder,
     })
@@ -97,14 +155,14 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     return run(async () => {
       const savePath = await SavePDFFileDialog('ラベル.pdf')
       if (!savePath) return
-      await GenerateLabelPDF(buildJob(), savePath)
+      await GenerateLabelPDF(await buildJob(), savePath)
     })
   }
 
   function handlePrint() {
     return run(async () => {
       const tmpPath = await GetTempPDFPath()
-      const outPath = await GenerateLabelPDF(buildJob(), tmpPath)
+      const outPath = await GenerateLabelPDF(await buildJob(), tmpPath)
       await PrintPDF(outPath)
     })
   }
