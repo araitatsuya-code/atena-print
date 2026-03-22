@@ -79,16 +79,49 @@ interface LabelCanvasProps {
   zoom?: number
 }
 
+export interface PreviewCanvasMetrics {
+  pxPerMm: number
+  canvasW: number
+  canvasH: number
+}
+
+/**
+ * プレビュー（UI）用の寸法計算。
+ * LabelCanvas/回帰テストで共通使用し、UI の実寸算出を固定化する。
+ */
+export function computePreviewCanvasMetrics(template: Template, zoom = 1): PreviewCanvasMetrics {
+  const pxPerMm = MM_TO_PX * zoom
+  return {
+    pxPerMm,
+    canvasW: Math.round(template.labelWidth * pxPerMm),
+    canvasH: Math.round(template.labelHeight * pxPerMm),
+  }
+}
+
+/**
+ * UI プレビューのテキスト描画エントリポイント。
+ * LabelCanvas と一致性回帰テストで共通使用する。
+ */
+export function renderPreviewLabelTextLayer(
+  ctx: CanvasRenderingContext2D,
+  contact: Contact,
+  template: Template,
+  pxPerMm: number,
+): void {
+  renderLabelTextLayer(ctx, contact, template, {
+    pxPerMm,
+    showBackground: true,
+    showBorder: true,
+  })
+}
+
 export default function LabelCanvas({
   contact,
   template = DEFAULT_TEMPLATE,
   zoom = 1,
 }: LabelCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const pxPerMm = MM_TO_PX * zoom
-
-  const canvasW = Math.round(template.labelWidth * pxPerMm)
-  const canvasH = Math.round(template.labelHeight * pxPerMm)
+  const { pxPerMm, canvasW, canvasH } = computePreviewCanvasMetrics(template, zoom)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -104,11 +137,7 @@ export default function LabelCanvas({
     canvas.style.height = `${canvasH}px`
     ctx.scale(dpr, dpr)
 
-    renderLabelTextLayer(ctx, contact, template, {
-      pxPerMm,
-      showBackground: true,
-      showBorder: true,
-    })
+    renderPreviewLabelTextLayer(ctx, contact, template, pxPerMm)
   }, [contact, template, pxPerMm, canvasW, canvasH])
 
   return (
