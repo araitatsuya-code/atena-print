@@ -10,6 +10,13 @@ import WatermarkLayer from './WatermarkLayer'
 import QROverlay from './QROverlay'
 import { useLabelStore } from '../../stores/labelStore'
 import type { Contact, Template, Watermark, QRConfig } from '../../types'
+import {
+  applyBold,
+  applyFontDelta,
+  applyFontFamily,
+  buildEditableBoxes,
+  type EditableFieldId,
+} from './labelEditorTemplate'
 
 /** 1mm あたりのピクセル数 (96 dpi 基準) — LabelCanvas と同じ定数 */
 const MM_TO_PX = 96 / 25.4
@@ -88,6 +95,8 @@ export default function PreviewArea() {
 
   // グリッド表示フラグ (ローカル状態)
   const [showGrid, setShowGrid] = useState(false)
+  // フォント編集対象フィールド
+  const [selectedFieldId, setSelectedFieldId] = useState<EditableFieldId | null>(null)
 
   // ── 背景ドラッグ: 印刷位置補正オフセット ─────────────────────────────────
 
@@ -147,70 +156,176 @@ export default function PreviewArea() {
   // ツールバー表示: ドラッグ中はライブ値、それ以外はストアの値
   const displayOffset = dragLive ?? { x: layout.offsetX, y: layout.offsetY }
   const hasOffset = displayOffset.x !== 0 || displayOffset.y !== 0
+  const editableBoxes = buildEditableBoxes(template)
+  const selectedBox = editableBoxes.find((box) => box.id === selectedFieldId) ?? null
+
+  useEffect(() => {
+    if (editableBoxes.length === 0) {
+      if (selectedFieldId !== null) setSelectedFieldId(null)
+      return
+    }
+    if (selectedFieldId && editableBoxes.some((box) => box.id === selectedFieldId)) return
+    setSelectedFieldId(editableBoxes[0].id)
+  }, [editableBoxes, selectedFieldId])
+
+  function updateSelectedField(
+    updater: (tpl: Template, fieldId: EditableFieldId) => Template,
+  ) {
+    if (!selectedFieldId) return
+    handleTemplateChange(updater(template, selectedFieldId))
+  }
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#f0f0f0]">
       {/* ツールバー */}
-      <div className="flex items-center gap-3 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
-        <span className="text-sm font-medium text-gray-700 mr-auto">
-          {template.name}
-          {selectedContacts.length > 0 && (
-            <span className="ml-2 text-xs text-gray-400">
-              {safeIndex + 1} / {selectedContacts.length} 件
-            </span>
+      <div className="bg-white border-b border-gray-200 shrink-0">
+        <div className="flex items-center gap-3 px-4 py-2">
+          <span className="text-sm font-medium text-gray-700 mr-auto">
+            {template.name}
+            {selectedContacts.length > 0 && (
+              <span className="ml-2 text-xs text-gray-400">
+                {safeIndex + 1} / {selectedContacts.length} 件
+              </span>
+            )}
+          </span>
+          {/* オフセット表示 */}
+          {currentContact && hasOffset && (
+            <div className="flex items-center gap-1 text-xs text-amber-600">
+              <span>
+                補正: X {displayOffset.x.toFixed(1)} / Y {displayOffset.y.toFixed(1)} mm
+              </span>
+              <button
+                onClick={resetOffset}
+                className="underline hover:text-amber-800"
+                title="補正を初期値に戻す"
+              >
+                リセット
+              </button>
+            </div>
           )}
-        </span>
-        {/* オフセット表示 */}
-        {currentContact && hasOffset && (
-          <div className="flex items-center gap-1 text-xs text-amber-600">
-            <span>
-              補正: X {displayOffset.x.toFixed(1)} / Y {displayOffset.y.toFixed(1)} mm
-            </span>
+          {/* グリッドトグル */}
+          <button
+            onClick={() => setShowGrid((v) => !v)}
+            className={`px-2 py-1 text-xs rounded border transition-colors ${
+              showGrid
+                ? 'bg-slate-600 text-white border-slate-600'
+                : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+            }`}
+            title="グリッド表示切り替え (5mm)"
+          >
+            グリッド
+          </button>
+          {/* ズームコントロール */}
+          <div className="flex items-center gap-1">
             <button
-              onClick={resetOffset}
-              className="underline hover:text-amber-800"
-              title="補正を初期値に戻す"
+              onClick={zoomOut}
+              disabled={zoom <= ZOOM_MIN}
+              className="px-2 py-1 text-sm rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-40"
+              aria-label="ズームアウト"
             >
-              リセット
+              −
+            </button>
+            <button
+              onClick={zoomReset}
+              className="px-3 py-1 text-xs rounded border border-gray-300 hover:bg-gray-100 min-w-[52px] text-center"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              onClick={zoomIn}
+              disabled={zoom >= ZOOM_MAX}
+              className="px-2 py-1 text-sm rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-40"
+              aria-label="ズームイン"
+            >
+              ＋
             </button>
           </div>
-        )}
-        {/* グリッドトグル */}
-        <button
-          onClick={() => setShowGrid((v) => !v)}
-          className={`px-2 py-1 text-xs rounded border transition-colors ${
-            showGrid
-              ? 'bg-slate-600 text-white border-slate-600'
-              : 'border-gray-300 text-gray-600 hover:bg-gray-100'
-          }`}
-          title="グリッド表示切り替え (5mm)"
-        >
-          グリッド
-        </button>
-        {/* ズームコントロール */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={zoomOut}
-            disabled={zoom <= ZOOM_MIN}
-            className="px-2 py-1 text-sm rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-40"
-            aria-label="ズームアウト"
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-t border-gray-100 bg-gray-50">
+          <span className="text-xs font-medium text-gray-700">文字設定</span>
+          <select
+            value={selectedFieldId ?? ''}
+            onChange={(e) => setSelectedFieldId(e.target.value as EditableFieldId)}
+            disabled={!currentContact || editableBoxes.length === 0}
+            className="h-8 min-w-[140px] rounded border border-gray-300 bg-white px-2 text-xs text-gray-700 disabled:opacity-40"
           >
-            −
-          </button>
+            {editableBoxes.length === 0 && <option value="">編集項目なし</option>}
+            {editableBoxes.map((box) => (
+              <option key={box.id} value={box.id}>
+                {box.label}
+              </option>
+            ))}
+          </select>
+
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-500">サイズ</span>
+            <button
+              onClick={() => updateSelectedField((tpl, id) => applyFontDelta(tpl, id, -0.5))}
+              disabled={!selectedBox}
+              className="h-8 w-8 rounded border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+              title="文字サイズを小さくする"
+            >
+              −
+            </button>
+            <span className="h-8 min-w-[60px] rounded border border-gray-300 bg-white px-2 text-xs text-gray-700 inline-flex items-center justify-center">
+              {selectedBox ? `${selectedBox.fontPt} pt` : '---'}
+            </span>
+            <button
+              onClick={() => updateSelectedField((tpl, id) => applyFontDelta(tpl, id, 0.5))}
+              disabled={!selectedBox}
+              className="h-8 w-8 rounded border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+              title="文字サイズを大きくする"
+            >
+              ＋
+            </button>
+          </div>
+
+          <div className="flex items-center rounded border border-gray-300 overflow-hidden">
+            <button
+              onClick={() => updateSelectedField((tpl, id) => applyFontFamily(tpl, id, 'serif'))}
+              disabled={!selectedBox}
+              className={`h-8 px-3 text-xs transition-colors ${
+                selectedBox?.fontFamily === 'serif'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              } disabled:opacity-40`}
+              title="明朝体"
+            >
+              明朝
+            </button>
+            <button
+              onClick={() =>
+                updateSelectedField((tpl, id) => applyFontFamily(tpl, id, 'sans-serif'))
+              }
+              disabled={!selectedBox}
+              className={`h-8 px-3 text-xs border-l border-gray-300 transition-colors ${
+                selectedBox?.fontFamily === 'sans-serif'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              } disabled:opacity-40`}
+              title="ゴシック体"
+            >
+              ゴシック
+            </button>
+          </div>
+
           <button
-            onClick={zoomReset}
-            className="px-3 py-1 text-xs rounded border border-gray-300 hover:bg-gray-100 min-w-[52px] text-center"
+            onClick={() => updateSelectedField((tpl, id) => applyBold(tpl, id, !selectedBox?.bold))}
+            disabled={!selectedBox}
+            className={`h-8 px-3 rounded border text-xs transition-colors ${
+              selectedBox?.bold
+                ? 'bg-slate-700 border-slate-700 text-white'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-100'
+            } disabled:opacity-40`}
+            title="太字切替"
           >
-            {Math.round(zoom * 100)}%
+            太字
           </button>
-          <button
-            onClick={zoomIn}
-            disabled={zoom >= ZOOM_MAX}
-            className="px-2 py-1 text-sm rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-40"
-            aria-label="ズームイン"
-          >
-            ＋
-          </button>
+
+          <span className="text-[11px] text-gray-500">
+            項目を選んでフォント調整。位置はプレビュー上でドラッグ。
+          </span>
         </div>
       </div>
 
@@ -250,6 +365,8 @@ export default function PreviewArea() {
               <LabelEditorOverlay
                 template={template}
                 zoom={zoom}
+                selectedFieldId={selectedFieldId}
+                onSelectField={setSelectedFieldId}
                 onTemplateChange={handleTemplateChange}
               />
             </div>
