@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react'
 import type { Contact, Template } from '../../types'
-import { drawVerticalBlock } from '../../lib/verticalText'
+import { MM_TO_PX_AT_96_DPI, renderLabelTextLayer } from '../../lib/labelRenderer'
 
 /** 1mm あたりのピクセル数 (96 dpi 基準) */
-const MM_TO_PX = 96 / 25.4 // ≈ 3.78
+const MM_TO_PX = MM_TO_PX_AT_96_DPI // ≈ 3.78
 
 /**
  * デフォルトテンプレート: A4 12面ラベル (86.4×42.3mm) 縦書き
@@ -72,25 +72,6 @@ export const DEFAULT_TEMPLATE_HORIZONTAL: Template = {
   },
 }
 
-/** 郵便番号を "NNN-NNNN" 形式に整形する */
-function formatPostalCode(raw: string): string {
-  const digits = raw.replace(/\D/g, '')
-  if (digits.length === 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`
-  return raw
-}
-
-/** px 変換ヘルパー */
-function mm(value: number, scale: number): number {
-  return value * MM_TO_PX * scale
-}
-
-/** フォントファミリー文字列を返す */
-function resolveFontFamily(family?: 'serif' | 'sans-serif', fallback: 'serif' | 'sans-serif' = 'serif'): string {
-  return (family ?? fallback) === 'sans-serif'
-    ? '"Hiragino Kaku Gothic ProN", "Meiryo", sans-serif'
-    : '"Hiragino Mincho ProN", "Yu Mincho", "MS PMincho", serif'
-}
-
 interface LabelCanvasProps {
   contact: Contact
   template?: Template
@@ -104,9 +85,10 @@ export default function LabelCanvas({
   zoom = 1,
 }: LabelCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const pxPerMm = MM_TO_PX * zoom
 
-  const canvasW = Math.round(mm(template.labelWidth, zoom))
-  const canvasH = Math.round(mm(template.labelHeight, zoom))
+  const canvasW = Math.round(template.labelWidth * pxPerMm)
+  const canvasH = Math.round(template.labelHeight * pxPerMm)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -122,8 +104,12 @@ export default function LabelCanvas({
     canvas.style.height = `${canvasH}px`
     ctx.scale(dpr, dpr)
 
-    renderLabel(ctx, contact, template, zoom)
-  }, [contact, template, zoom, canvasW, canvasH])
+    renderLabelTextLayer(ctx, contact, template, {
+      pxPerMm,
+      showBackground: true,
+      showBorder: true,
+    })
+  }, [contact, template, pxPerMm, canvasW, canvasH])
 
   return (
     <canvas
@@ -132,156 +118,4 @@ export default function LabelCanvas({
       className="shadow-sm"
     />
   )
-}
-
-function renderLabel(
-  ctx: CanvasRenderingContext2D,
-  contact: Contact,
-  tpl: Template,
-  zoom: number,
-): void {
-  const s = zoom // スケール係数 (zoom のみ。MM_TO_PX は mm() 内で適用済み)
-  const W = mm(tpl.labelWidth, s)
-  const H = mm(tpl.labelHeight, s)
-
-  // ─── 背景 ───────────────────────────────────────────────
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, W, H)
-
-  // ─── 外枠 ───────────────────────────────────────────────
-  ctx.strokeStyle = '#d1d5db'
-  ctx.lineWidth = 0.5
-  ctx.strokeRect(0.5, 0.5, W - 1, H - 1)
-
-  // ─── 郵便番号 ────────────────────────────────────────────
-  if (tpl.postalCode && contact.postalCode) {
-    const pc = tpl.postalCode
-    const fontSize = mm(pc.fontSize / 2.835, s) // pt → mm → px (1pt≈0.353mm)
-    const spacing = mm(pc.digitSpacing, s)
-    const startX = mm(pc.x, s)
-    const baseY = mm(pc.y, s)
-
-    ctx.fillStyle = '#111827'
-    const pcWeight = pc.bold ? 'bold' : 'normal'
-    ctx.font = `${pcWeight} ${fontSize}px ${resolveFontFamily(pc.fontFamily, 'sans-serif')}`
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'top'
-
-    // 〒マーク
-    ctx.fillText('〒', startX - spacing * 0.3, baseY)
-
-    const digits = contact.postalCode.replace(/\D/g, '')
-    const formatted = formatPostalCode(digits)
-    // ハイフン込みで1文字ずつ等間隔に描画
-    let ox = startX + spacing * 0.5
-    for (const ch of formatted) {
-      ctx.fillText(ch, ox, baseY)
-      ox += ch === '-' ? spacing * 0.5 : spacing
-    }
-  }
-
-  if (tpl.orientation === 'horizontal') {
-    renderHorizontalLabel(ctx, contact, tpl, s)
-  } else {
-    renderVerticalLabel(ctx, contact, tpl, s)
-  }
-}
-
-/** 縦書きラベルの宛先・差出人描画 */
-function renderVerticalLabel(
-  ctx: CanvasRenderingContext2D,
-  contact: Contact,
-  tpl: Template,
-  s: number,
-): void {
-  // ─── 宛先 氏名 ───────────────────────────────────────────
-  {
-    const rc = tpl.recipient
-    const nameFontPx = mm(rc.nameFont / 2.835, s)
-    const name = `${contact.familyName}${contact.givenName}`
-    const honorific = contact.honorific || '様'
-
-    ctx.fillStyle = '#111827'
-    const nameWeight = rc.nameBold ? 'bold' : 'normal'
-    ctx.font = `${nameWeight} ${nameFontPx}px ${resolveFontFamily(rc.nameFontFamily)}`
-
-    // 氏名: 右端カラム、敬称は独立した右隣カラム
-    drawVerticalBlock({
-      ctx,
-      lines: [honorific, name],
-      rightX: mm(rc.nameX, s),
-      topY: mm(rc.nameY, s),
-      fontSize: nameFontPx,
-      convertNumbers: false,
-    })
-  }
-
-  // ─── 宛先 住所 ───────────────────────────────────────────
-  {
-    const rc = tpl.recipient
-    const addrFontPx = mm(rc.addressFont / 2.835, s)
-
-    // 住所を2列に分割: 都道府県+市区町村 / 番地+建物名
-    const addrLine1 = `${contact.prefecture}${contact.city}`
-    const addrLine2 = `${contact.street}${contact.building ? `　${contact.building}` : ''}`
-
-    ctx.fillStyle = '#111827'
-    const addrWeight = rc.addressBold ? 'bold' : 'normal'
-    ctx.font = `${addrWeight} ${addrFontPx}px ${resolveFontFamily(rc.addressFontFamily)}`
-
-    drawVerticalBlock({
-      ctx,
-      lines: [addrLine1, addrLine2].filter(Boolean),
-      rightX: mm(rc.addressX, s),
-      topY: mm(rc.addressY, s),
-      fontSize: addrFontPx,
-      convertNumbers: true,
-    })
-  }
-}
-
-/** 横書きラベルの宛先・差出人描画 */
-function renderHorizontalLabel(
-  ctx: CanvasRenderingContext2D,
-  contact: Contact,
-  tpl: Template,
-  s: number,
-): void {
-  // ─── 宛先 氏名 ───────────────────────────────────────────
-  {
-    const rc = tpl.recipient
-    const nameFontPx = mm(rc.nameFont / 2.835, s)
-    const honorific = contact.honorific || '様'
-    const fullName = `${contact.familyName}${contact.givenName}　${honorific}`
-
-    ctx.fillStyle = '#111827'
-    ctx.font = `${rc.nameBold ? 'bold' : 'normal'} ${nameFontPx}px ${resolveFontFamily(rc.nameFontFamily)}`
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'top'
-    ctx.fillText(fullName, mm(rc.nameX, s), mm(rc.nameY, s))
-  }
-
-  // ─── 宛先 住所 ───────────────────────────────────────────
-  {
-    const rc = tpl.recipient
-    const addrFontPx = mm(rc.addressFont / 2.835, s)
-    const lineH = addrFontPx * 1.5
-
-    const addrLines = [
-      `${contact.prefecture}${contact.city}`,
-      `${contact.street}${contact.building ? `　${contact.building}` : ''}`,
-    ].filter(Boolean)
-
-    ctx.fillStyle = '#111827'
-    ctx.font = `${rc.addressBold ? 'bold' : 'normal'} ${addrFontPx}px ${resolveFontFamily(rc.addressFontFamily)}`
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'top'
-
-    addrLines.forEach((line, i) => {
-      ctx.fillText(line, mm(rc.addressX, s), mm(rc.addressY, s) + i * lineH)
-    })
-  }
-
-  // ─── 差出人エリアは将来 Sender エンティティで置き換える ──────
-  // 仕様: 差出人は別エンティティなので、ここでは表示領域の余白のみ確保
 }

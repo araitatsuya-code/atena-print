@@ -1,16 +1,9 @@
 import { useEffect, useRef } from 'react'
 import type { Watermark } from '../../types'
+import { MM_TO_PX_AT_96_DPI } from '../../lib/labelRenderer'
+import { renderWatermarkLayer } from '../../lib/watermarkRenderer'
 
-const MM_TO_PX = 96 / 25.4
-
-/** プリセット透かし絵文字マップ */
-const PRESET_EMOJIS: Record<string, string> = {
-  sakura: '🌸',
-  wave: '🌊',
-  bamboo: '🎋',
-  fuji: '🗻',
-  crane: '🦢',
-}
+const MM_TO_PX = MM_TO_PX_AT_96_DPI
 
 interface WatermarkLayerProps {
   watermark: Watermark | null
@@ -43,33 +36,16 @@ export default function WatermarkLayer({
     canvas.style.height = `${canvasH}px`
     ctx.scale(dpr, dpr)
 
-    ctx.clearRect(0, 0, canvasW, canvasH)
-
-    if (!watermark || watermark.id === 'none') return
-
-    ctx.globalAlpha = watermark.opacity
-
-    if (watermark.type === 'preset') {
-      const emoji = PRESET_EMOJIS[watermark.id]
-      if (emoji) {
-        drawEmojiPattern(ctx, emoji, canvasW, canvasH, zoom)
-      }
-    } else if (watermark.type === 'custom' && watermark.filePath) {
-      const img = new Image()
-      const opacity = watermark.opacity
-
-      img.onload = () => {
-        ctx.globalAlpha = opacity
-        // ラベル全体に引き伸ばして描画
-        ctx.drawImage(img, 0, 0, canvasW, canvasH)
-      }
-      img.src = watermark.filePath
-
-      return () => {
-        img.onload = null
-        img.src = ''
-      }
-    }
+    void renderWatermarkLayer({
+      ctx,
+      watermark,
+      widthPx: canvasW,
+      heightPx: canvasH,
+      renderScale: zoom,
+      clear: true,
+    }).catch(() => {
+      // 画像ロード失敗時は描画をスキップ
+    })
   }, [watermark, canvasW, canvasH, zoom])
 
   return (
@@ -79,30 +55,4 @@ export default function WatermarkLayer({
       style={{ width: canvasW, height: canvasH }}
     />
   )
-}
-
-/** 絵文字をタイル状に描画する */
-function drawEmojiPattern(
-  ctx: CanvasRenderingContext2D,
-  emoji: string,
-  w: number,
-  h: number,
-  zoom: number,
-) {
-  const fontSize = Math.round(18 * zoom)
-  ctx.font = `${fontSize}px sans-serif`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-
-  const step = Math.round(fontSize * 2.2)
-  const offsetX = step / 2
-
-  let row = 0
-  for (let y = fontSize; y < h + fontSize; y += step) {
-    const xStart = row % 2 === 0 ? fontSize : fontSize + offsetX
-    for (let x = xStart; x < w + fontSize; x += step) {
-      ctx.fillText(emoji, x, y)
-    }
-    row++
-  }
 }

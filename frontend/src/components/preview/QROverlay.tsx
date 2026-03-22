@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
-import QRCode from 'qrcode'
 import type { QRConfig } from '../../types'
+import { MM_TO_PX_AT_96_DPI } from '../../lib/labelRenderer'
+import { renderQRLayer } from '../../lib/qrRenderer'
 
-const MM_TO_PX = 96 / 25.4
+const MM_TO_PX = MM_TO_PX_AT_96_DPI
 
 interface QROverlayProps {
   qrConfig: QRConfig
@@ -35,38 +36,16 @@ export default function QROverlay({
     canvas.style.height = `${canvasH}px`
     ctx.scale(dpr, dpr)
 
-    ctx.clearRect(0, 0, canvasW, canvasH)
-
-    if (!qrConfig.enabled || !qrConfig.content) return
-
-    let cancelled = false
-
-    const qrSize = Math.round(qrConfig.size * zoom)
-    const padding = Math.round(4 * zoom)
-    const { x, y } = resolvePosition(qrConfig.position, canvasW, canvasH, qrSize, padding)
-
-    // 一時 canvas に QR を描画してから貼り付け
-    const tmpCanvas = document.createElement('canvas')
-    QRCode.toCanvas(tmpCanvas, qrConfig.content, {
-      width: qrSize,
-      margin: 1,
-      color: { dark: '#000000', light: '#ffffff' },
+    void renderQRLayer({
+      ctx,
+      qrConfig,
+      widthPx: canvasW,
+      heightPx: canvasH,
+      renderScale: zoom,
+      clear: true,
+    }).catch(() => {
+      // content が無効な場合は描画をスキップ
     })
-      .then(() => {
-        if (cancelled) return
-        ctx.clearRect(0, 0, canvasW, canvasH)
-        // 白背景パディング
-        ctx.fillStyle = '#ffffff'
-        ctx.fillRect(x - 2, y - 2, qrSize + 4, qrSize + 4)
-        ctx.drawImage(tmpCanvas, x, y, qrSize, qrSize)
-      })
-      .catch(() => {
-        // content が無効な場合は無視
-      })
-
-    return () => {
-      cancelled = true
-    }
   }, [qrConfig, canvasW, canvasH, zoom])
 
   return (
@@ -76,23 +55,4 @@ export default function QROverlay({
       style={{ width: canvasW, height: canvasH }}
     />
   )
-}
-
-function resolvePosition(
-  position: QRConfig['position'],
-  canvasW: number,
-  canvasH: number,
-  qrSize: number,
-  padding: number,
-): { x: number; y: number } {
-  switch (position) {
-    case 'top-left':
-      return { x: padding, y: padding }
-    case 'top-right':
-      return { x: canvasW - qrSize - padding, y: padding }
-    case 'bottom-left':
-      return { x: padding, y: canvasH - qrSize - padding }
-    case 'bottom-right':
-      return { x: canvasW - qrSize - padding, y: canvasH - qrSize - padding }
-  }
 }
