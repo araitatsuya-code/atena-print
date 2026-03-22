@@ -44,6 +44,13 @@ func (uc *PrintUseCase) Print(pdfPath string) error {
 func (uc *PrintUseCase) GenerateLabelPDF(job entity.PrintJob, outPath string) (string, error) {
 	// Frontend-rendered image flow: skip contact resolution and place provided images directly.
 	useLabelImages := len(job.LabelImageDataURLs) > 0
+	if useLabelImages && len(job.ContactIDs) > 0 && len(job.LabelImageDataURLs) != len(job.ContactIDs) {
+		return "", fmt.Errorf(
+			"label image count (%d) does not match contact count (%d)",
+			len(job.LabelImageDataURLs),
+			len(job.ContactIDs),
+		)
+	}
 
 	contacts := make([]entity.Contact, 0, len(job.ContactIDs))
 	if !useLabelImages {
