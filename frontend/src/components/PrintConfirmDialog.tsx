@@ -103,7 +103,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
 
   const paperLabel = `${layout.paperWidth}×${layout.paperHeight}mm (${layout.columns}列×${layout.rows}行)`
 
-  async function buildJob(): Promise<entity.PrintJob> {
+  async function buildJob(includeLabelImages: boolean): Promise<entity.PrintJob> {
     const defaultTpl = orientation === 'horizontal' ? DEFAULT_TEMPLATE_HORIZONTAL : DEFAULT_TEMPLATE
     const tpl = selectedTemplate
       ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
@@ -120,15 +120,34 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     }
 
     // 透かしを PDF 用 base64 PNG に変換（プリセットは canvas レンダリング、カスタムは既存 data URL）
+    // 互換フォールバック時は変換失敗を許容し、旧経路での継続を優先する。
     let wmValue: typeof watermark = watermark
     if (watermark && watermark.id !== 'none') {
-      const dataUrl = await renderWatermarkToDataURL(watermark, layout.labelWidth, layout.labelHeight)
-      if (dataUrl) {
-        wmValue = { ...watermark, filePath: dataUrl }
+      try {
+        const dataUrl = await renderWatermarkToDataURL(watermark, layout.labelWidth, layout.labelHeight)
+        if (dataUrl) {
+          wmValue = { ...watermark, filePath: dataUrl }
+        }
+      } catch (e) {
+        if (includeLabelImages) {
+          throw e
+        }
       }
     }
     const activeWatermark = wmValue && wmValue.id !== 'none' ? wmValue : undefined
     const activeQR = qrConfig.enabled ? qrConfig : undefined
+
+    if (!includeLabelImages) {
+      return entity.PrintJob.createFrom({
+        contactIds: ids,
+        template: tpl,
+        senderId: selectedSenderId,
+        labelLayout: layout,
+        watermark: activeWatermark,
+        qrConfig: activeQR,
+        showBorder,
+      })
+    }
 
     const contactByID = new Map(selectedContacts.map((c) => [c.id, c]))
     const snapshotInputs = ids.map((id) => {
@@ -159,6 +178,30 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     })
   }
 
+  function formatError(e: unknown): string {
+    if (e instanceof Error && e.message) {
+      return e.message
+    }
+    return String(e)
+  }
+
+  async function generateLabelPDFWithFallback(outPath: string): Promise<string> {
+    try {
+      const imageJob = await buildJob(true)
+      return await GenerateLabelPDF(imageJob, outPath)
+    } catch (imageErr) {
+      console.warn('Image-based print path failed, retrying legacy path:', imageErr)
+      try {
+        const legacyJob = await buildJob(false)
+        return await GenerateLabelPDF(legacyJob, outPath)
+      } catch (legacyErr) {
+        throw new Error(
+          `PDF生成に失敗しました（新経路: ${formatError(imageErr)} / フォールバック: ${formatError(legacyErr)}）`,
+        )
+      }
+    }
+  }
+
   async function run(action: () => Promise<void>) {
     setError(null)
     setLoading(true)
@@ -176,14 +219,14 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     return run(async () => {
       const savePath = await SavePDFFileDialog('ラベル.pdf')
       if (!savePath) return
-      await GenerateLabelPDF(await buildJob(), savePath)
+      await generateLabelPDFWithFallback(savePath)
     })
   }
 
   function handlePrint() {
     return run(async () => {
       const tmpPath = await GetTempPDFPath()
-      const outPath = await GenerateLabelPDF(await buildJob(), tmpPath)
+      const outPath = await generateLabelPDFWithFallback(tmpPath)
       await PrintPDF(outPath)
     })
   }
