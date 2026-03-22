@@ -164,3 +164,4 @@ atena-print/
 |[02-DATA-MODEL-API.md](docs/02-DATA-MODEL-API.md)|Entity 定義・DB スキーマ・API 一覧|
 |[03-UI-SPEC.md](docs/03-UI-SPEC.md)|画面構成・Zustand ストア設計|
 |[04-TASK-LIST.md](docs/04-TASK-LIST.md)|フェーズ別タスクリスト|
+|[06-PRINT-PARITY-QA.md](docs/06-PRINT-PARITY-QA.md)|プレビュー一致性の回帰テスト・実機印刷チェックリスト・誤差許容範囲|

@@ -45,6 +45,74 @@ func TestComputeLabelPlacementsSingleLabelWithOffsetA410(t *testing.T) {
 	}
 }
 
+func TestComputeLabelPlacementsFullSheetA410(t *testing.T) {
+	layout := entity.LabelLayout{
+		PaperWidth:  210,
+		PaperHeight: 297,
+		LabelWidth:  86.4,
+		LabelHeight: 50.8,
+		Columns:     2,
+		Rows:        5,
+		MarginTop:   23,
+		MarginLeft:  10,
+		GapX:        0,
+		GapY:        0,
+	}
+
+	placements, err := computeLabelPlacements(layout, 10)
+	if err != nil {
+		t.Fatalf("computeLabelPlacements: %v", err)
+	}
+	if len(placements) != 10 {
+		t.Fatalf("placements length = %d, want 10", len(placements))
+	}
+
+	last := placements[9]
+	if last.Page != 0 {
+		t.Fatalf("last page = %d, want 0", last.Page)
+	}
+	if !almostEqual(last.X, 96.4) {
+		t.Fatalf("last x = %.4f, want 96.4", last.X)
+	}
+	if !almostEqual(last.Y, 226.2) {
+		t.Fatalf("last y = %.4f, want 226.2", last.Y)
+	}
+}
+
+func TestComputeLabelPlacementsFullSheetPlusOneA410(t *testing.T) {
+	layout := entity.LabelLayout{
+		PaperWidth:  210,
+		PaperHeight: 297,
+		LabelWidth:  86.4,
+		LabelHeight: 50.8,
+		Columns:     2,
+		Rows:        5,
+		MarginTop:   23,
+		MarginLeft:  10,
+		GapX:        0,
+		GapY:        0,
+	}
+
+	placements, err := computeLabelPlacements(layout, 11)
+	if err != nil {
+		t.Fatalf("computeLabelPlacements: %v", err)
+	}
+	if len(placements) != 11 {
+		t.Fatalf("placements length = %d, want 11", len(placements))
+	}
+
+	p := placements[10]
+	if p.Page != 1 {
+		t.Fatalf("11th page = %d, want 1", p.Page)
+	}
+	if !almostEqual(p.X, 10) {
+		t.Fatalf("11th x = %.4f, want 10", p.X)
+	}
+	if !almostEqual(p.Y, 23) {
+		t.Fatalf("11th y = %.4f, want 23", p.Y)
+	}
+}
+
 func TestComputeLabelPlacementsFullSheetA412(t *testing.T) {
 	layout := entity.LabelLayout{
 		PaperWidth:  210,
@@ -113,6 +181,44 @@ func TestComputeLabelPlacementsFullSheetPlusOneA412(t *testing.T) {
 	}
 }
 
+func TestGenerateLabelPDFFromLabelImageDataURLsSingleSheetA410(t *testing.T) {
+	layout := entity.LabelLayout{
+		PaperWidth:  210,
+		PaperHeight: 297,
+		LabelWidth:  86.4,
+		LabelHeight: 50.8,
+		Columns:     2,
+		Rows:        5,
+		MarginTop:   23,
+		MarginLeft:  10,
+		GapX:        0,
+		GapY:        0,
+	}
+
+	images := make([]string, 10)
+	for i := range images {
+		images[i] = onePixelPNGDataURL
+	}
+
+	g := NewGenerator("")
+	pdfBytes, err := g.GenerateLabelPDF(entity.PrintJob{
+		LabelLayout:        layout,
+		LabelImageDataURLs: images,
+	}, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateLabelPDF: %v", err)
+	}
+	if len(pdfBytes) == 0 {
+		t.Fatal("GenerateLabelPDF returned empty bytes")
+	}
+
+	pagePattern := regexp.MustCompile(`/Type /Page\b`)
+	pageCount := len(pagePattern.FindAll(pdfBytes, -1))
+	if pageCount != 1 {
+		t.Fatalf("page count = %d, want 1", pageCount)
+	}
+}
+
 func TestGenerateLabelPDFFromLabelImageDataURLsPageBreak(t *testing.T) {
 	layout := entity.LabelLayout{
 		PaperWidth:  210,
@@ -128,6 +234,44 @@ func TestGenerateLabelPDFFromLabelImageDataURLsPageBreak(t *testing.T) {
 	}
 
 	images := make([]string, 13)
+	for i := range images {
+		images[i] = onePixelPNGDataURL
+	}
+
+	g := NewGenerator("")
+	pdfBytes, err := g.GenerateLabelPDF(entity.PrintJob{
+		LabelLayout:        layout,
+		LabelImageDataURLs: images,
+	}, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateLabelPDF: %v", err)
+	}
+	if len(pdfBytes) == 0 {
+		t.Fatal("GenerateLabelPDF returned empty bytes")
+	}
+
+	pagePattern := regexp.MustCompile(`/Type /Page\b`)
+	pageCount := len(pagePattern.FindAll(pdfBytes, -1))
+	if pageCount != 2 {
+		t.Fatalf("page count = %d, want 2", pageCount)
+	}
+}
+
+func TestGenerateLabelPDFFromLabelImageDataURLsPageBreakA410(t *testing.T) {
+	layout := entity.LabelLayout{
+		PaperWidth:  210,
+		PaperHeight: 297,
+		LabelWidth:  86.4,
+		LabelHeight: 50.8,
+		Columns:     2,
+		Rows:        5,
+		MarginTop:   23,
+		MarginLeft:  10,
+		GapX:        0,
+		GapY:        0,
+	}
+
+	images := make([]string, 11)
 	for i := range images {
 		images[i] = onePixelPNGDataURL
 	}
