@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "efcde965af8a",
+  "strategy": "manual-commit",
+  "branch": "codex/issue45-label-image-grid",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "internal/entity/print_job.go"
+  ],
+  "sessions": [
+    {
+      "metadata": "/ef/cde965af8a/0/metadata.json",
+      "transcript": "/ef/cde965af8a/0/full.jsonl",
+      "context": "/ef/cde965af8a/0/context.md",
+      "content_hash": "/ef/cde965af8a/0/content_hash.txt",
+      "prompt": "/ef/cde965af8a/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 303,
+    "cache_creation_tokens": 729002,
+    "cache_read_tokens": 21548237,
+    "output_tokens": 212857,
+    "api_call_count": 239
+  }
+}
