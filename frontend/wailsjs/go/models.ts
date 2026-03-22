@@ -336,6 +336,7 @@ export namespace entity {
 	    template: Template;
 	    senderId: string;
 	    labelLayout: LabelLayout;
+	    labelImageDataURLs?: string[];
 	    watermark?: Watermark;
 	    qrConfig?: QRConfig;
 	    showBorder: boolean;
@@ -350,6 +351,7 @@ export namespace entity {
 	        this.template = this.convertValues(source["template"], Template);
 	        this.senderId = source["senderId"];
 	        this.labelLayout = this.convertValues(source["labelLayout"], LabelLayout);
+	        this.labelImageDataURLs = source["labelImageDataURLs"];
 	        this.watermark = this.convertValues(source["watermark"], Watermark);
 	        this.qrConfig = this.convertValues(source["qrConfig"], QRConfig);
 	        this.showBorder = source["showBorder"];

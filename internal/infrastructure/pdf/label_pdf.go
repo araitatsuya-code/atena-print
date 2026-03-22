@@ -99,7 +99,7 @@ func japaneseFontCandidates() []string {
 	case "darwin":
 		return []string{
 			// TrueType fonts that gofpdf can embed (tested to work)
-			"/System/Library/Fonts/Supplemental/Songti.ttc",        // CJK TrueType — reliable fallback
+			"/System/Library/Fonts/Supplemental/Songti.ttc",         // CJK TrueType — reliable fallback
 			"/System/Library/Fonts/Supplemental/STHeiti Medium.ttc", // CJK TrueType
 			// Hiragino / Yu fonts are OpenType CFF and will be skipped automatically
 			"/System/Library/Fonts/ヒラギノ明朝 ProN.ttc",
@@ -125,8 +125,8 @@ func japaneseSansFontCandidates() []string {
 	switch runtime.GOOS {
 	case "darwin":
 		return []string{
-			"/System/Library/Fonts/Supplemental/STHeiti Medium.ttc",  // CJK sans TrueType
-			"/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",             // OpenType CFF — will be skipped
+			"/System/Library/Fonts/Supplemental/STHeiti Medium.ttc", // CJK sans TrueType
+			"/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",                // OpenType CFF — will be skipped
 		}
 	case "windows":
 		return []string{
@@ -423,6 +423,112 @@ func japaneseCmapScore(ttfBytes []byte) int {
 	return count
 }
 
+type labelPlacement struct {
+	Page  int
+	Index int
+	X     float64
+	Y     float64
+}
+
+func computeLabelPlacements(layout entity.LabelLayout, labelCount int) ([]labelPlacement, error) {
+	if labelCount < 0 {
+		return nil, fmt.Errorf("invalid label count: %d", labelCount)
+	}
+
+	labelsPerPage := layout.Columns * layout.Rows
+	if labelsPerPage <= 0 {
+		return nil, fmt.Errorf("invalid label layout: columns=%d rows=%d", layout.Columns, layout.Rows)
+	}
+
+	placements := make([]labelPlacement, 0, labelCount)
+	for i := 0; i < labelCount; i++ {
+		page := i / labelsPerPage
+		pageIdx := i % labelsPerPage
+		col := pageIdx % layout.Columns
+		row := pageIdx / layout.Columns
+
+		originX := layout.MarginLeft + float64(col)*(layout.LabelWidth+layout.GapX) + layout.OffsetX
+		originY := layout.MarginTop + float64(row)*(layout.LabelHeight+layout.GapY) + layout.OffsetY
+
+		placements = append(placements, labelPlacement{
+			Page:  page,
+			Index: i,
+			X:     originX,
+			Y:     originY,
+		})
+	}
+
+	return placements, nil
+}
+
+func decodeDataURLImage(dataURL string) ([]byte, string, error) {
+	if !strings.HasPrefix(dataURL, "data:") {
+		return nil, "", fmt.Errorf("unsupported label image format: expected data URL")
+	}
+
+	parts := strings.SplitN(dataURL, ",", 2)
+	if len(parts) != 2 {
+		return nil, "", fmt.Errorf("invalid data URL")
+	}
+	if !strings.Contains(parts[0], ";base64") {
+		return nil, "", fmt.Errorf("unsupported data URL encoding: expected base64")
+	}
+
+	imgBytes, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil, "", fmt.Errorf("decode base64: %w", err)
+	}
+
+	header := strings.ToLower(parts[0])
+	imgType := "PNG"
+	if strings.Contains(header, "image/jpeg") || strings.Contains(header, "image/jpg") {
+		imgType = "JPG"
+	}
+
+	return imgBytes, imgType, nil
+}
+
+func drawLabelImages(
+	pdf *gofpdf.Fpdf,
+	layout entity.LabelLayout,
+	labelImageDataURLs []string,
+	showBorder bool,
+) error {
+	placements, err := computeLabelPlacements(layout, len(labelImageDataURLs))
+	if err != nil {
+		return err
+	}
+
+	currentPage := -1
+	for _, placement := range placements {
+		if placement.Page != currentPage {
+			pdf.AddPage()
+			currentPage = placement.Page
+		}
+
+		imgBytes, imgType, err := decodeDataURLImage(labelImageDataURLs[placement.Index])
+		if err != nil {
+			return fmt.Errorf("label image %d: %w", placement.Index, err)
+		}
+
+		imgKey := fmt.Sprintf("label_img_%d", placement.Index)
+		opts := gofpdf.ImageOptions{ImageType: imgType}
+		pdf.RegisterImageOptionsReader(imgKey, opts, bytes.NewReader(imgBytes))
+		if pdf.Error() != nil {
+			return fmt.Errorf("register label image %d: %w", placement.Index, pdf.Error())
+		}
+		pdf.ImageOptions(imgKey, placement.X, placement.Y, layout.LabelWidth, layout.LabelHeight, false, opts, 0, "")
+
+		if showBorder {
+			pdf.SetDrawColor(180, 180, 180)
+			pdf.SetLineWidth(0.2)
+			pdf.Rect(placement.X, placement.Y, layout.LabelWidth, layout.LabelHeight, "D")
+		}
+	}
+
+	return nil
+}
+
 // GenerateLabelPDF generates an A4 label PDF and returns the raw bytes.
 func (g *Generator) GenerateLabelPDF(
 	job entity.PrintJob,
@@ -433,6 +539,18 @@ func (g *Generator) GenerateLabelPDF(
 	pdf.SetMargins(0, 0, 0)
 	pdf.SetAutoPageBreak(false, 0)
 	pdf.SetCompression(true)
+
+	layout := job.LabelLayout
+	if len(job.LabelImageDataURLs) > 0 {
+		if err := drawLabelImages(pdf, layout, job.LabelImageDataURLs, job.ShowBorder); err != nil {
+			return nil, err
+		}
+		var buf bytes.Buffer
+		if err := pdf.Output(&buf); err != nil {
+			return nil, fmt.Errorf("pdf output: %w", err)
+		}
+		return buf.Bytes(), nil
+	}
 
 	// Register Japanese fonts (serif + sans-serif) if available.
 	// Use pre-validated fontBytes to avoid TTC/OTF files that register
@@ -469,11 +587,10 @@ func (g *Generator) GenerateLabelPDF(
 		}
 	}
 
-	layout := job.LabelLayout
 	tmpl := job.Template
 
 	labelsPerPage := layout.Columns * layout.Rows
-	if labelsPerPage == 0 {
+	if labelsPerPage <= 0 {
 		return nil, fmt.Errorf("invalid label layout: columns=%d rows=%d", layout.Columns, layout.Rows)
 	}
 
@@ -511,17 +628,21 @@ func (g *Generator) GenerateLabelPDF(
 		}
 	}
 
-	for i, contact := range contacts {
-		if i%labelsPerPage == 0 {
+	placements, err := computeLabelPlacements(layout, len(contacts))
+	if err != nil {
+		return nil, err
+	}
+
+	currentPage := -1
+	for _, placement := range placements {
+		if placement.Page != currentPage {
 			pdf.AddPage()
+			currentPage = placement.Page
 		}
 
-		pageIdx := i % labelsPerPage
-		col := pageIdx % layout.Columns
-		row := pageIdx / layout.Columns
-
-		originX := layout.MarginLeft + float64(col)*(layout.LabelWidth+layout.GapX) + layout.OffsetX
-		originY := layout.MarginTop + float64(row)*(layout.LabelHeight+layout.GapY) + layout.OffsetY
+		contact := contacts[placement.Index]
+		originX := placement.X
+		originY := placement.Y
 
 		// Watermark background (base64 data URL pre-registered above, or file path fallback).
 		if wmKey != "" {
@@ -545,7 +666,7 @@ func (g *Generator) GenerateLabelPDF(
 
 		// QR code.
 		if qrPNG != nil {
-			drawQR(pdf, job.QRConfig, qrPNG, originX, originY, layout.LabelWidth, layout.LabelHeight, i)
+			drawQR(pdf, job.QRConfig, qrPNG, originX, originY, layout.LabelWidth, layout.LabelHeight, placement.Index)
 		}
 	}
 
