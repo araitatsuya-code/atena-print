@@ -42,20 +42,32 @@ func (uc *PrintUseCase) Print(pdfPath string) error {
 // GenerateLabelPDF resolves contacts and sender from the job, generates a PDF,
 // writes it to outPath, and returns the path.
 func (uc *PrintUseCase) GenerateLabelPDF(job entity.PrintJob, outPath string) (string, error) {
-	// Resolve contacts.
-	contacts := make([]entity.Contact, 0, len(job.ContactIDs))
-	for _, id := range job.ContactIDs {
-		c, err := uc.contactRepo.FindByID(id)
-		if err != nil {
-			return "", fmt.Errorf("contact %s: %w", id, err)
-		}
-		if c == nil {
-			return "", fmt.Errorf("contact %s: not found", id)
-		}
-		contacts = append(contacts, *c)
+	// Frontend-rendered image flow: skip contact resolution and place provided images directly.
+	useLabelImages := len(job.LabelImageDataURLs) > 0
+	if useLabelImages && len(job.ContactIDs) > 0 && len(job.LabelImageDataURLs) != len(job.ContactIDs) {
+		return "", fmt.Errorf(
+			"label image count (%d) does not match contact count (%d)",
+			len(job.LabelImageDataURLs),
+			len(job.ContactIDs),
+		)
 	}
-	if len(contacts) == 0 {
-		return "", fmt.Errorf("no contacts specified for printing")
+
+	contacts := make([]entity.Contact, 0, len(job.ContactIDs))
+	if !useLabelImages {
+		// Resolve contacts for the legacy backend-rendering flow.
+		for _, id := range job.ContactIDs {
+			c, err := uc.contactRepo.FindByID(id)
+			if err != nil {
+				return "", fmt.Errorf("contact %s: %w", id, err)
+			}
+			if c == nil {
+				return "", fmt.Errorf("contact %s: not found", id)
+			}
+			contacts = append(contacts, *c)
+		}
+		if len(contacts) == 0 {
+			return "", fmt.Errorf("no contacts specified for printing")
+		}
 	}
 
 	// Resolve sender (optional).

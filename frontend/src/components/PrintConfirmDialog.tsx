@@ -7,6 +7,7 @@ import { useLabelStore } from '../stores/labelStore'
 import { usePreviewStore } from '../stores/previewStore'
 import { useSenderStore } from '../stores/senderStore'
 import { DEFAULT_TEMPLATE, DEFAULT_TEMPLATE_HORIZONTAL } from './preview/LabelCanvas'
+import { renderLabelSnapshotsToDataURLBatch } from '../lib/labelSnapshot'
 import { useShallow } from 'zustand/shallow'
 
 interface Props {
@@ -126,14 +127,34 @@ export default function PrintConfirmDialog({ onClose }: Props) {
         wmValue = { ...watermark, filePath: dataUrl }
       }
     }
+    const activeWatermark = wmValue && wmValue.id !== 'none' ? wmValue : undefined
+    const activeQR = qrConfig.enabled ? qrConfig : undefined
+
+    const contactByID = new Map(selectedContacts.map((c) => [c.id, c]))
+    const snapshotInputs = ids.map((id) => {
+      const contact = contactByID.get(id)
+      if (!contact) {
+        throw new Error(`contact not found: ${id}`)
+      }
+      return {
+        contact,
+        template: tpl,
+        watermark: activeWatermark ?? null,
+        qrConfig: activeQR,
+        showBorder: false,
+      }
+    })
+    const snapshots = await renderLabelSnapshotsToDataURLBatch(snapshotInputs)
+    const labelImageDataURLs = snapshots.map((s) => s.dataURL)
 
     return entity.PrintJob.createFrom({
       contactIds: ids,
       template: tpl,
       senderId: selectedSenderId,
       labelLayout: layout,
-      watermark: wmValue ?? undefined,
-      qrConfig: qrConfig.enabled ? qrConfig : undefined,
+      labelImageDataURLs,
+      watermark: activeWatermark,
+      qrConfig: activeQR,
       showBorder,
     })
   }
