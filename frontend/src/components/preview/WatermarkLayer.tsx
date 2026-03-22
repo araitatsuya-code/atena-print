@@ -12,6 +12,30 @@ interface WatermarkLayerProps {
   zoom: number
 }
 
+interface RenderPreviewWatermarkLayerOptions {
+  ctx: CanvasRenderingContext2D
+  watermark: Watermark | null
+  widthPx: number
+  heightPx: number
+  zoom: number
+  clear?: boolean
+}
+
+/**
+ * UI プレビューの透かし描画エントリポイント。
+ * WatermarkLayer と一致性回帰テストで共通使用する。
+ */
+export function renderPreviewWatermarkLayer(opts: RenderPreviewWatermarkLayerOptions): Promise<void> {
+  return renderWatermarkLayer({
+    ctx: opts.ctx,
+    watermark: opts.watermark,
+    widthPx: opts.widthPx,
+    heightPx: opts.heightPx,
+    renderScale: opts.zoom,
+    clear: opts.clear ?? true,
+  })
+}
+
 export default function WatermarkLayer({
   watermark,
   labelWidth,
@@ -36,12 +60,12 @@ export default function WatermarkLayer({
     canvas.style.height = `${canvasH}px`
     ctx.scale(dpr, dpr)
 
-    void renderWatermarkLayer({
+    void renderPreviewWatermarkLayer({
       ctx,
       watermark,
       widthPx: canvasW,
       heightPx: canvasH,
-      renderScale: zoom,
+      zoom,
       clear: true,
     }).catch(() => {
       // 画像ロード失敗時は描画をスキップ

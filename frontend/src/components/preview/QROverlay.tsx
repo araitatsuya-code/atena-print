@@ -12,6 +12,30 @@ interface QROverlayProps {
   zoom: number
 }
 
+interface RenderPreviewQRLayerOptions {
+  ctx: CanvasRenderingContext2D
+  qrConfig: QRConfig
+  widthPx: number
+  heightPx: number
+  zoom: number
+  clear?: boolean
+}
+
+/**
+ * UI プレビューの QR 描画エントリポイント。
+ * QROverlay と一致性回帰テストで共通使用する。
+ */
+export function renderPreviewQRLayer(opts: RenderPreviewQRLayerOptions): Promise<void> {
+  return renderQRLayer({
+    ctx: opts.ctx,
+    qrConfig: opts.qrConfig,
+    widthPx: opts.widthPx,
+    heightPx: opts.heightPx,
+    renderScale: opts.zoom,
+    clear: opts.clear ?? true,
+  })
+}
+
 export default function QROverlay({
   qrConfig,
   labelWidth,
@@ -36,12 +60,12 @@ export default function QROverlay({
     canvas.style.height = `${canvasH}px`
     ctx.scale(dpr, dpr)
 
-    void renderQRLayer({
+    void renderPreviewQRLayer({
       ctx,
       qrConfig,
       widthPx: canvasW,
       heightPx: canvasH,
-      renderScale: zoom,
+      zoom,
       clear: true,
     }).catch(() => {
       // content が無効な場合は描画をスキップ

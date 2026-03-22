@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { Contact, QRConfig, Template, TextConfig, PostalConfig } from '../types'
-import { computeSnapshotMetrics, renderLabelSnapshotToCanvas, type LabelSnapshotRenderInput } from './labelSnapshot'
-import { renderLabelTextLayer } from './labelRenderer'
-import { renderQRLayer } from './qrRenderer'
-import { renderWatermarkLayer } from './watermarkRenderer'
+import { computeSnapshotMetrics, renderLabelSnapshotToCanvas, type LabelSnapshotRenderInput, type SnapshotMetrics } from './labelSnapshot'
+import { computePreviewCanvasMetrics, renderPreviewLabelTextLayer } from '../components/preview/LabelCanvas'
+import { renderPreviewQRLayer } from '../components/preview/QROverlay'
+import { renderPreviewWatermarkLayer } from '../components/preview/WatermarkLayer'
 
 type DrawOp = {
   op: string
@@ -205,36 +205,34 @@ const regressionCases = [
   },
 ]
 
-async function renderPreviewOps(input: LabelSnapshotRenderInput): Promise<{ metrics: ReturnType<typeof computeSnapshotMetrics>; ops: DrawOp[] }> {
+async function renderPreviewOps(input: LabelSnapshotRenderInput): Promise<{ metrics: SnapshotMetrics; ops: DrawOp[] }> {
   const canvas = createRecordingCanvas()
-  const metrics = computeSnapshotMetrics(input.template.labelWidth, input.template.labelHeight, input.dpi ?? 96)
-  canvas.width = metrics.pixelWidth
-  canvas.height = metrics.pixelHeight
+  const preview = computePreviewCanvasMetrics(input.template, 1)
+  canvas.width = preview.canvasW
+  canvas.height = preview.canvasH
+
+  const metrics = computeSnapshotMetrics(input.template.labelWidth, input.template.labelHeight, 96)
 
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('2D context is not available')
 
-  renderLabelTextLayer(ctx, input.contact, input.template, {
-    pxPerMm: metrics.pxPerMm,
-    showBackground: true,
-    showBorder: input.showBorder ?? true,
-  })
+  renderPreviewLabelTextLayer(ctx, input.contact, input.template, preview.pxPerMm)
 
-  await renderWatermarkLayer({
+  await renderPreviewWatermarkLayer({
     ctx,
     watermark: input.watermark ?? null,
-    widthPx: metrics.pixelWidth,
-    heightPx: metrics.pixelHeight,
-    renderScale: metrics.renderScale,
+    widthPx: preview.canvasW,
+    heightPx: preview.canvasH,
+    zoom: 1,
     clear: false,
   })
 
-  await renderQRLayer({
+  await renderPreviewQRLayer({
     ctx,
     qrConfig: input.qrConfig ?? disabledQR,
-    widthPx: metrics.pixelWidth,
-    heightPx: metrics.pixelHeight,
-    renderScale: metrics.renderScale,
+    widthPx: preview.canvasW,
+    heightPx: preview.canvasH,
+    zoom: 1,
     clear: false,
   })
 
@@ -244,7 +242,7 @@ async function renderPreviewOps(input: LabelSnapshotRenderInput): Promise<{ metr
   }
 }
 
-async function renderPrintSnapshotOps(input: LabelSnapshotRenderInput): Promise<{ metrics: ReturnType<typeof computeSnapshotMetrics>; ops: DrawOp[]; width: number; height: number }> {
+async function renderPrintSnapshotOps(input: LabelSnapshotRenderInput): Promise<{ metrics: SnapshotMetrics; ops: DrawOp[]; width: number; height: number }> {
   const canvas = createRecordingCanvas()
   const metrics = await renderLabelSnapshotToCanvas(canvas as unknown as HTMLCanvasElement, input)
   return {
