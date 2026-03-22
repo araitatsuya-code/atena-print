@@ -1,0 +1,687 @@
+mainをfetchしてブランチを切って以下のissue対応を行ってPRを作成してください
+
+https://github.com/araitatsuya-code/atena-print/issues/37
+
+---
+
+Verify each finding against the current code and only fix it if needed.
+
+In `@internal/infrastructure/pdf/label_pdf.go` around lines 23 - 31, NewGenerator
+currently ignores loadAndValidateFont errors and keeps the explicit fontPath
+causing a Courier fallback even if system Japanese fonts exist; update
+NewGenerator so that when loadAndValidateFont(fontPath) returns an error it
+falls back to calling detectAndLoadJapaneseFont() (assigning Generator.fontBytes
+and fontPath from that result) or, alternatively, propagate the error to the
+caller; specifically modify NewGenerator to check the error returned by
+loadAndValidateFont and on failure call detectAndLoadJapaneseFont() (or return
+the error) so that Generator.fontBytes/fontPath are correctly set when the
+explicit path is invalid.
+
+---
+
+実際のPDFの内容が反映できていないようです
+左側が作成したPDF、右側がアプリの画面です
+
+---
+
+コンフリクトしてます
+mainをマージした方が以下も
+
+---
+
+Verify each finding against the current code and only fix it if needed.
+
+In `@frontend/src/pages/Classify/ClassifyPage.tsx` around lines 632 - 653,
+handleClassifyWithClaude が疑似メール（message.id が "sample-" プレフィックスのもの）を処理した際に誤って
+setClassificationDataMode('live') を呼んでしまう問題です。classifyEmails
+の結果を受け取った後、handleClassifyWithClaude 内で setResults(response.results) より前か直後に
+response.results または入力の messages を走査して message.id に "sample-"
+で始まるものが含まれるかチェックし、含まれる場合は setClassificationDataMode('live') を呼ばずに代わりに
+'sample'（または既存の適切なモード）を設定して、実メール反映処理へ進まないように遮断してください（関数名:
+handleClassifyWithClaude、メソッド呼び出し: setClassificationDataMode('live') と
+setResults）。
+
+---
+
+[Request interrupted by user]
+
+---
+
+上のコメントは間違えました
+レビューが来ているので対応して
+
+---
+
+治っていないです
+
+---
+
+まだ治っていないです
+まず、A410面という風になっていません
+また描写もおかしいです
+
+---
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   - Fix GitHub issue #37: "PDF保存が失敗する" — `GenerateLabelPDF` fails with `"pdf output: undefined font: jfont"`
+   - Create branch from main, implement fix, create PR
+   - Address subsequent code review comments on PR #40
+   - Fix visual rendering issues: text positioning wrong in PDF, Japanese characters (東・達・橋・様) appearing as blanks
+
+2. Key Technical Concepts:
+   - **gofpdf**: Go PDF generation library; `AddUTF8FontFromBytes` accepts TTC/OTF without immediate error but `pdf.Output()` fails with "undefined font"
+   - **TTC (TrueType Collection)**: Container format holding multiple font faces; internal table offsets are absolute from TTC start, not relative to face start — must be rebased when extracting to standalone TTF
+   - **OpenType CFF (OTTO)**: Format gofpdf cannot embed; detected by magic bytes "OTTO"
+   - **CMap Format 4**: Unicode BMP character mapping table in fonts; used to score Japanese character coverage
+   - **Simplified vs Traditional Chinese fonts**: Songti SC (face 0) lacks traditional kanji (東=U+6771, 達=U+9054, 橋=U+6A4B, 様=U+69D8) because simplified equivalents use different codepoints; Songti TC (face 2) has full traditional coverage
+   - **Wails v2 + React + TypeScript**: Desktop app framework; Go backend bindings auto-generated to TypeScript
+   - **Zustand**: Frontend state management; `previewStore` holds `selectedTemplate`, `labelStore` holds layout/orientation
+
+3. Files and Code Sections:
+
+   - **`internal/infrastructure/pdf/label_pdf.go`** — Core PDF generation; all font loading and TTC extraction logic. Most heavily modified file.
+     ```go
+     // Generator struct with cached font bytes
+     type Generator struct {
+         fontPath  string
+         fontBytes []byte // pre-loaded and validated font bytes, nil if unavailable
+     }
+     
+     // NewGenerator with explicit path fallback
+     func NewGenerator(fontPath string) *Generator {
+         g := &Generator{}
+         if fontPath != "" {
+             fb, err := loadAndValidateFont(fontPath)
+             if err != nil {
+                 log.Printf("pdf: explicit font path %q unusable (%v); falling back to system detection", fontPath, err)
+                 fb, fontPath = detectAndLoadJapaneseFont()
+             }
+             g.fontPath = fontPath
+             g.fontBytes = fb
+         } else {
+             g.fontBytes, g.fontPath = detectAndLoadJapaneseFont()
+         }
+         return g
+     }
+     
+     // loadAndValidateFont returns ([]byte, error) with meaningful errors
+     func loadAndValidateFont(path string) ([]byte, error) {
+         fontBytes, err := os.ReadFile(path)
+         if err != nil { return nil, fmt.Errorf("read font %q: %w", path, err) }
+         if len(fontBytes) >= 4 {
+             switch string(fontBytes[:4]) {
+             case "ttcf":
+                 extracted := extractTTFFromTTC(fontBytes)
+                 if extracted == nil {
+                     return nil, fmt.Errorf("font %q: TTC contains no embeddable TrueType face", path)
+                 }
+                 fontBytes = extracted
+             case "OTTO":
+                 return nil, fmt.Errorf("font %q: OpenType CFF (OTTO) is not supported by gofpdf", path)
+             }
+         }
+         // full test render validation...
+         return fontBytes, nil
+     }
+     
+     // extractTTFFromTTC - picks BEST face by Japanese cmap score (latest change)
+     func extractTTFFromTTC(ttcBytes []byte) []byte {
+         // iterates all numFonts faces, scores each with japaneseCmapScore,
+         // returns highest-scoring face
+     }
+     
+     // extractTTCFace - extracts one face at faceIdx from TTC
+     func extractTTCFace(ttcBytes []byte, faceIdx int) []byte { ... }
+     
+     // japaneseCoverageChars - traditional kanji missing from SC fonts
+     var japaneseCoverageChars = []rune{
+         '東', '達', '橋', '様', '際', '応', '辺', '澤', '廣', '邊',
+     }
+     
+     // japaneseCmapScore - counts coverage via Format 4 cmap scan
+     func japaneseCmapScore(ttfBytes []byte) int { ... }
+     ```
+     macOS candidates (Songti first as confirmed working TrueType):
+     ```go
+     "/System/Library/Fonts/Supplemental/Songti.ttc",
+     "/System/Library/Fonts/Supplemental/STHeiti Medium.ttc",
+     "/System/Library/Fonts/ヒラギノ明朝 ProN.ttc",
+     "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
+     "/Library/Fonts/YuMincho.ttc",
+     ```
+
+   - **`frontend/src/components/PrintConfirmDialog.tsx`** — Print confirmation dialog; `buildJob()` was hardcoding all template coordinates to 0. Fixed to use `selectedTemplate` from `previewStore` or `DEFAULT_TEMPLATE`/`DEFAULT_TEMPLATE_HORIZONTAL`.
+     ```typescript
+     // BEFORE (broken):
+     recipient: { nameX: 0, nameY: 0, nameFont: 0, addressX: 0, addressY: 0, addressFont: 0 },
+     sender: { nameX: 0, nameY: 0, nameFont: 0, addressX: 0, addressY: 0, addressFont: 0 },
+     
+     // AFTER (fixed):
+     import { DEFAULT_TEMPLATE, DEFAULT_TEMPLATE_HORIZONTAL } from './preview/LabelCanvas'
+     import { usePreviewStore } from '../stores/previewStore'
+     
+     const { selectedTemplate } = usePreviewStore(useShallow((s) => ({ selectedTemplate: s.selectedTemplate })))
+     
+     function buildJob(): entity.PrintJob {
+       const defaultTpl = orientation === 'horizontal' ? DEFAULT_TEMPLATE_HORIZONTAL : DEFAULT_TEMPLATE
+       const tpl = selectedTemplate
+         ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
+         : { ...defaultTpl, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
+       return entity.PrintJob.createFrom({
+         contactIds: selectedContacts.map((c) => c.id),
+         template: tpl,
+         senderId: selectedSenderId,
+         labelLayout: layout,
+         watermark: watermark ?? undefined,
+         qrConfig: qrConfig.enabled ? qrConfig : undefined,
+       })
+     }
+     ```
+
+   - **`frontend/src/components/preview/LabelCanvas.tsx`** — Defines `DEFAULT_TEMPLATE` (縦書き A4 12面) and `DEFAULT_TEMPLATE_HORIZONTAL` (横書き A4 12面) with correct coordinate values; these are now used as fallback in `buildJob()`.
+     ```typescript
+     export const DEFAULT_TEMPLATE: Template = {
+       id: 'default-a4-12', name: '標準 (A4 12面)', orientation: 'vertical',
+       labelWidth: 86.4, labelHeight: 42.3,
+       postalCode: { x: 36, y: 4.5, digitSpacing: 5.5, fontSize: 10 },
+       recipient: { nameX: 79, nameY: 8, nameFont: 13, addressX: 69, addressY: 8, addressFont: 8.5 },
+       sender: { nameX: 16, nameY: 24, nameFont: 6.5, addressX: 8, addressY: 24, addressFont: 5.5 },
+     }
+     export const DEFAULT_TEMPLATE_HORIZONTAL: Template = {
+       id: 'default-a4-12-h', name: '標準 (A4 12面) 横書き', orientation: 'horizontal',
+       labelWidth: 86.4, labelHeight: 42.3,
+       postalCode: { x: 5, y: 3, digitSpacing: 7, fontSize: 9 },
+       recipient: { nameX: 5, nameY: 13, nameFont: 12, addressX: 5, addressY: 24, addressFont: 8.5 },
+       sender: { nameX: 50, nameY: 33, nameFont: 6.5, addressX: 50, addressY: 37, addressFont: 5.5 },
+     }
+     ```
+
+   - **`frontend/src/stores/previewStore.ts`** — Holds `selectedTemplate: Template | null`; `null` by default, set when user edits template in LabelEditorOverlay.
+
+   - **`main.go`** — `pdfpkg.NewGenerator("")` called at startup; signature unchanged (returns `*Generator` without error).
+
+4. Errors and fixes:
+   - **"undefined font: jfont" at pdf.Output()**: TTC/OTF fonts register without error via `AddUTF8FontFromBytes` but fail at output. Fixed by pre-validating with a full test PDF render in `loadAndValidateFont`.
+   - **`encoding/binary` imported and not used**: Added import prematurely before function was added. Fixed by adding the `extractTTFFromTTC` function in the same edit.
+   - **`err != nil` mismatched types (bool vs nil)**: Callers of `loadAndValidateFont` used `([]byte, bool)` pattern after signature was changed to `([]byte, error)`. Fixed by updating `detectAndLoadJapaneseFont` and `NewGenerator` to use `err == nil`.
+   - **Merge conflict after PR #39 was merged**: Branch had 3 additional commits after PR #39 merged into main. Resolved by `git merge origin/main`, manually choosing HEAD (complete version with TTC extraction logic) over origin/main (PR#39 simpler version).
+   - **Japanese characters blank in PDF (東・達・橋・様)**: Songti.ttc face 0 is SongtiSC-Regular (Simplified Chinese) which lacks traditional Chinese/Japanese-specific kanji. Fixed by implementing `japaneseCmapScore()` to score cmap coverage of traditional characters and selecting the highest-scoring TTC face (TC Regular, typically face 2).
+   - **All PDF text at same position / zero coordinates**: `PrintConfirmDialog.buildJob()` hardcoded `nameX:0, nameY:0, nameFont:0` etc. Fixed by importing `DEFAULT_TEMPLATE`/`DEFAULT_TEMPLATE_HORIZONTAL` and using `selectedTemplate` from previewStore.
+
+5. Problem Solving:
+   - **TTC absolute offsets**: TTC files store all font table data with offsets from TTC start, but gofpdf needs a standalone TTF with offsets from file start. Solved by `extractTTCFace()` which parses the table directory, reads each table's data, and rebuilds the TTF with recalculated offsets.
+   - **CFF fonts in TTC**: Hiragino fonts are OpenType CFF stored inside TTC. Detected by checking sfVersion == "OTTO" after extraction. CFF fonts rejected immediately.
+   - **SC vs TC font selection**: Simplified Chinese (SC) fonts miss traditional kanji needed for Japanese. Solved by scanning cmap Format 4 table for traditional Japanese characters and picking the highest-coverage face from the TTC collection.
+   - **Template coordinates not passed to PDF**: Frontend `buildJob()` was not using the actual template. Fixed to use `usePreviewStore().selectedTemplate` with fallback to `DEFAULT_TEMPLATE`/`DEFAULT_TEMPLATE_HORIZONTAL`.
+
+6. All user messages:
+   - "mainをfetchしてブランチを切って以下のissue対応を行ってPRを作成してください https://github.com/araitatsuya-code/atena-print/issues/37"
+   - [Screenshot of PDF showing wrong content vs app preview] "実際のPDFの内容が反映できていないようです / 左側が作成したPDF、右側がアプリの画面です"
+   - "Verify each finding against the current code and only fix it if needed. In `@internal/infrastructure/pdf/label_pdf.go` around lines 23-31, NewGenerator currently ignores loadAndValidateFont errors..." (code review feedback to fix fallback behavior)
+   - "コンフリクトしてます / mainをマージした方が以下も"
+   - "Verify each finding against the current code and only fix it if needed. [PR review comments about loadAndValidateFont returning bool and extractTTFFromTTC only inspecting first face]"
+   - [Screenshot showing small Japanese text at top-right of PDF] "治っていないです"
+   - [Screenshot with text "新着都板橋 区炎原町47/8..." on one line] "ラベル位置標準だとこんな感じでした / また横書きA410面ですがそうなっていません"
+   - "標準とはラベル設定画面でラベルそのものをドラッグしていない状態です"
+   - [Screenshot showing "新井 也 / 京都板 区37-8リベルタ三田301" with missing characters] "まだ治っていないです / まず、A410面という風になっていません / また描写もおかしいです"
+
+7. Pending Tasks:
+   - Build verification and commit/push of the latest `label_pdf.go` changes (cmap scoring, `extractTTCFace`, `japaneseCmapScore`)
+   - Address the "A4 10面" display name issue — `DEFAULT_TEMPLATE_HORIZONTAL` shows "標準 (A4 12面) 横書き" as the template name even when layout is set to 10-face; the actual label dimensions come from `labelStore.layout` so functionality is correct, but the display name is misleading
+
+8. Current Work:
+   The most recent edit was to `internal/infrastructure/pdf/label_pdf.go`, implementing:
+   1. **Refactored `extractTTFFromTTC`** to iterate all TTC faces, score each with `japaneseCmapScore`, and return the highest-scoring face (instead of always returning first TrueType face)
+   2. **New `extractTTCFace(ttcBytes []byte, faceIdx int) []byte`** — per-face extraction helper
+   3. **New `japaneseCoverageChars`** — `[]rune{'東', '達', '橋', '様', '際', '応', '辺', '澤', '廣', '邊'}`
+   4. **New `japaneseCmapScore(ttfBytes []byte) int`** — scans cmap table Format 4 to count coverage of `japaneseCoverageChars`; uses segment-based BMP cmap scanning with proper sorted-segment early-break logic
+
+   The edit was applied successfully but `go build` and `git commit/push` have NOT yet been executed.
+
+9. Optional Next Step:
+   Build, verify, commit and push the latest `label_pdf.go` changes. The user's most recent complaint was:
+   > "まだ治っていないです / まず、A410面という風になっていません / また描写もおかしいです"
+   
+   And the work immediately before the summary was implementing `japaneseCmapScore` to fix the blank Japanese characters (東・達・橋・様) by selecting the Traditional Chinese face from Songti.ttc. Next step:
+   ```bash
+   go build ./internal/infrastructure/pdf/...
+   go build ./...
+   git add internal/infrastructure/pdf/label_pdf.go
+   git commit -m "fix: TTC から日本語カバレッジが最高の face を選択 - cmap スコアリング実装 refs #37"
+   git push
+   ```
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/ta/.claude/projects/-Users-ta-workspace-atena-print/cf16a74a-d012-46d9-8b4d-4c0458da526e.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+
+---
+
+治っていないようです
+また設定ではA4 10面になっていますがpdfでは一件しか印刷されていません、これもおかしいです
+
+---
+
+なるほど、繰り返し印刷するモードが欲しいですね
+
+---
+
+あと右のラベルで設定したフォントサイズや位置が守られていません
+これでは無意味です
+
+---
+
+左のプレビュ〜ですが右下に縮小版のようなものが表示されてしまっています
+また右のラベルと比べて〒が入っていない、ハイフンが入っていない、右のラベルは東京都板橋区で開業しているのにPDFではされていないなど差分が大きいです
+
+---
+
+PDFに右下に小さく重複して表示されてしまう件を解消して
+
+---
+
+ラベルの面ごとに薄い線を引けますか？
+線は引く引かないをユーザーが選択できるように
+
+---
+
+PDFにデザイン設定した背景が反映されていません
+QRは表示されています
+
+---
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   - Fix GitHub issue #37: PDF generation failures and rendering issues
+   - Fix missing Japanese characters (東・達・橋・様) in PDF - caused by Songti.ttc Simplified Chinese face being selected instead of Traditional Chinese
+   - Fix PDF not reflecting app preview template settings (positions, font sizes)
+   - Add repeat fill mode: fill entire label sheet with repeated contacts
+   - Fix PDF postal code rendering (missing 〒 and hyphen)
+   - Fix PDF address rendering (single line vs. 2-line split)
+   - Remove duplicate sender rendering from PDF bottom-right
+   - Add label border printing option (user selectable)
+   - Fix watermark/background design not appearing in PDF (current/pending work)
+
+2. Key Technical Concepts:
+   - **gofpdf**: Go PDF generation library; TTC extraction, CFF rejection, font embedding
+   - **TTC (TrueType Collection)**: Multiple font faces; absolute offsets must be rebased per face
+   - **cmap Format 4 vs Format 12**: Format 4 = BMP Unicode (platform 3, enc 1); Format 12 = full Unicode (platform 0, enc 4). Songti TC faces only have Format 12
+   - **Simplified vs Traditional Chinese fonts**: Songti.ttc face 0 (SC) lacks 東・達・橋・様; faces 1-7 (TC) have them via Format 12 cmap
+   - **Zustand persist middleware**: localStorage persistence for selectedTemplate and zoom
+   - **WatermarkLayer**: Preset watermarks use emoji canvas tiles (no file path); custom watermarks use base64 data URLs
+   - **Wails v2 bindings**: Go struct fields with `json:"camelCase"` auto-generate TypeScript models
+
+3. Files and Code Sections:
+
+   - **`internal/infrastructure/pdf/label_pdf.go`** — Most heavily modified; all PDF generation logic
+     - Added cmap Format 12 support in `japaneseCmapScore`:
+     ```go
+     // Format 12 path (when count == 0 from Format 4 scan)
+     if count == 0 && fmt12Off != 0 && int(fmt12Off)+16 <= len(cmap) {
+         sub := cmap[fmt12Off:]
+         numGroups := int(binary.BigEndian.Uint32(sub[12:16]))
+         for _, ch := range japaneseCoverageChars {
+             cp := uint32(ch)
+             for g := 0; g < numGroups; g++ {
+                 base := 16 + g*12
+                 startCC := binary.BigEndian.Uint32(sub[base : base+4])
+                 endCC := binary.BigEndian.Uint32(sub[base+4 : base+8])
+                 if cp < startCC { break }
+                 if cp <= endCC { count++; break }
+             }
+         }
+     }
+     ```
+     - Fixed postal code rendering (〒 symbol + NNN-NNNN format):
+     ```go
+     // 〒マーク
+     pdf.SetXY(baseX-spacing*0.3, baseY)
+     pdf.CellFormat(spacing*0.8, cellH, "〒", "", 0, "C", false, 0, "")
+     // digits formatted as "174-0061"
+     if len(digits) == 7 { formatted = digits[:3] + "-" + digits[3:] }
+     ```
+     - Fixed address to 2 lines (horizontal) / 2 columns (vertical):
+     ```go
+     addrLine1 := contact.Prefecture + contact.City
+     addrLine2 := contact.Street
+     if contact.Building != "" { addrLine2 += "\u3000" + contact.Building }
+     ```
+     - Removed sender rendering (TODO pending LabelCanvas implementation):
+     ```go
+     // TODO: 差出人描画はアプリプレビュー (LabelCanvas) が対応次第ここに実装する
+     _ = sender
+     ```
+     - Added label border rendering:
+     ```go
+     if job.ShowBorder {
+         pdf.SetDrawColor(180, 180, 180)
+         pdf.SetLineWidth(0.2)
+         pdf.Rect(originX, originY, layout.LabelWidth, layout.LabelHeight, "D")
+     }
+     ```
+
+   - **`internal/entity/print_job.go`** — Added ShowBorder field:
+     ```go
+     type PrintJob struct {
+         ContactIDs  []string    `json:"contactIds"`
+         Template    Template    `json:"template"`
+         SenderID    string      `json:"senderId"`
+         LabelLayout LabelLayout `json:"labelLayout"`
+         Watermark   *Watermark  `json:"watermark,omitempty"`
+         QRConfig    *QRConfig   `json:"qrConfig,omitempty"`
+         ShowBorder  bool        `json:"showBorder"`
+     }
+     ```
+
+   - **`frontend/src/stores/previewStore.ts`** — Added persist middleware:
+     ```typescript
+     export const usePreviewStore = create<PreviewState>()(
+       persist(
+         (set) => ({ selectedTemplate: null, zoom: 1, previewContactIndex: 0, ... }),
+         { name: 'atena-preview', partialize: (state) => ({ selectedTemplate: state.selectedTemplate, zoom: state.zoom }) },
+       ),
+     )
+     ```
+
+   - **`frontend/src/components/preview/PreviewArea.tsx`** — Added orientation change reset:
+     ```typescript
+     useEffect(() => {
+       if (selectedTemplate && selectedTemplate.orientation !== orientation) {
+         setSelectedTemplate(null)
+       }
+     }, [orientation, selectedTemplate, setSelectedTemplate])
+     ```
+
+   - **`frontend/src/components/PrintConfirmDialog.tsx`** — Added repeatFill, showBorder:
+     ```typescript
+     const [repeatFill, setRepeatFill] = useState(false)
+     const [showBorder, setShowBorder] = useState(false)
+     // In buildJob():
+     let ids = selectedContacts.map((c) => c.id)
+     if (repeatFill && ids.length > 0 && ids.length < labelsPerPage) {
+       const filled: string[] = []
+       while (filled.length < labelsPerPage) { filled.push(...ids) }
+       ids = filled.slice(0, labelsPerPage)
+     }
+     return entity.PrintJob.createFrom({ ..., showBorder })
+     ```
+
+   - **`internal/infrastructure/pdf/label_pdf_test.go`** — New test file:
+     ```go
+     func TestJapaneseCmapScoreWithSongti(t *testing.T) {
+         // Verifies face 0 (SC) scores 0, face 1-7 (TC) score 10
+     }
+     ```
+
+   - **`internal/entity/watermark.go`** — Structure reference:
+     ```go
+     type Watermark struct {
+         ID       string  `json:"id"`
+         Name     string  `json:"name"`
+         Type     string  `json:"type"`    // "preset" | "custom"
+         FilePath string  `json:"filePath"`
+         Opacity  float64 `json:"opacity"`
+     }
+     ```
+
+   - **`frontend/src/components/preview/WatermarkLayer.tsx`** — Preview renders watermarks:
+     - Preset: draws emoji tiles on canvas (PRESET_EMOJIS map: sakura→🌸, wave→🌊, bamboo→🎋, fuji→🗻, crane→🦢); `filePath` is always `''`
+     - Custom: loads image from base64 data URL stored in `filePath`
+
+   - **`frontend/src/components/decoration/WatermarkPanel.tsx`** — Sets watermark state:
+     ```typescript
+     // Preset: filePath always empty
+     setWatermark({ id, name: preset.label, type: 'preset', filePath: '', opacity })
+     // Custom: filePath is a base64 dataUrl
+     setWatermark({ id: 'custom', name: 'カスタム', type: 'custom', filePath: dataUrl, opacity })
+     ```
+
+4. Errors and fixes:
+   - **All faces scoring 0 in `japaneseCmapScore`**: Root cause was TC faces (1-7) in Songti.ttc only have cmap Format 12 (platform 0, enc 4), not Format 4. Fixed by adding Format 12 scanning path when Format 4 scan returns 0.
+   - **`previewStore.selectedTemplate` reset on app restart**: No persist middleware. Fixed by adding zustand persist with `partialize` for `selectedTemplate` and `zoom`.
+   - **Orientation change leaving stale template**: Vertical-mode coordinates used for horizontal rendering after switch. Fixed by `useEffect` in PreviewArea that resets `selectedTemplate` when orientation != template.orientation.
+   - **PDF missing 〒 and hyphen**: Old code stripped all non-digits and rendered without 〒. Fixed to render 〒 prefix and format as NNN-NNNN.
+   - **Address single line in PDF**: `buildAddress` joined all parts. Fixed to split into `prefecture+city` / `street+building` with 2-line (horizontal) or 2-column (vertical) rendering.
+   - **Sender appearing as "duplicate" in bottom-right**: Sender rendered in PDF but not in app preview (LabelCanvas has TODO comment). Fixed by removing sender rendering from PDF for consistency.
+
+5. Problem Solving:
+   - Diagnosed cmap Format 12 missing support via unit tests showing all 8 faces of Songti.ttc scoring 0
+   - Debug test (`debug_cmap_test.go`) confirmed TC faces use Format 12 exclusively (removed after diagnosis)
+   - Identified watermark issue: preset `filePath=''` causes PDF check `FilePath != ""` to always skip rendering; custom uses base64 dataURL which `os.Stat` cannot resolve
+   - QR works because it uses `job.QRConfig.Content` (a URL string) not a file path
+
+6. All user messages:
+   - "治っていないようです / また設定ではA4 10面になっていますがpdfでは一件しか印刷されていません、これもおかしいです" [screenshot showing missing characters]
+   - "なるほど、繰り返し印刷するモードが欲しいですね"
+   - "あと右のラベルで設定したフォントサイズや位置が守られていません / これでは無意味です" [screenshot]
+   - "左のプレビューですが右下に縮小版のようなものが表示されてしまっています / また右のラベルと比べて〒が入っていない、ハイフンが入っていない、右のラベルは東京都板橋区で改行しているのにPDFではされていないなど差分が大きいです" [screenshot]
+   - "PDFに右下に小さく重複して表示されてしまう件を解消して"
+   - "ラベルの面ごとに薄い線を引けますか？ 線は引く引かないをユーザーが選択できるように"
+   - "PDFにデザイン設定した背景が反映されていません / QRは表示されています"
+
+7. Pending Tasks:
+   - Fix watermark/background not appearing in PDF
+     - Preset watermarks: `filePath=''`, need emoji-based rendering in PDF (convert emoji to image or use a bundled PNG approach)
+     - Custom watermarks: `filePath` is a base64 data URL (e.g., `data:image/png;base64,...`), not a filesystem path — `os.Stat` fails; need to decode base64 and pass as bytes to gofpdf
+
+8. Current Work:
+   The user just reported: "PDFにデザイン設定した背景が反映されていません / QRは表示されています"
+   
+   Investigation revealed the root causes:
+   1. **Preset watermarks** (`type: 'preset'`): In `WatermarkPanel.tsx`, `filePath` is always set to `''` when selecting presets. The PDF generator skips rendering when `FilePath == ""`. Preset rendering in the app uses emoji tiles drawn on canvas.
+   2. **Custom watermarks** (`type: 'custom'`): `filePath` is a base64 data URL (`data:image/png;base64,...`). The PDF generator calls `os.Stat(filePath)` which fails on data URLs.
+
+   The last files read were:
+   - `internal/entity/watermark.go` — confirms FilePath field
+   - `frontend/src/components/decoration/WatermarkPanel.tsx` — confirms preset sets `filePath: ''`
+   - `frontend/src/components/preview/WatermarkLayer.tsx` — confirms preset uses emoji canvas tiles, custom uses base64 dataURL
+
+9. Optional Next Step:
+   Fix watermark rendering in PDF. The user stated: "PDFにデザイン設定した背景が反映されていません / QRは表示されています"
+   
+   Two cases to handle:
+   - **Custom watermark** (`type == "custom"`, `filePath` starts with `data:`): Decode base64 data URL and pass image bytes directly to gofpdf via `RegisterImageOptionsReader`
+   - **Preset watermark** (`type == "preset"`, `filePath == ""`): Either embed preset PNG images in the Go binary (using `//go:embed`), or render emoji via a Go emoji-to-image library. The simplest approach: bundle preset SVG/PNG files and embed them, OR pass the rendered base64 image from the frontend at print time.
+   
+   The cleanest approach that matches the existing frontend flow: have the frontend pass the rendered watermark as a base64 PNG in the `FilePath` field for presets too (render to canvas and export), OR add a new `ImageData` field to `Watermark` for the base64 bytes. This avoids needing Go-side emoji rendering.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/ta/.claude/projects/-Users-ta-workspace-atena-print/cf16a74a-d012-46d9-8b4d-4c0458da526e.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+
+---
+
+いい感じになってきましたがフォントが違いますね
+
+---
+
+gofpdf以外の選択肢はないのですか？
+
+---
+
+Cでもよく、ヒラギノでもなくてもいいのですがフォントの日本語が変なのが気になるのですがゴシックとか普通のフォントは使えない？
+
+---
+
+pushして
+
+---
+
+今pushされていない変更を見てmainに含めるべきか分析して
+
+---
+
+https://github.com/araitatsuya-code/atena-print/pull/40#discussion_r2964195021
+
+レビュー対応お願いします
+
+---
+
+This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   - Fix PDF generation failures and rendering issues (GitHub issue #37):
+     - Fix watermark/background not appearing in PDF
+     - Fix PDF not matching preview font sizes, positions
+     - Fix vertical text rendering (column orientation, pt→mm scaling)
+     - Fix horizontal address line heights
+     - Add serif/sans-serif two-font support in PDF
+     - Add bundled Japanese font support via go:embed (IPAGothic/IPAMincho)
+   - Respond to PR review comment at https://github.com/araitatsuya-code/atena-print/pull/40#discussion_r2964195021
+
+2. Key Technical Concepts:
+   - **gofpdf**: Go PDF library; only supports TrueType, not OpenType CFF (Hiragino is CFF → cannot embed)
+   - **pt→mm conversion**: `ptToMm = 25.4/72.0 ≈ 0.3528`; template stores font sizes in pt but gofpdf position params are in mm — required correct conversion
+   - **Vertical text right-edge semantics**: Preview's `drawVerticalBlock` uses `rightX` (right edge of block); old PDF code wrongly used it as leftX
+   - **data: URL watermarks**: Preset watermarks have `filePath=''`, custom have `filePath='data:image/...;base64,...'`; Go's `os.Stat` fails on data URLs → need base64 decode + `RegisterImageOptionsReader`
+   - **go:embed**: Used with `embed.FS` for optional font bundling; directory must contain at least one non-hidden file
+   - **Two-font system**: serif (`jfont`) and sans-serif (`jfont_sans`) registered separately; `setFont(size, family)` selects based on template's `fontFamily` field
+   - **Wails v2 bindings**: Auto-generated TypeScript in `frontend/wailsjs/`
+   - **Zustand persist middleware**: `previewStore` persists `selectedTemplate` and `zoom`
+
+3. Files and Code Sections:
+
+   - **`internal/infrastructure/pdf/label_pdf.go`** (most heavily modified):
+     - Added `embed.FS` for bundled fonts:
+       ```go
+       //go:embed fonts
+       var fontFS embed.FS
+       ```
+     - Generator struct expanded with `sansFontBytes`:
+       ```go
+       type Generator struct {
+           fontPath      string
+           fontBytes     []byte
+           sansFontPath  string
+           sansFontBytes []byte
+       }
+       ```
+     - `NewGenerator` now tries bundled fonts first (IPAMincho → IPAGothic → system fallback):
+       ```go
+       g.fontBytes = loadBundledFontBytes("fonts/IPAMincho.ttf")
+       if g.fontBytes == nil {
+           g.fontBytes = loadBundledFontBytes("fonts/IPAGothic.ttf")
+       }
+       g.sansFontBytes = loadBundledFontBytes("fonts/IPAGothic.ttf")
+       ```
+     - `loadBundledFontBytes` + `validateFontBytes` split from `loadAndValidateFont`
+     - Added `japaneseSansFontCandidates()` for system sans-serif fonts
+     - `setFont` now takes `(size float64, family string)`:
+       ```go
+       setFont := func(size float64, family string) {
+           useSans := family == "sans-serif" && hasSansFont
+           switch {
+           case useSans:
+               pdf.SetFont(sansFontName, "", size)
+           case hasSerifFont:
+               pdf.SetFont(serifFontName, "", size)
+           default:
+               pdf.SetFont("Courier", "", size)
+           }
+       }
+       ```
+     - Watermark pre-registration before loop (base64 data URL):
+       ```go
+       var wmKey, wmImgType string
+       if job.Watermark != nil && strings.HasPrefix(job.Watermark.FilePath, "data:") {
+           parts := strings.SplitN(job.Watermark.FilePath, ",", 2)
+           if len(parts) == 2 {
+               imgBytes, err := base64.StdEncoding.DecodeString(parts[1])
+               if err == nil {
+                   wmKey = "wm_img"
+                   wmImgType = "PNG"
+                   pdf.RegisterImageOptionsReader(wmKey, gofpdf.ImageOptions{ImageType: wmImgType}, bytes.NewReader(imgBytes))
+               }
+           }
+       }
+       ```
+     - `const ptToMm = 25.4 / 72.0` added
+     - `drawLabel` updated to pass fontFamily to all `setFont` calls
+     - Replaced `drawVerticalText` with `drawVerticalBlockPDF` (right-edge semantics, correct pt→mm scaling):
+       ```go
+       func drawVerticalBlockPDF(pdf *gofpdf.Fpdf, lines []string, rightX, topY, fontMm float64) {
+           colGap := fontMm * 0.2
+           colW := fontMm + colGap
+           charH := fontMm * 1.05
+           for i, line := range lines {
+               centerX := rightX - fontMm/2.0 - colW*float64(i)
+               leftX := centerX - fontMm/2.0
+               for j, ch := range line {
+                   pdf.SetXY(leftX, topY+float64(j)*charH)
+                   pdf.CellFormat(fontMm, charH, string(ch), "", 0, "C", false, 0, "")
+               }
+           }
+       }
+       ```
+     - `toKanjiNumerals` function added (arabic → kanji for vertical address)
+     - Postal code `cellH` fixed: `tmpl.PostalCode.FontSize * ptToMm * 1.3`
+     - Horizontal address line height fixed: `addrFontMm * 1.5` (was `addressFont_pt * 0.55`)
+     - Vertical name changed to `[honorific, name]` separate columns (matching preview)
+
+   - **`frontend/src/components/PrintConfirmDialog.tsx`**:
+     - Added `PRESET_EMOJIS` and `renderWatermarkToDataURL` helper (offscreen canvas → base64 PNG)
+     - `buildJob` made async; renders preset watermarks to PNG before job build:
+       ```typescript
+       async function buildJob(): Promise<entity.PrintJob> {
+           let wmValue = watermark
+           if (watermark && watermark.id !== 'none') {
+               const dataUrl = await renderWatermarkToDataURL(watermark, layout.labelWidth, layout.labelHeight)
+               if (dataUrl) wmValue = { ...watermark, filePath: dataUrl }
+           }
+           return entity.PrintJob.createFrom({ ... })
+       }
+       ```
+     - `handlePrint` and `handleSavePDF` updated to `await buildJob()`
+
+   - **`internal/infrastructure/pdf/fonts/`** (new directory):
+     - `placeholder.txt` — documents how to install IPAGothic/IPAMincho fonts
+     - `.gitkeep` — keeps directory tracked in git
+     - Required because `//go:embed fonts` needs at least one non-hidden file
+
+4. Errors and Fixes:
+   - **`encoding/base64` imported but not used**: The watermark data: URL code wasn't applied initially; fixed by adding the pre-registration block before the label loop.
+   - **`setFont` type mismatch** (`func(float64)` vs `func(float64, string)`): Fixed by updating `drawLabel` signature and all four `setFont` call sites.
+   - **`validateFontBytes` undefined**: `loadAndValidateFont` was monolithic; split into `loadAndValidateFont` (reads file) + `validateFontBytes` (validates bytes).
+   - **`//go:embed fonts` compile error** ("contains no embeddable files"): The `fonts/` directory only had `.gitkeep` (hidden file, excluded by embed). Fixed by adding `fonts/placeholder.txt`.
+   - **Go build error** after sans-serif font changes: `setFont` closure type changed to `func(float64, string)` but `drawLabel` still declared `setFont func(float64)` — fixed by updating the function signature.
+
+5. Problem Solving:
+   - **Watermark in PDF**: Root cause was (a) preset `filePath=''` skipped by `!= ""` check, (b) custom `filePath='data:...'` failed `os.Stat`. Solution: frontend renders preset to canvas PNG → data URL; Go side decodes data: URLs via base64.
+   - **PDF/Preview font mismatch**: Template stores font sizes in pt. Preview correctly converts pt→px. PDF was using pt values as mm for position calculations. Fixed with `ptToMm` constant throughout.
+   - **Vertical text misalignment**: `nameX/addressX` in template = right edge of block (preview semantics), but PDF used as left edge. Rewrote `drawVerticalBlockPDF` with right-edge semantics matching `drawVerticalBlock` in preview.
+   - **Japanese font quality (Songti looks "weird")**: Songti is Simplified Chinese serif — character shapes differ from Japanese. Solution: added `//go:embed fonts` structure for IPAGothic/IPAMincho bundling. User places TTF files in `fonts/` dir and rebuilds.
+
+6. All User Messages:
+   - (Session resumed from prior context) — user reported watermark not appearing in PDF
+   - "またPDFとラベル設定でフォントなどが異なるのが気になります完全一致させたいです" [screenshot showing PDF vs preview differences]
+   - "フォントが違いますね" [after font/position fix]
+   - "gofpdf以外の選択肢はないのですか？" — asked about PDF library alternatives
+   - "Cでもよく、ヒラギノでもなくてもいいのですがフォントの日本語が変なのが気になるのですがゴシックとか普通のフォントは使えない？" — wants proper Japanese Gothic/sans-serif font
+   - "pushして" — push branch
+   - "今pushされていない変更を見てmainに含めるべきか分析して" — analyze unpushed changes
+   - "https://github.com/araitatsuya-code/atena-print/pull/40#discussion_r2964195021 レビュー対応お願いします" — handle PR review comment
+
+7. Pending Tasks:
+   - Address PR review comment at https://github.com/araitatsuya-code/atena-print/pull/40#discussion_r2964195021
+   - Commit the remaining unstaged changes:
+     - `go.mod` — `gofpdf` promoted from `indirect` to `require`
+     - `frontend/wailsjs/go/main/App.d.ts` — updated Wails bindings
+     - `frontend/wailsjs/go/main/App.js` — updated Wails bindings
+     - `frontend/package.json.md5` — build artifact
+   - Create PR for feat/issue37-pdf-font-fix → main
+
+8. Current Work:
+   The user linked to PR review comment `https://github.com/araitatsuya-code/atena-print/pull/40#discussion_r2964195021` and asked for review response ("レビュー対応お願いします"). The current branch is `feat/issue37-pdf-font-fix` which is up to date with its remote. The unstaged changes (go.mod, Wails bindings) have not yet been committed.
+
+9. Optional Next Step:
+   Fetch and address the PR review comment at the linked URL. The user's most recent request is:
+   "https://github.com/araitatsuya-code/atena-print/pull/40#discussion_r2964195021 レビュー対応お願いします"
+   
+   This requires reading the PR review comment (via `gh api` or `gh pr view`) and implementing any requested changes, then pushing.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /Users/ta/.claude/projects/-Users-ta-workspace-atena-print/cf16a74a-d012-46d9-8b4d-4c0458da526e.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
