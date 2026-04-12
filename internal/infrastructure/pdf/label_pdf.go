@@ -300,6 +300,12 @@ var japaneseCoverageChars = []rune{
 // must be converted.
 const ptToMm = 25.4 / 72.0
 
+const (
+	nameAutoMinScale       = 0.6
+	verticalCharHeightRate = 1.05
+	nameLayoutPaddingMm    = 2.0
+)
+
 // japaneseCmapScore returns the number of japaneseCoverageChars mapped in the
 // font's Unicode BMP cmap (Format 4). A higher score indicates better Japanese
 // character coverage.
@@ -797,11 +803,16 @@ func drawLabel(
 
 	if tmpl.Orientation == "vertical" {
 		// 縦書き: プレビュー drawVerticalBlock と同じ右端基準・列幅
-		setFont(rec.NameFont, rec.NameFontFamily)
-		nameFontMm := rec.NameFont * ptToMm
+		nameCols := []string{honorific, contact.FamilyName + contact.GivenName}
+		availableNameH := tmpl.LabelHeight - rec.NameY - nameLayoutPaddingMm
+		if availableNameH < 5 {
+			availableNameH = 5
+		}
+		nameFontPt := fitVerticalNameFontPt(rec.NameFont, maxRunes(nameCols), availableNameH)
+		setFont(nameFontPt, rec.NameFontFamily)
+		nameFontMm := nameFontPt * ptToMm
 		// プレビューと同じ列順: [敬称(最右列), 氏名]
-		drawVerticalBlockPDF(pdf, []string{honorific, contact.FamilyName + contact.GivenName},
-			ox+rec.NameX, oy+rec.NameY, nameFontMm)
+		drawVerticalBlockPDF(pdf, nameCols, ox+rec.NameX, oy+rec.NameY, nameFontMm)
 
 		setFont(rec.AddressFont, rec.AddressFontFamily)
 		addrFontMm := rec.AddressFont * ptToMm
@@ -813,8 +824,15 @@ func drawLabel(
 		drawVerticalBlockPDF(pdf, kanjiAddrLines, ox+rec.AddressX, oy+rec.AddressY, addrFontMm)
 	} else {
 		// 横書き: 行高をプレビューと同じ pt→mm 変換で計算
+		availableNameW := tmpl.LabelWidth - rec.NameX - nameLayoutPaddingMm
+		if availableNameW < 10 {
+			availableNameW = 10
+		}
 		setFont(rec.NameFont, rec.NameFontFamily)
-		nameFontMm := rec.NameFont * ptToMm
+		measuredNameW := pdf.GetStringWidth(fullName)
+		nameFontPt := fitHorizontalNameFontPt(rec.NameFont, measuredNameW, availableNameW)
+		setFont(nameFontPt, rec.NameFontFamily)
+		nameFontMm := nameFontPt * ptToMm
 		nameLineH := nameFontMm * 1.4 // プレビューの nameFont は単一行なので余裕を持たせる
 		for i, line := range nameLines {
 			pdf.SetXY(ox+rec.NameX, oy+rec.NameY+float64(i)*nameLineH)
@@ -833,6 +851,48 @@ func drawLabel(
 	// TODO: 差出人描画はアプリプレビュー (LabelCanvas) が対応次第ここに実装する。
 	// 現時点では LabelCanvas が差出人を描画しないため、PDF でも非表示にしてプレビューと一致させる。
 	_ = sender
+}
+
+func maxRunes(lines []string) int {
+	maxLen := 0
+	for _, line := range lines {
+		n := len([]rune(line))
+		if n > maxLen {
+			maxLen = n
+		}
+	}
+	return maxLen
+}
+
+func fitHorizontalNameFontPt(baseFontPt, measuredWidthMm, availableWidthMm float64) float64 {
+	if baseFontPt <= 0 || measuredWidthMm <= 0 || availableWidthMm <= 0 {
+		return baseFontPt
+	}
+	if measuredWidthMm <= availableWidthMm {
+		return baseFontPt
+	}
+	scaled := baseFontPt * (availableWidthMm / measuredWidthMm)
+	minFont := baseFontPt * nameAutoMinScale
+	if scaled < minFont {
+		return minFont
+	}
+	return scaled
+}
+
+func fitVerticalNameFontPt(baseFontPt float64, maxChars int, availableHeightMm float64) float64 {
+	if baseFontPt <= 0 || maxChars <= 0 || availableHeightMm <= 0 {
+		return baseFontPt
+	}
+	required := baseFontPt * ptToMm * verticalCharHeightRate * float64(maxChars)
+	if required <= availableHeightMm {
+		return baseFontPt
+	}
+	scaledPt := availableHeightMm / (ptToMm * verticalCharHeightRate * float64(maxChars))
+	minFont := baseFontPt * nameAutoMinScale
+	if scaledPt < minFont {
+		return minFont
+	}
+	return scaledPt
 }
 
 // drawVerticalBlockPDF renders lines of text as vertical columns, matching the
