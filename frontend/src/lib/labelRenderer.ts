@@ -1,9 +1,18 @@
 import type { Contact, Template } from '../types'
 import { drawVerticalBlock } from './verticalText'
+import { fitHorizontalNameFontPx, fitVerticalNameFontPx } from './nameAutoLayout'
 
 /** 96dpi 時の 1mm あたりピクセル数 */
 export const MM_TO_PX_AT_96_DPI = 96 / 25.4
 const PT_TO_MM = 25.4 / 72
+const NAME_LAYOUT_PADDING_MM = 2
+
+function measureTextWidth(ctx: CanvasRenderingContext2D, text: string, fallbackFontPx: number): number {
+  if (typeof ctx.measureText === 'function') {
+    return ctx.measureText(text).width
+  }
+  return [...text].length * fallbackFontPx
+}
 
 /** 郵便番号を "NNN-NNNN" 形式に整形する */
 export function formatPostalCode(raw: string): string {
@@ -110,9 +119,13 @@ function renderVerticalLabel(
 ): void {
   {
     const rc = tpl.recipient
-    const nameFontPx = ptToPx(rc.nameFont, pxPerMm)
+    const baseNameFontPx = ptToPx(rc.nameFont, pxPerMm)
     const name = `${contact.familyName}${contact.givenName}`
     const honorific = contact.honorific || '様'
+    const nameLines = [honorific, name]
+    const maxChars = nameLines.reduce((max, line) => Math.max(max, [...line].length), 0)
+    const availableHeightPx = mmToPx(Math.max(5, tpl.labelHeight - rc.nameY - NAME_LAYOUT_PADDING_MM), pxPerMm)
+    const nameFontPx = fitVerticalNameFontPx(baseNameFontPx, maxChars, availableHeightPx)
 
     ctx.fillStyle = '#111827'
     const nameWeight = rc.nameBold ? 'bold' : 'normal'
@@ -120,7 +133,7 @@ function renderVerticalLabel(
 
     drawVerticalBlock({
       ctx,
-      lines: [honorific, name],
+      lines: nameLines,
       rightX: mmToPx(rc.nameX, pxPerMm),
       topY: mmToPx(rc.nameY, pxPerMm),
       fontSize: nameFontPx,
@@ -157,12 +170,18 @@ function renderHorizontalLabel(
 ): void {
   {
     const rc = tpl.recipient
-    const nameFontPx = ptToPx(rc.nameFont, pxPerMm)
+    const baseNameFontPx = ptToPx(rc.nameFont, pxPerMm)
     const honorific = contact.honorific || '様'
     const fullName = `${contact.familyName}${contact.givenName}　${honorific}`
+    const fontFamily = resolveFontFamily(rc.nameFontFamily)
+    const nameWeight = rc.nameBold ? 'bold' : 'normal'
+    const availableWidthPx = mmToPx(Math.max(10, tpl.labelWidth - rc.nameX - NAME_LAYOUT_PADDING_MM), pxPerMm)
 
     ctx.fillStyle = '#111827'
-    ctx.font = `${rc.nameBold ? 'bold' : 'normal'} ${nameFontPx}px ${resolveFontFamily(rc.nameFontFamily)}`
+    ctx.font = `${nameWeight} ${baseNameFontPx}px ${fontFamily}`
+    const measuredWidth = measureTextWidth(ctx, fullName, baseNameFontPx)
+    const nameFontPx = fitHorizontalNameFontPx(baseNameFontPx, measuredWidth, availableWidthPx)
+    ctx.font = `${nameWeight} ${nameFontPx}px ${fontFamily}`
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
     ctx.fillText(fullName, mmToPx(rc.nameX, pxPerMm), mmToPx(rc.nameY, pxPerMm))
