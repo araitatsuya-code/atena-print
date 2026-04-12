@@ -14,7 +14,11 @@ import {
   applyBold,
   applyFontDelta,
   applyFontFamily,
+  applyMove,
   buildEditableBoxes,
+  getEditableFieldInspectorValue,
+  setEditableFieldFontPt,
+  setEditableFieldPosition,
   type EditableFieldId,
 } from './labelEditorTemplate'
 
@@ -24,6 +28,24 @@ const MM_TO_PX = 96 / 25.4
 const ZOOM_MIN = 0.5
 const ZOOM_MAX = 4.0
 const ZOOM_STEP = 0.25
+const KEYBOARD_FINE_STEP_MM = 0.1
+const KEYBOARD_COARSE_STEP_MM = 1.0
+
+function isEditableInputTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  return (
+    target.isContentEditable ||
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    tag === 'SELECT'
+  )
+}
+
+function parseInputNumber(rawValue: string): number | null {
+  const parsed = Number.parseFloat(rawValue)
+  return Number.isFinite(parsed) ? parsed : null
+}
 
 export default function PreviewArea() {
   const { contacts, selectedIds } = useContactStore(
@@ -158,6 +180,9 @@ export default function PreviewArea() {
   const hasOffset = displayOffset.x !== 0 || displayOffset.y !== 0
   const editableBoxes = buildEditableBoxes(template)
   const selectedBox = editableBoxes.find((box) => box.id === selectedFieldId) ?? null
+  const selectedInspector = selectedFieldId
+    ? getEditableFieldInspectorValue(template, selectedFieldId)
+    : null
 
   useEffect(() => {
     if (editableBoxes.length === 0) {
@@ -174,6 +199,57 @@ export default function PreviewArea() {
     if (!selectedFieldId) return
     handleTemplateChange(updater(template, selectedFieldId))
   }
+
+  function updateSelectedPositionFromInput(axis: 'x' | 'y', rawValue: string) {
+    if (!selectedFieldId || !selectedInspector) return
+    const parsed = parseInputNumber(rawValue)
+    if (parsed === null) return
+
+    const nextX = axis === 'x' ? parsed : selectedInspector.xMm
+    const nextY = axis === 'y' ? parsed : selectedInspector.yMm
+    handleTemplateChange(setEditableFieldPosition(template, selectedFieldId, nextX, nextY))
+  }
+
+  function updateSelectedFontFromInput(rawValue: string) {
+    if (!selectedFieldId) return
+    const parsed = parseInputNumber(rawValue)
+    if (parsed === null) return
+    handleTemplateChange(setEditableFieldFontPt(template, selectedFieldId, parsed))
+  }
+
+  useEffect(() => {
+    if (!currentContact || !selectedFieldId) return
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableInputTarget(event.target)) return
+      const step = event.shiftKey ? KEYBOARD_COARSE_STEP_MM : KEYBOARD_FINE_STEP_MM
+      let dx = 0
+      let dy = 0
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          dx = -step
+          break
+        case 'ArrowRight':
+          dx = step
+          break
+        case 'ArrowUp':
+          dy = -step
+          break
+        case 'ArrowDown':
+          dy = step
+          break
+        default:
+          return
+      }
+
+      event.preventDefault()
+      handleTemplateChange(applyMove(template, selectedFieldId, dx, dy))
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [currentContact, selectedFieldId, template])
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#f0f0f0]">
@@ -244,41 +320,91 @@ export default function PreviewArea() {
 
         <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-t border-gray-100 bg-gray-50">
           <span className="text-xs font-medium text-gray-700">文字設定</span>
-          <select
-            value={selectedFieldId ?? ''}
-            onChange={(e) => setSelectedFieldId(e.target.value as EditableFieldId)}
-            disabled={!currentContact || editableBoxes.length === 0}
-            className="h-8 min-w-[140px] rounded border border-gray-300 bg-white px-2 text-xs text-gray-700 disabled:opacity-40"
-          >
-            {editableBoxes.length === 0 && <option value="">編集項目なし</option>}
-            {editableBoxes.map((box) => (
-              <option key={box.id} value={box.id}>
-                {box.label}
-              </option>
-            ))}
-          </select>
+
+          <div className="flex flex-wrap items-center gap-1 rounded border border-gray-300 bg-white p-1">
+            {editableBoxes.length === 0 && (
+              <span className="px-2 text-xs text-gray-500">編集項目なし</span>
+            )}
+            {editableBoxes.map((box) => {
+              const selected = box.id === selectedFieldId
+              return (
+                <button
+                  key={box.id}
+                  onClick={() => setSelectedFieldId(box.id)}
+                  disabled={!currentContact}
+                  className={`h-7 rounded px-2 text-xs border transition-colors inline-flex items-center gap-1.5 ${
+                    selected
+                      ? 'bg-slate-700 text-white border-slate-700'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                  } disabled:opacity-40`}
+                  title={`${box.label} を編集`}
+                >
+                  <span
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ backgroundColor: box.color }}
+                  />
+                  {box.label}
+                </button>
+              )
+            })}
+          </div>
 
           <div className="flex items-center gap-1">
             <span className="text-xs text-gray-500">サイズ</span>
             <button
               onClick={() => updateSelectedField((tpl, id) => applyFontDelta(tpl, id, -0.5))}
-              disabled={!selectedBox}
+              disabled={!selectedInspector}
               className="h-8 w-8 rounded border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-40"
               title="文字サイズを小さくする"
             >
               −
             </button>
-            <span className="h-8 min-w-[60px] rounded border border-gray-300 bg-white px-2 text-xs text-gray-700 inline-flex items-center justify-center">
-              {selectedBox ? `${selectedBox.fontPt} pt` : '---'}
-            </span>
+            <input
+              type="number"
+              step={0.5}
+              value={selectedInspector ? selectedInspector.fontPt.toFixed(1) : ''}
+              onChange={(e) => updateSelectedFontFromInput(e.target.value)}
+              disabled={!selectedInspector}
+              className="h-8 w-20 rounded border border-gray-300 bg-white px-2 text-right text-xs text-gray-700 disabled:opacity-40"
+              title="フォントサイズ (pt)"
+            />
+            <span className="text-xs text-gray-500">pt</span>
             <button
               onClick={() => updateSelectedField((tpl, id) => applyFontDelta(tpl, id, 0.5))}
-              disabled={!selectedBox}
+              disabled={!selectedInspector}
               className="h-8 w-8 rounded border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-40"
               title="文字サイズを大きくする"
             >
               ＋
             </button>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-500">X</span>
+            <input
+              type="number"
+              step={0.1}
+              value={selectedInspector ? selectedInspector.xMm.toFixed(1) : ''}
+              onChange={(e) => updateSelectedPositionFromInput('x', e.target.value)}
+              disabled={!selectedInspector}
+              className="h-8 w-20 rounded border border-gray-300 bg-white px-2 text-right text-xs text-gray-700 disabled:opacity-40"
+              title="X 座標 (mm)"
+            />
+            <span className="text-xs text-gray-500">mm</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-500">Y</span>
+            <input
+              type="number"
+              step={0.1}
+              value={selectedInspector ? selectedInspector.yMm.toFixed(1) : ''}
+              onChange={(e) => updateSelectedPositionFromInput('y', e.target.value)}
+              disabled={!selectedInspector}
+              className="h-8 w-20 rounded border border-gray-300 bg-white px-2 text-right text-xs text-gray-700 disabled:opacity-40"
+              title="Y 座標 (mm)"
+            />
+            <span className="text-xs text-gray-500">mm</span>
           </div>
 
           <div className="flex items-center rounded border border-gray-300 overflow-hidden">
@@ -324,7 +450,7 @@ export default function PreviewArea() {
           </button>
 
           <span className="text-[11px] text-gray-500">
-            項目を選んでフォント調整。位置はプレビュー上でドラッグ。
+            矢印キーで 0.1mm、Shift+矢印で 1.0mm 移動。ドラッグと数値は同期。
           </span>
         </div>
       </div>

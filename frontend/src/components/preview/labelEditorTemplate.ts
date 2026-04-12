@@ -18,6 +18,15 @@ export interface EditableBox {
   color: string
 }
 
+export interface EditableFieldInspectorValue {
+  xMm: number
+  yMm: number
+  fontPt: number
+}
+
+const roundMm = (value: number) => Math.round(value * 10) / 10
+const roundPt = (value: number) => Math.max(4, Math.round(value * 2) / 2)
+
 export function buildEditableBoxes(tpl: Template): EditableBox[] {
   const isVertical = tpl.orientation === 'vertical'
   const labelHeight = tpl.labelHeight
@@ -98,8 +107,44 @@ export function buildEditableBoxes(tpl: Template): EditableBox[] {
   return boxes
 }
 
-export function applyMove(tpl: Template, id: EditableFieldId, dxMm: number, dyMm: number): Template {
-  const roundMm = (value: number) => Math.round(value * 10) / 10
+export function getEditableFieldInspectorValue(
+  tpl: Template,
+  id: EditableFieldId,
+): EditableFieldInspectorValue | null {
+  switch (id) {
+    case 'postalCode':
+      if (!tpl.postalCode) return null
+      return {
+        xMm: tpl.postalCode.x,
+        yMm: tpl.postalCode.y,
+        fontPt: tpl.postalCode.fontSize,
+      }
+    case 'recipientName':
+      return {
+        xMm: tpl.recipient.nameX,
+        yMm: tpl.recipient.nameY,
+        fontPt: tpl.recipient.nameFont,
+      }
+    case 'recipientAddr':
+      return {
+        xMm: tpl.recipient.addressX,
+        yMm: tpl.recipient.addressY,
+        fontPt: tpl.recipient.addressFont,
+      }
+    default:
+      return null
+  }
+}
+
+export function setEditableFieldPosition(
+  tpl: Template,
+  id: EditableFieldId,
+  xMm: number,
+  yMm: number,
+): Template {
+  const roundedX = roundMm(xMm)
+  const roundedY = roundMm(yMm)
+
   switch (id) {
     case 'postalCode':
       if (!tpl.postalCode) return tpl
@@ -107,8 +152,8 @@ export function applyMove(tpl: Template, id: EditableFieldId, dxMm: number, dyMm
         ...tpl,
         postalCode: {
           ...tpl.postalCode,
-          x: roundMm(tpl.postalCode.x + dxMm),
-          y: roundMm(tpl.postalCode.y + dyMm),
+          x: roundedX,
+          y: roundedY,
         },
       }
     case 'recipientName':
@@ -116,8 +161,8 @@ export function applyMove(tpl: Template, id: EditableFieldId, dxMm: number, dyMm
         ...tpl,
         recipient: {
           ...tpl.recipient,
-          nameX: roundMm(tpl.recipient.nameX + dxMm),
-          nameY: roundMm(tpl.recipient.nameY + dyMm),
+          nameX: roundedX,
+          nameY: roundedY,
         },
       }
     case 'recipientAddr':
@@ -125,8 +170,8 @@ export function applyMove(tpl: Template, id: EditableFieldId, dxMm: number, dyMm
         ...tpl,
         recipient: {
           ...tpl.recipient,
-          addressX: roundMm(tpl.recipient.addressX + dxMm),
-          addressY: roundMm(tpl.recipient.addressY + dyMm),
+          addressX: roundedX,
+          addressY: roundedY,
         },
       }
     default:
@@ -134,8 +179,13 @@ export function applyMove(tpl: Template, id: EditableFieldId, dxMm: number, dyMm
   }
 }
 
-export function applyFontDelta(tpl: Template, id: EditableFieldId, delta: number): Template {
-  const roundPt = (value: number) => Math.max(4, Math.round(value * 2) / 2)
+export function setEditableFieldFontPt(
+  tpl: Template,
+  id: EditableFieldId,
+  fontPt: number,
+): Template {
+  const roundedFont = roundPt(fontPt)
+
   switch (id) {
     case 'postalCode':
       if (!tpl.postalCode) return tpl
@@ -143,22 +193,34 @@ export function applyFontDelta(tpl: Template, id: EditableFieldId, delta: number
         ...tpl,
         postalCode: {
           ...tpl.postalCode,
-          fontSize: roundPt(tpl.postalCode.fontSize + delta),
+          fontSize: roundedFont,
         },
       }
     case 'recipientName':
       return {
         ...tpl,
-        recipient: { ...tpl.recipient, nameFont: roundPt(tpl.recipient.nameFont + delta) },
+        recipient: { ...tpl.recipient, nameFont: roundedFont },
       }
     case 'recipientAddr':
       return {
         ...tpl,
-        recipient: { ...tpl.recipient, addressFont: roundPt(tpl.recipient.addressFont + delta) },
+        recipient: { ...tpl.recipient, addressFont: roundedFont },
       }
     default:
       return tpl
   }
+}
+
+export function applyMove(tpl: Template, id: EditableFieldId, dxMm: number, dyMm: number): Template {
+  const current = getEditableFieldInspectorValue(tpl, id)
+  if (!current) return tpl
+  return setEditableFieldPosition(tpl, id, current.xMm + dxMm, current.yMm + dyMm)
+}
+
+export function applyFontDelta(tpl: Template, id: EditableFieldId, delta: number): Template {
+  const current = getEditableFieldInspectorValue(tpl, id)
+  if (!current) return tpl
+  return setEditableFieldFontPt(tpl, id, current.fontPt + delta)
 }
 
 export function applyFontFamily(
