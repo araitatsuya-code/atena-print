@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "78517a87be9f",
+  "strategy": "manual-commit",
+  "branch": "codex/issue-53",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "frontend/src/components/preview/PreviewArea.tsx",
+    "frontend/src/components/preview/labelEditorTemplate.test.ts",
+    "frontend/src/components/preview/labelEditorTemplate.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/78/517a87be9f/0/metadata.json",
+      "transcript": "/78/517a87be9f/0/full.jsonl",
+      "context": "/78/517a87be9f/0/context.md",
+      "content_hash": "/78/517a87be9f/0/content_hash.txt",
+      "prompt": "/78/517a87be9f/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 1
+  }
+}
