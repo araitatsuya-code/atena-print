@@ -4,8 +4,6 @@ export type EditableFieldId =
   | 'postalCode'
   | 'recipientName'
   | 'recipientAddr'
-  | 'senderName'
-  | 'senderAddr'
 
 export interface EditableBox {
   id: EditableFieldId
@@ -131,24 +129,6 @@ export function applyMove(tpl: Template, id: EditableFieldId, dxMm: number, dyMm
           addressY: roundMm(tpl.recipient.addressY + dyMm),
         },
       }
-    case 'senderName':
-      return {
-        ...tpl,
-        sender: {
-          ...tpl.sender,
-          nameX: roundMm(tpl.sender.nameX + dxMm),
-          nameY: roundMm(tpl.sender.nameY + dyMm),
-        },
-      }
-    case 'senderAddr':
-      return {
-        ...tpl,
-        sender: {
-          ...tpl.sender,
-          addressX: roundMm(tpl.sender.addressX + dxMm),
-          addressY: roundMm(tpl.sender.addressY + dyMm),
-        },
-      }
     default:
       return tpl
   }
@@ -176,16 +156,6 @@ export function applyFontDelta(tpl: Template, id: EditableFieldId, delta: number
         ...tpl,
         recipient: { ...tpl.recipient, addressFont: roundPt(tpl.recipient.addressFont + delta) },
       }
-    case 'senderName':
-      return {
-        ...tpl,
-        sender: { ...tpl.sender, nameFont: roundPt(tpl.sender.nameFont + delta) },
-      }
-    case 'senderAddr':
-      return {
-        ...tpl,
-        sender: { ...tpl.sender, addressFont: roundPt(tpl.sender.addressFont + delta) },
-      }
     default:
       return tpl
   }
@@ -204,10 +174,6 @@ export function applyFontFamily(
       return { ...tpl, recipient: { ...tpl.recipient, nameFontFamily: family } }
     case 'recipientAddr':
       return { ...tpl, recipient: { ...tpl.recipient, addressFontFamily: family } }
-    case 'senderName':
-      return { ...tpl, sender: { ...tpl.sender, nameFontFamily: family } }
-    case 'senderAddr':
-      return { ...tpl, sender: { ...tpl.sender, addressFontFamily: family } }
     default:
       return tpl
   }
@@ -222,10 +188,6 @@ export function applyBold(tpl: Template, id: EditableFieldId, bold: boolean): Te
       return { ...tpl, recipient: { ...tpl.recipient, nameBold: bold } }
     case 'recipientAddr':
       return { ...tpl, recipient: { ...tpl.recipient, addressBold: bold } }
-    case 'senderName':
-      return { ...tpl, sender: { ...tpl.sender, nameBold: bold } }
-    case 'senderAddr':
-      return { ...tpl, sender: { ...tpl.sender, addressBold: bold } }
     default:
       return tpl
   }
