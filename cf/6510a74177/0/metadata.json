@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.4.8",
+  "checkpoint_id": "cf6510a74177",
+  "session_id": "10ec30e5-92f0-4567-b86e-2099553619b5",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-12T13:39:41.652251Z",
+  "branch": "codex/auto-name-layout-fit",
+  "checkpoints_count": 0,
+  "files_touched": [
+    "frontend/src/lib/nameAutoLayout.ts",
+    "internal/infrastructure/pdf/label_pdf.go",
+    "internal/infrastructure/pdf/name_auto_layout_test.go",
+    "frontend/src/lib/labelRenderer.ts",
+    "frontend/src/lib/nameAutoLayout.test.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "e594b2d94cb6",
+  "checkpoint_transcript_start": 11,
+  "transcript_lines_at_start": 11,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-12T13:39:41.572842Z",
+    "agent_lines": 220,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 220,
+    "agent_percentage": 100
+  }
+}
