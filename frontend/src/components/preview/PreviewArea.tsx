@@ -119,6 +119,11 @@ export default function PreviewArea() {
   const [showGrid, setShowGrid] = useState(false)
   // フォント編集対象フィールド
   const [selectedFieldId, setSelectedFieldId] = useState<EditableFieldId | null>(null)
+  const latestTemplateRef = useRef(template)
+
+  useEffect(() => {
+    latestTemplateRef.current = template
+  }, [template])
 
   // ── 背景ドラッグ: 印刷位置補正オフセット ─────────────────────────────────
 
@@ -244,12 +249,12 @@ export default function PreviewArea() {
       }
 
       event.preventDefault()
-      handleTemplateChange(applyMove(template, selectedFieldId, dx, dy))
+      handleTemplateChange(applyMove(latestTemplateRef.current, selectedFieldId, dx, dy))
     }
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [currentContact, selectedFieldId, template])
+  }, [currentContact, selectedFieldId])
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#f0f0f0]">
