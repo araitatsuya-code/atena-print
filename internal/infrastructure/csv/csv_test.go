@@ -50,6 +50,21 @@ func TestImport(t *testing.T) {
 		}
 	})
 
+	t.Run("任意の敬称をインポート時に保持する", func(t *testing.T) {
+		content := "近藤,一樹,,,各位,1500001,東京都,渋谷区,1-2-3,,,,\n"
+		f := writeTempCSV(t, content)
+		contacts, errs := Import(f)
+		if len(errs) != 0 {
+			t.Fatalf("unexpected errors: %v", errs)
+		}
+		if len(contacts) != 1 {
+			t.Fatalf("expected 1 contact, got %d", len(contacts))
+		}
+		if contacts[0].Honorific != "各位" {
+			t.Errorf("Honorific: got %q, want 各位", contacts[0].Honorific)
+		}
+	})
+
 	t.Run("敬称が空の場合は「様」になる", func(t *testing.T) {
 		content := "田中,次郎,,,,,,,,,,,\n"
 		f := writeTempCSV(t, content)
@@ -94,7 +109,7 @@ func TestExport(t *testing.T) {
 				ID:         "1",
 				FamilyName: "山田",
 				GivenName:  "太郎",
-				Honorific:  "様",
+				Honorific:  "御侍史",
 				PostalCode: "1234567",
 				Prefecture: "東京都",
 				City:       "渋谷区",
@@ -117,6 +132,9 @@ func TestExport(t *testing.T) {
 		}
 		if imported[0].FamilyName != "山田" {
 			t.Errorf("FamilyName: got %q", imported[0].FamilyName)
+		}
+		if imported[0].Honorific != "御侍史" {
+			t.Errorf("Honorific: got %q, want 御侍史", imported[0].Honorific)
 		}
 	})
 
