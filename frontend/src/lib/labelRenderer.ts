@@ -111,8 +111,8 @@ function renderVerticalLabel(
   {
     const rc = tpl.recipient
     const nameFontPx = ptToPx(rc.nameFont, pxPerMm)
-    const name = `${contact.familyName}${contact.givenName}`
     const honorific = contact.honorific || '様'
+    const fullName = `${contact.familyName}${contact.givenName}${honorific}`
 
     ctx.fillStyle = '#111827'
     const nameWeight = rc.nameBold ? 'bold' : 'normal'
@@ -120,7 +120,7 @@ function renderVerticalLabel(
 
     drawVerticalBlock({
       ctx,
-      lines: [honorific, name],
+      lines: [fullName],
       rightX: mmToPx(rc.nameX, pxPerMm),
       topY: mmToPx(rc.nameY, pxPerMm),
       fontSize: nameFontPx,
