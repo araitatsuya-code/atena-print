@@ -105,6 +105,7 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
     const errs: typeof errors = {}
     if (!form.familyName.trim()) errs.familyName = '姓は必須です'
     if (!form.givenName.trim()) errs.givenName = '名は必須です'
+    if (!form.honorific.trim()) errs.honorific = '敬称は必須です'
     return errs
   }
 
@@ -200,12 +201,20 @@ export default function ContactEditModal({ contact, onClose, onSaved }: Props) {
           </div>
 
           {/* 敬称 */}
-          <Field label="敬称" required>
-            <select value={form.honorific} onChange={set('honorific')} className={inputCls()}>
+          <Field label="敬称" required error={errors.honorific}>
+            <input
+              type="text"
+              list="honorific-candidates"
+              value={form.honorific}
+              onChange={set('honorific')}
+              className={inputCls(!!errors.honorific)}
+              placeholder="様"
+            />
+            <datalist id="honorific-candidates">
               {HONORIFICS.map((h) => (
-                <option key={h} value={h}>{h}</option>
+                <option key={h} value={h} />
               ))}
-            </select>
+            </datalist>
           </Field>
 
           {/* 郵便番号 */}

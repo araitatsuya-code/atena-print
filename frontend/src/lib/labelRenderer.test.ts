@@ -110,4 +110,22 @@ describe('renderLabelTextLayer', () => {
     const renderedTexts = fillText.mock.calls.map(([text]) => text)
     expect(renderedTexts).toContain('山田太郎　様')
   })
+
+  it('任意の敬称をそのまま描画する', () => {
+    const ctx = createMockContext()
+
+    renderLabelTextLayer(
+      ctx as unknown as CanvasRenderingContext2D,
+      { ...baseContact, honorific: '各位' },
+      baseTemplate,
+      { pxPerMm: 1, showBackground: false, showBorder: false },
+    )
+
+    expect(drawVerticalBlock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        lines: ['山田太郎各位'],
+      }),
+    )
+  })
 })
