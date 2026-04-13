@@ -799,8 +799,8 @@ func drawLabel(
 		// 縦書き: プレビュー drawVerticalBlock と同じ右端基準・列幅
 		setFont(rec.NameFont, rec.NameFontFamily)
 		nameFontMm := rec.NameFont * ptToMm
-		// プレビューと同じ列順: [敬称(最右列), 氏名]
-		drawVerticalBlockPDF(pdf, []string{honorific, contact.FamilyName + contact.GivenName},
+		// 縦書きは「氏名+敬称」を同一列で描画
+		drawVerticalBlockPDF(pdf, []string{contact.FamilyName + contact.GivenName + honorific},
 			ox+rec.NameX, oy+rec.NameY, nameFontMm)
 
 		setFont(rec.AddressFont, rec.AddressFontFamily)
