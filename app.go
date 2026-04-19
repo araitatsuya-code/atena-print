@@ -154,6 +154,33 @@ func (a *App) ImportCSV(filePath string) (entity.ImportResult, error) {
 	return result, nil
 }
 
+// GetCSVImportPlan returns headers, sample rows and suggested mapping for CSV import wizard.
+func (a *App) GetCSVImportPlan(filePath string) (entity.CSVImportPlan, error) {
+	plan, err := a.csvUseCase.CreateImportPlan(filePath)
+	if err != nil {
+		return entity.CSVImportPlan{}, fmt.Errorf("GetCSVImportPlan: %w", err)
+	}
+	return plan, nil
+}
+
+// AnalyzeCSVImport evaluates parse errors and duplicate candidates for CSV import wizard.
+func (a *App) AnalyzeCSVImport(filePath string, mapping map[string]int) (entity.CSVImportAnalysis, error) {
+	analysis, err := a.csvUseCase.AnalyzeImport(filePath, mapping)
+	if err != nil {
+		return entity.CSVImportAnalysis{}, fmt.Errorf("AnalyzeCSVImport: %w", err)
+	}
+	return analysis, nil
+}
+
+// ImportCSVWithOptions imports CSV with explicit duplicate resolutions.
+func (a *App) ImportCSVWithOptions(filePath string, mapping map[string]int, resolutions []entity.CSVDuplicateResolution) (entity.CSVImportExecutionResult, error) {
+	result, err := a.csvUseCase.ImportWithOptions(filePath, mapping, resolutions)
+	if err != nil {
+		return entity.CSVImportExecutionResult{}, fmt.Errorf("ImportCSVWithOptions: %w", err)
+	}
+	return result, nil
+}
+
 // ExportCSV exports the given contacts (or all if ids is empty) to a CSV file.
 func (a *App) ExportCSV(ids []string, filePath string) error {
 	if err := a.csvUseCase.Export(ids, filePath); err != nil {
