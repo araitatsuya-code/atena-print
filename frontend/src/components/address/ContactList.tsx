@@ -4,7 +4,6 @@ import {
   GetGroups,
   DeleteContacts,
   SearchContacts,
-  ImportCSV,
   ExportCSV,
   OpenCSVFileDialog,
   SaveCSVFileDialog,
@@ -16,6 +15,7 @@ import { useContactStore } from '../../stores/contactStore'
 import type { Contact, ContactYearStatus, Group } from '../../types'
 import ContactEditModal from './ContactEditModal'
 import GroupManageDialog from './GroupManageDialog'
+import CSVImportWizard from './CSVImportWizard'
 
 type EditableField = 'familyName' | 'givenName' | 'honorific' | 'postalCode' | 'prefecture' | 'city' | 'street'
 type NavigationMode = 'none' | 'enter' | 'tab'
@@ -75,6 +75,7 @@ export default function ContactList() {
   const [editTarget, setEditTarget] = useState<Contact | null | undefined>(undefined)
   // undefined = モーダル非表示, null = 新規作成, Contact = 編集
   const [showGroupManage, setShowGroupManage] = useState(false)
+  const [importWizardFilePath, setImportWizardFilePath] = useState<string | null>(null)
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
   const [inlineSaveError, setInlineSaveError] = useState<string | null>(null)
   const [savingCellKey, setSavingCellKey] = useState<string | null>(null)
@@ -217,17 +218,9 @@ export default function ContactList() {
     try {
       const filePath = await OpenCSVFileDialog()
       if (!filePath) return
-      const result = await ImportCSV(filePath)
-      const msg = `インポート完了: ${result.imported} 件`
-      if (result.errors && result.errors.length > 0) {
-        alert(`${msg}\n\nエラー:\n${result.errors.join('\n')}`)
-      } else {
-        alert(msg)
-      }
+      setImportWizardFilePath(filePath)
     } catch (err) {
       alert(`インポートに失敗しました: ${err}`)
-    } finally {
-      await refreshContacts()
     }
   }
 
@@ -910,6 +903,14 @@ export default function ContactList() {
         <GroupManageDialog
           onClose={() => setShowGroupManage(false)}
           onChanged={refreshGroups}
+        />
+      )}
+
+      {importWizardFilePath && (
+        <CSVImportWizard
+          filePath={importWizardFilePath}
+          onClose={() => setImportWizardFilePath(null)}
+          onCompleted={refreshContacts}
         />
       )}
     </div>

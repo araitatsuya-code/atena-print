@@ -4,6 +4,8 @@ import {entity} from '../models';
 
 export function AddContactToGroup(arg1:string,arg2:string):Promise<void>;
 
+export function AnalyzeCSVImport(arg1:string,arg2:{[key: string]: number}):Promise<any>;
+
 export function DeleteContacts(arg1:Array<string>):Promise<void>;
 
 export function DeleteGroup(arg1:string):Promise<void>;
@@ -21,6 +23,8 @@ export function GenerateLabelPDF(arg1:entity.PrintJob,arg2:string):Promise<strin
 export function GenerateQRPreview(arg1:entity.QRConfig):Promise<Array<number>>;
 
 export function GetAppVersion():Promise<string>;
+
+export function GetCSVImportPlan(arg1:string):Promise<any>;
 
 export function GetContact(arg1:string):Promise<entity.Contact>;
 
@@ -43,6 +47,8 @@ export function GetTempPDFPath():Promise<string>;
 export function GetWatermarkPresets():Promise<Array<entity.Watermark>>;
 
 export function ImportCSV(arg1:string):Promise<entity.ImportResult>;
+
+export function ImportCSVWithOptions(arg1:string,arg2:{[key: string]: number},arg3:Array<any>):Promise<any>;
 
 export function ImportDB():Promise<boolean>;
 

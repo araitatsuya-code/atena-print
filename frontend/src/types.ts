@@ -117,6 +117,59 @@ export interface ImportResult {
   errors: string[]
 }
 
+export interface CSVImportField {
+  key: string
+  label: string
+  required: boolean
+}
+
+export interface CSVImportPlan {
+  headers: string[]
+  sampleRows: string[][]
+  suggestedMapping: Record<string, number>
+  fieldDefinitions: CSVImportField[]
+  rowCount: number
+  duplicateRule: string
+}
+
+export interface CSVContactSnapshot {
+  id?: string
+  displayName: string
+  postalCode: string
+  prefecture: string
+  city: string
+  street: string
+  company: string
+}
+
+export interface CSVDuplicateCandidate {
+  rowNumber: number
+  incoming: CSVContactSnapshot
+  existing: CSVContactSnapshot
+  suggestedAction: 'new' | 'overwrite' | 'skip'
+}
+
+export interface CSVImportAnalysis {
+  duplicateRule: string
+  validRowCount: number
+  errors: string[]
+  duplicates: CSVDuplicateCandidate[]
+}
+
+export interface CSVDuplicateResolution {
+  rowNumber: number
+  action: 'new' | 'overwrite' | 'skip'
+}
+
+export interface CSVImportExecutionResult {
+  totalRows: number
+  created: number
+  updated: number
+  skipped: number
+  duplicateResolved: number
+  errors: string[]
+}
+
 export interface PrintHistory {
   id: string
   printedAt: string

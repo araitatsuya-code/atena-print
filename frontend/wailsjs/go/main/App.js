@@ -6,6 +6,10 @@ export function AddContactToGroup(arg1, arg2) {
   return window['go']['main']['App']['AddContactToGroup'](arg1, arg2);
 }
 
+export function AnalyzeCSVImport(arg1, arg2) {
+  return window['go']['main']['App']['AnalyzeCSVImport'](arg1, arg2);
+}
+
 export function DeleteContacts(arg1) {
   return window['go']['main']['App']['DeleteContacts'](arg1);
 }
@@ -40,6 +44,10 @@ export function GenerateQRPreview(arg1) {
 
 export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
+}
+
+export function GetCSVImportPlan(arg1) {
+  return window['go']['main']['App']['GetCSVImportPlan'](arg1);
 }
 
 export function GetContact(arg1) {
@@ -84,6 +92,10 @@ export function GetWatermarkPresets() {
 
 export function ImportCSV(arg1) {
   return window['go']['main']['App']['ImportCSV'](arg1);
+}
+
+export function ImportCSVWithOptions(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ImportCSVWithOptions'](arg1, arg2, arg3);
 }
 
 export function ImportDB() {
