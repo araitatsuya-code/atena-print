@@ -101,6 +101,9 @@ export default function PrintConfirmDialog({ onClose }: Props) {
   const printableContacts = targetOnly
     ? contacts.filter((c) => c.isPrintTarget)
     : contacts
+  const printTargetCount = contacts.filter((c) => c.isPrintTarget).length
+  const totalContacts = contacts.length
+  const additionalCount = Math.max(0, totalContacts - printTargetCount)
   const count = printableContacts.length
   const labelsPerPage = layout.columns * layout.rows
 
@@ -251,6 +254,11 @@ export default function PrintConfirmDialog({ onClose }: Props) {
             />
             <span className="text-gray-600">印刷対象のみを抽出する</span>
           </label>
+          {!targetOnly && additionalCount > 0 && (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
+              印刷対象OFFの連絡先を {additionalCount} 件含めて印刷します。
+            </p>
+          )}
           <div className="flex justify-between">
             <span className="text-gray-500">印刷件数</span>
             <span className="font-medium">{repeatFill && count < labelsPerPage ? labelsPerPage : count} 件</span>

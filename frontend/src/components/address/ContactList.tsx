@@ -226,7 +226,7 @@ export default function ContactList() {
     setInlineSaveError(null)
     setBulkUpdatingPrintTargets(true)
     try {
-      const savedList = await Promise.all(
+      const results = await Promise.allSettled(
         displayContacts.map((contact) =>
           SaveContact({
             ...contact,
@@ -234,10 +234,16 @@ export default function ContactList() {
           } as Parameters<typeof SaveContact>[0]),
         ),
       )
-      applySavedContacts(savedList)
-    } catch (err) {
-      console.error(err)
-      setInlineSaveError('印刷対象の一括更新に失敗しました。再度お試しください。')
+      const savedList = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
+      const failed = results.filter((result) => result.status === 'rejected')
+      failed.forEach((result) => console.error(result.reason))
+
+      if (savedList.length > 0) {
+        applySavedContacts(savedList)
+      }
+      if (failed.length > 0) {
+        setInlineSaveError(`印刷対象の一括更新に失敗しました（${failed.length}件）。再度お試しください。`)
+      }
     } finally {
       setBulkUpdatingPrintTargets(false)
     }
@@ -517,6 +523,7 @@ export default function ContactList() {
         <button
           onClick={() => {
             setShowPrintTargetOnly((prev) => !prev)
+            clearSelection()
             setEditingCell(null)
           }}
           className={`px-2 py-0.5 rounded border transition-colors ${

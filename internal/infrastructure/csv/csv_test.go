@@ -126,6 +126,39 @@ func TestImport(t *testing.T) {
 		}
 	})
 
+	t.Run("印刷対象列で true/false を取り込める", func(t *testing.T) {
+		content := "姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ,印刷対象\n" +
+			"山田,太郎,ヤマダ,タロウ,様,1234567,東京都,渋谷区,1-1,渋谷ビル,株式会社テスト,開発部,メモ1,true\n" +
+			"佐藤,花子,サトウ,ハナコ,様,1234567,東京都,渋谷区,1-2,渋谷ビル,株式会社テスト,開発部,メモ2,false\n"
+		f := writeTempCSV(t, content)
+		contacts, errs := Import(f)
+		if len(errs) != 0 {
+			t.Fatalf("unexpected errors: %v", errs)
+		}
+		if len(contacts) != 2 {
+			t.Fatalf("expected 2 contact, got %d", len(contacts))
+		}
+		if !contacts[0].IsPrintTarget {
+			t.Error("contacts[0].IsPrintTarget: got false, want true")
+		}
+		if contacts[1].IsPrintTarget {
+			t.Error("contacts[1].IsPrintTarget: got true, want false")
+		}
+	})
+
+	t.Run("印刷対象列の不正値はエラーになる", func(t *testing.T) {
+		content := "姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ,印刷対象\n" +
+			"山田,太郎,ヤマダ,タロウ,様,1234567,東京都,渋谷区,1-1,渋谷ビル,株式会社テスト,開発部,メモ1,yes\n"
+		f := writeTempCSV(t, content)
+		contacts, errs := Import(f)
+		if len(contacts) != 0 {
+			t.Fatalf("expected 0 contact, got %d", len(contacts))
+		}
+		if len(errs) == 0 {
+			t.Fatal("expected parse error")
+		}
+	})
+
 	t.Run("存在しないファイルはエラーを返す", func(t *testing.T) {
 		contacts, errs := Import("/nonexistent/file.csv")
 		if len(contacts) != 0 {

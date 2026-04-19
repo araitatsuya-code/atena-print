@@ -163,9 +163,10 @@ func rowToContact(row []string, lineNum int) (entity.Contact, error) {
 		return entity.Contact{}, fmt.Errorf("行 %d: 郵便番号が無効です (%q)", lineNum, postal)
 	}
 
-	printTarget, err := parsePrintTarget(col(row, 13))
+	printTargetRaw := col(row, 13)
+	printTarget, err := parsePrintTarget(printTargetRaw)
 	if err != nil {
-		return entity.Contact{}, fmt.Errorf("行 %d: 印刷対象の値が無効です (%q)", lineNum, col(row, 13))
+		return entity.Contact{}, fmt.Errorf("行 %d: 印刷対象の値が無効です (%q)", lineNum, printTargetRaw)
 	}
 
 	return entity.Contact{
@@ -209,9 +210,9 @@ func contactToRow(c entity.Contact) []string {
 func parsePrintTarget(raw string) (bool, error) {
 	v := strings.TrimSpace(strings.ToLower(raw))
 	switch v {
-	case "", "1", "true", "t", "yes", "y", "on", "対象", "印刷する", "する":
+	case "", "1", "true", "on":
 		return true, nil
-	case "0", "false", "f", "no", "n", "off", "除外", "印刷しない", "しない":
+	case "0", "false", "off":
 		return false, nil
 	default:
 		return false, fmt.Errorf("invalid print target: %q", raw)
