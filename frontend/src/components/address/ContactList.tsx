@@ -56,6 +56,7 @@ export default function ContactList() {
     searchQuery,
     annualStatusYear,
     annualStatuses,
+    annualStatusesLoadedYear,
     annualStatusesLoading,
     setContacts,
     setSelectedIds,
@@ -98,7 +99,8 @@ export default function ContactList() {
   const selectedVisibleCount = displayContacts.filter((c) => selectedIds.has(c.id)).length
   const selectedVisibleContacts = displayContacts.filter((c) => selectedIds.has(c.id))
   const printTargetCount = contacts.filter((c) => c.isPrintTarget).length
-  const annualStatusActionsDisabled = annualStatusesLoading || bulkUpdatingAnnualStatus
+  const annualStatusesReady = annualStatusesLoadedYear === annualStatusYear && !annualStatusesLoading
+  const annualStatusActionsDisabled = bulkUpdatingAnnualStatus || !annualStatusesReady
 
   const getDefaultAnnualStatus = (contactID: string): ContactYearStatus => ({
     contactId: contactID,
