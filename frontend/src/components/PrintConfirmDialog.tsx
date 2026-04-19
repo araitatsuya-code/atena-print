@@ -5,6 +5,7 @@ import {
   PrintPDF,
   SavePDFFileDialog,
   GetSenders,
+  GetContactYearStatuses,
   MarkContactsSentForYear,
 } from '../../wailsjs/go/main/App'
 import { entity } from '../../wailsjs/go/models'
@@ -81,11 +82,24 @@ export default function PrintConfirmDialog({ onClose }: Props) {
   const [excludeMourning, setExcludeMourning] = useState(false)
   const [unsentOnly, setUnsentOnly] = useState(false)
 
-  const { contacts, annualStatusYear, annualStatuses, upsertAnnualStatuses } = useContactStore(
+  const {
+    contacts,
+    annualStatusYear,
+    annualStatuses,
+    annualStatusesLoadedYear,
+    annualStatusesLoading,
+    setAnnualStatusesLoading,
+    setAnnualStatuses,
+    upsertAnnualStatuses,
+  } = useContactStore(
     useShallow((s) => ({
       contacts: s.contacts,
       annualStatusYear: s.annualStatusYear,
       annualStatuses: s.annualStatuses,
+      annualStatusesLoadedYear: s.annualStatusesLoadedYear,
+      annualStatusesLoading: s.annualStatusesLoading,
+      setAnnualStatusesLoading: s.setAnnualStatusesLoading,
+      setAnnualStatuses: s.setAnnualStatuses,
       upsertAnnualStatuses: s.upsertAnnualStatuses,
     })),
   )
@@ -113,25 +127,59 @@ export default function PrintConfirmDialog({ onClose }: Props) {
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    if (annualStatusesLoadedYear === annualStatusYear || annualStatusesLoading) {
+      return
+    }
+    const requestYear = annualStatusYear
+    let active = true
+    setAnnualStatusesLoading(true)
+    GetContactYearStatuses(requestYear)
+      .then((list) => {
+        if (!active) return
+        setAnnualStatuses(requestYear, list ?? [])
+      })
+      .catch((err) => {
+        console.error(err)
+        if (active && useContactStore.getState().annualStatusYear === requestYear) {
+          setAnnualStatusesLoading(false)
+        }
+      })
+    return () => {
+      active = false
+      if (useContactStore.getState().annualStatusYear === requestYear) {
+        setAnnualStatusesLoading(false)
+      }
+    }
+  }, [annualStatusYear, annualStatusesLoadedYear, setAnnualStatuses, setAnnualStatusesLoading])
+
   const withPrintTargetFilter = targetOnly
     ? contacts.filter((c) => c.isPrintTarget)
     : contacts
-  const printableContacts = withPrintTargetFilter.filter((contact) => {
-    const annual = annualStatuses[contact.id]
-    if (excludeMourning && annual?.mourning) {
-      return false
-    }
-    if (unsentOnly && annual?.sent) {
-      return false
-    }
-    return true
-  })
+  const requiresAnnualStatuses = excludeMourning || unsentOnly
+  const annualStatusesReady = annualStatusesLoadedYear === annualStatusYear && !annualStatusesLoading
+  const annualFilterReady = !requiresAnnualStatuses || annualStatusesReady
+  const printableContacts = annualFilterReady
+    ? withPrintTargetFilter.filter((contact) => {
+        const annual = annualStatuses[contact.id]
+        if (excludeMourning && annual?.mourning) {
+          return false
+        }
+        if (unsentOnly && annual?.sent) {
+          return false
+        }
+        return true
+      })
+    : []
   const printTargetCount = contacts.filter((c) => c.isPrintTarget).length
   const totalContacts = contacts.length
   const additionalCount = Math.max(0, totalContacts - printTargetCount)
-  const filteredByAnnualCount = Math.max(0, withPrintTargetFilter.length - printableContacts.length)
+  const filteredByAnnualCount = annualFilterReady
+    ? Math.max(0, withPrintTargetFilter.length - printableContacts.length)
+    : 0
   const count = printableContacts.length
   const printableContactIDs = Array.from(new Set(printableContacts.map((c) => c.id)))
+  const isPrintActionDisabled = loading || count === 0 || !annualFilterReady
   const labelsPerPage = layout.columns * layout.rows
 
   const paperLabel = `${layout.paperWidth}×${layout.paperHeight}mm (${layout.columns}列×${layout.rows}行)`
@@ -220,14 +268,15 @@ export default function PrintConfirmDialog({ onClose }: Props) {
 
   async function markPrintedAsSent() {
     if (printableContactIDs.length === 0) return
-    await MarkContactsSentForYear(printableContactIDs, annualStatusYear)
+    const requestYear = annualStatusYear
+    await MarkContactsSentForYear(printableContactIDs, requestYear)
 
     const now = new Date().toISOString()
     const updatedStatuses: ContactYearStatus[] = printableContactIDs.map((contactID) => {
       const current = annualStatuses[contactID]
       return {
         contactId: contactID,
-        year: annualStatusYear,
+        year: requestYear,
         sent: true,
         received: current?.received ?? false,
         mourning: current?.mourning ?? false,
@@ -235,7 +284,9 @@ export default function PrintConfirmDialog({ onClose }: Props) {
         updatedAt: now,
       }
     })
-    upsertAnnualStatuses(updatedStatuses)
+    if (useContactStore.getState().annualStatusYear === requestYear) {
+      upsertAnnualStatuses(updatedStatuses)
+    }
   }
 
   async function generateLabelPDFWithFallback(outPath: string): Promise<string> {
@@ -331,6 +382,11 @@ export default function PrintConfirmDialog({ onClose }: Props) {
               年次ステータス条件で {filteredByAnnualCount} 件を除外しています。
             </p>
           )}
+          {!annualFilterReady && requiresAnnualStatuses && (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
+              年次ステータスを読み込み中です。読み込み完了後に抽出・印刷できます。
+            </p>
+          )}
           <div className="flex justify-between">
             <span className="text-gray-500">印刷件数</span>
             <span className="font-medium">{repeatFill && count < labelsPerPage ? labelsPerPage : count} 件</span>
@@ -395,14 +451,14 @@ export default function PrintConfirmDialog({ onClose }: Props) {
         <div className="flex flex-col gap-2 pt-1">
           <button
             onClick={handlePrint}
-            disabled={loading || count === 0}
+            disabled={isPrintActionDisabled}
             className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? '処理中...' : '印刷'}
           </button>
           <button
             onClick={handleSavePDF}
-            disabled={loading || count === 0}
+            disabled={isPrintActionDisabled}
             className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 disabled:opacity-50"
           >
             PDF保存

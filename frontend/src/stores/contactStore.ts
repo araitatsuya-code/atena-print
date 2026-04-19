@@ -8,6 +8,8 @@ interface ContactState {
   searchQuery: string
   annualStatusYear: number
   annualStatuses: Record<string, ContactYearStatus>
+  annualStatusesLoadedYear: number | null
+  annualStatusesLoading: boolean
   setContacts: (contacts: Contact[]) => void
   setSelectedIds: (ids: Set<string>) => void
   toggleSelected: (id: string) => void
@@ -16,7 +18,8 @@ interface ContactState {
   setCurrentGroupId: (groupId: string) => void
   setSearchQuery: (query: string) => void
   setAnnualStatusYear: (year: number) => void
-  setAnnualStatuses: (statuses: ContactYearStatus[]) => void
+  setAnnualStatusesLoading: (loading: boolean) => void
+  setAnnualStatuses: (year: number, statuses: ContactYearStatus[]) => void
   upsertAnnualStatuses: (statuses: ContactYearStatus[]) => void
 }
 
@@ -27,6 +30,8 @@ export const useContactStore = create<ContactState>((set, get) => ({
   searchQuery: '',
   annualStatusYear: new Date().getFullYear(),
   annualStatuses: {},
+  annualStatusesLoadedYear: null,
+  annualStatusesLoading: false,
 
   setContacts: (contacts) => set({ contacts }),
   setSelectedIds: (ids) => set({ selectedIds: ids }),
@@ -49,15 +54,36 @@ export const useContactStore = create<ContactState>((set, get) => ({
   clearSelection: () => set({ selectedIds: new Set() }),
   setCurrentGroupId: (groupId) => set({ currentGroupId: groupId }),
   setSearchQuery: (query) => set({ searchQuery: query }),
-  setAnnualStatusYear: (year) => set({ annualStatusYear: year }),
-  setAnnualStatuses: (statuses) =>
-    set({
-      annualStatuses: Object.fromEntries(statuses.map((status) => [status.contactId, status])),
+  setAnnualStatusYear: (year) =>
+    set((state) =>
+      state.annualStatusYear === year
+        ? { annualStatusYear: year }
+        : {
+            annualStatusYear: year,
+            annualStatuses: {},
+            annualStatusesLoadedYear: null,
+            annualStatusesLoading: false,
+          },
+    ),
+  setAnnualStatusesLoading: (loading) => set({ annualStatusesLoading: loading }),
+  setAnnualStatuses: (year, statuses) =>
+    set((state) => {
+      if (state.annualStatusYear !== year) {
+        return state
+      }
+      return {
+        annualStatuses: Object.fromEntries(statuses.map((status) => [status.contactId, status])),
+        annualStatusesLoadedYear: year,
+        annualStatusesLoading: false,
+      }
     }),
   upsertAnnualStatuses: (statuses) =>
     set((state) => {
       const next = { ...state.annualStatuses }
       statuses.forEach((status) => {
+        if (status.year !== state.annualStatusYear) {
+          return
+        }
         next[status.contactId] = status
       })
       return { annualStatuses: next }

@@ -56,6 +56,7 @@ export default function ContactList() {
     searchQuery,
     annualStatusYear,
     annualStatuses,
+    annualStatusesLoading,
     setContacts,
     setSelectedIds,
     toggleSelected,
@@ -63,6 +64,7 @@ export default function ContactList() {
     setCurrentGroupId,
     setSearchQuery,
     setAnnualStatusYear,
+    setAnnualStatusesLoading,
     setAnnualStatuses,
     upsertAnnualStatuses,
   } = useContactStore()
@@ -96,6 +98,7 @@ export default function ContactList() {
   const selectedVisibleCount = displayContacts.filter((c) => selectedIds.has(c.id)).length
   const selectedVisibleContacts = displayContacts.filter((c) => selectedIds.has(c.id))
   const printTargetCount = contacts.filter((c) => c.isPrintTarget).length
+  const annualStatusActionsDisabled = annualStatusesLoading || bulkUpdatingAnnualStatus
 
   const getDefaultAnnualStatus = (contactID: string): ContactYearStatus => ({
     contactId: contactID,
@@ -142,19 +145,27 @@ export default function ContactList() {
 
   useEffect(() => {
     let active = true
-    GetContactYearStatuses(annualStatusYear)
+    const requestYear = annualStatusYear
+    setAnnualStatusesLoading(true)
+    GetContactYearStatuses(requestYear)
       .then((list) => {
         if (!active) return
-        setAnnualStatuses(list ?? [])
+        setAnnualStatuses(requestYear, list ?? [])
       })
       .catch((err) => {
         console.error(err)
         if (active) {
           setInlineSaveError('年次ステータスの取得に失敗しました。再度お試しください。')
+          if (useContactStore.getState().annualStatusYear === requestYear) {
+            setAnnualStatusesLoading(false)
+          }
         }
       })
     return () => {
       active = false
+      if (useContactStore.getState().annualStatusYear === requestYear) {
+        setAnnualStatusesLoading(false)
+      }
     }
   }, [annualStatusYear])
 
@@ -292,7 +303,8 @@ export default function ContactList() {
   }
 
   const toggleAnnualStatus = async (contactID: string, field: AnnualStatusField) => {
-    if (bulkUpdatingAnnualStatus) return
+    if (annualStatusActionsDisabled) return
+    const requestYear = annualStatusYear
     const updatingKey = `${contactID}:${field}`
     setInlineSaveError(null)
     setUpdatingAnnualStatusKeys((prev) => {
@@ -305,9 +317,11 @@ export default function ContactList() {
       const saved = await SaveContactYearStatus({
         ...current,
         [field]: !current[field],
-        year: annualStatusYear,
+        year: requestYear,
       } as Parameters<typeof SaveContactYearStatus>[0])
-      upsertAnnualStatuses([saved])
+      if (useContactStore.getState().annualStatusYear === requestYear) {
+        upsertAnnualStatuses([saved])
+      }
     } catch (err) {
       console.error(err)
       setInlineSaveError('年次ステータスの更新に失敗しました。再度お試しください。')
@@ -321,7 +335,8 @@ export default function ContactList() {
   }
 
   const setAnnualStatusForSelectedContacts = async (patch: Partial<Pick<ContactYearStatus, AnnualStatusField>>) => {
-    if (selectedVisibleContacts.length === 0 || bulkUpdatingAnnualStatus) return
+    if (selectedVisibleContacts.length === 0 || annualStatusActionsDisabled) return
+    const requestYear = annualStatusYear
     setInlineSaveError(null)
     setBulkUpdatingAnnualStatus(true)
     try {
@@ -331,7 +346,7 @@ export default function ContactList() {
           return SaveContactYearStatus({
             ...current,
             ...patch,
-            year: annualStatusYear,
+            year: requestYear,
           } as Parameters<typeof SaveContactYearStatus>[0])
         }),
       )
@@ -340,7 +355,9 @@ export default function ContactList() {
       failed.forEach((result) => console.error(result.reason))
 
       if (savedList.length > 0) {
-        upsertAnnualStatuses(savedList)
+        if (useContactStore.getState().annualStatusYear === requestYear) {
+          upsertAnnualStatuses(savedList.filter((status) => status.year === requestYear))
+        }
       }
       if (failed.length > 0) {
         setInlineSaveError(`年次ステータスの一括更新に失敗しました（${failed.length}件）。再度お試しください。`)
@@ -700,28 +717,28 @@ export default function ContactList() {
           <button
             onClick={() => void setAnnualStatusForSelectedContacts({ sent: true })}
             className="hover:text-blue-600 disabled:opacity-40"
-            disabled={selectedVisibleContacts.length === 0 || bulkUpdatingAnnualStatus}
+            disabled={selectedVisibleContacts.length === 0 || annualStatusActionsDisabled}
           >
             選択を送付済
           </button>
           <button
             onClick={() => void setAnnualStatusForSelectedContacts({ received: true })}
             className="hover:text-blue-600 disabled:opacity-40"
-            disabled={selectedVisibleContacts.length === 0 || bulkUpdatingAnnualStatus}
+            disabled={selectedVisibleContacts.length === 0 || annualStatusActionsDisabled}
           >
             選択を受取済
           </button>
           <button
             onClick={() => void setAnnualStatusForSelectedContacts({ mourning: true })}
             className="hover:text-blue-600 disabled:opacity-40"
-            disabled={selectedVisibleContacts.length === 0 || bulkUpdatingAnnualStatus}
+            disabled={selectedVisibleContacts.length === 0 || annualStatusActionsDisabled}
           >
             選択を喪中
           </button>
           <button
             onClick={() => void setAnnualStatusForSelectedContacts({ sent: false, received: false, mourning: false })}
             className="hover:text-blue-600 disabled:opacity-40"
-            disabled={selectedVisibleContacts.length === 0 || bulkUpdatingAnnualStatus}
+            disabled={selectedVisibleContacts.length === 0 || annualStatusActionsDisabled}
           >
             選択をクリア
           </button>
@@ -800,7 +817,7 @@ export default function ContactList() {
                       <input
                         type="checkbox"
                         checked={annual.sent}
-                        disabled={bulkUpdatingAnnualStatus || updatingAnnualStatusKeys.has(`${c.id}:sent`)}
+                        disabled={annualStatusActionsDisabled || updatingAnnualStatusKeys.has(`${c.id}:sent`)}
                         onChange={() => void toggleAnnualStatus(c.id, 'sent')}
                         onClick={(e) => e.stopPropagation()}
                         className="mt-1 h-3.5 w-3.5 accent-blue-600 disabled:opacity-40"
@@ -810,7 +827,7 @@ export default function ContactList() {
                       <input
                         type="checkbox"
                         checked={annual.received}
-                        disabled={bulkUpdatingAnnualStatus || updatingAnnualStatusKeys.has(`${c.id}:received`)}
+                        disabled={annualStatusActionsDisabled || updatingAnnualStatusKeys.has(`${c.id}:received`)}
                         onChange={() => void toggleAnnualStatus(c.id, 'received')}
                         onClick={(e) => e.stopPropagation()}
                         className="mt-1 h-3.5 w-3.5 accent-indigo-600 disabled:opacity-40"
@@ -820,7 +837,7 @@ export default function ContactList() {
                       <input
                         type="checkbox"
                         checked={annual.mourning}
-                        disabled={bulkUpdatingAnnualStatus || updatingAnnualStatusKeys.has(`${c.id}:mourning`)}
+                        disabled={annualStatusActionsDisabled || updatingAnnualStatusKeys.has(`${c.id}:mourning`)}
                         onChange={() => void toggleAnnualStatus(c.id, 'mourning')}
                         onClick={(e) => e.stopPropagation()}
                         className="mt-1 h-3.5 w-3.5 accent-rose-600 disabled:opacity-40"
