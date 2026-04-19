@@ -177,7 +177,7 @@ func (uc *CSVUseCase) ImportWithOptions(filePath string, mapping map[string]int,
 	}
 
 	result := entity.CSVImportExecutionResult{
-		TotalRows: len(rows),
+		TotalRows: len(rows) + len(parseErrors),
 		Errors:    append([]string{}, parseErrors...),
 	}
 
@@ -214,8 +214,7 @@ func (uc *CSVUseCase) ImportWithOptions(filePath string, mapping map[string]int,
 				result.Errors = append(result.Errors, fmt.Sprintf("行 %d: 上書き対象が見つかりません", row.rowNumber))
 				continue
 			}
-			updated := row.contact
-			updated.ID = existingContact.ID
+			updated := mergeContactForOverwrite(*existingContact, row.contact, mapping)
 			if err := uc.repo.Update(&updated); err != nil {
 				result.Errors = append(result.Errors, fmt.Sprintf("行 %d: 上書き保存に失敗しました: %v", row.rowNumber, err))
 				continue
@@ -476,7 +475,7 @@ func mappedValue(row []string, mapping map[string]int, key string) string {
 func buildDuplicateKey(c entity.Contact) (string, bool) {
 	family := normalizeDuplicateToken(c.FamilyName)
 	given := normalizeDuplicateToken(c.GivenName)
-	postal := normalizeDuplicateToken(c.PostalCode)
+	postal := normalizePostalCodeForDuplicate(c.PostalCode)
 	pref := normalizeDuplicateToken(c.Prefecture)
 	city := normalizeDuplicateToken(c.City)
 	street := normalizeDuplicateToken(c.Street)
@@ -489,6 +488,60 @@ func buildDuplicateKey(c entity.Contact) (string, bool) {
 	}
 
 	return strings.Join([]string{family, given, postal, pref, city, street}, "|"), true
+}
+
+func mergeContactForOverwrite(existing entity.Contact, incoming entity.Contact, mapping map[string]int) entity.Contact {
+	updated := existing
+
+	if isMappedField(mapping, "familyName") {
+		updated.FamilyName = incoming.FamilyName
+	}
+	if isMappedField(mapping, "givenName") {
+		updated.GivenName = incoming.GivenName
+	}
+	if isMappedField(mapping, "familyNameKana") {
+		updated.FamilyNameKana = incoming.FamilyNameKana
+	}
+	if isMappedField(mapping, "givenNameKana") {
+		updated.GivenNameKana = incoming.GivenNameKana
+	}
+	if isMappedField(mapping, "honorific") {
+		updated.Honorific = incoming.Honorific
+	}
+	if isMappedField(mapping, "postalCode") {
+		updated.PostalCode = incoming.PostalCode
+	}
+	if isMappedField(mapping, "prefecture") {
+		updated.Prefecture = incoming.Prefecture
+	}
+	if isMappedField(mapping, "city") {
+		updated.City = incoming.City
+	}
+	if isMappedField(mapping, "street") {
+		updated.Street = incoming.Street
+	}
+	if isMappedField(mapping, "building") {
+		updated.Building = incoming.Building
+	}
+	if isMappedField(mapping, "company") {
+		updated.Company = incoming.Company
+	}
+	if isMappedField(mapping, "department") {
+		updated.Department = incoming.Department
+	}
+	if isMappedField(mapping, "notes") {
+		updated.Notes = incoming.Notes
+	}
+	if isMappedField(mapping, "isPrintTarget") {
+		updated.IsPrintTarget = incoming.IsPrintTarget
+	}
+
+	return updated
+}
+
+func isMappedField(mapping map[string]int, key string) bool {
+	idx, ok := mapping[key]
+	return ok && idx >= 0
 }
 
 func toSnapshot(c entity.Contact) entity.CSVContactSnapshot {
@@ -525,6 +578,24 @@ func normalizeDuplicateToken(value string) string {
 	s = strings.ReplaceAll(s, " ", "")
 	s = strings.ReplaceAll(s, "　", "")
 	return s
+}
+
+func normalizePostalCodeForDuplicate(value string) string {
+	normalized := normalizeDuplicateToken(value)
+	if normalized == "" {
+		return ""
+	}
+
+	var digits []rune
+	for _, r := range normalized {
+		if r >= '0' && r <= '9' {
+			digits = append(digits, r)
+		}
+	}
+	if len(digits) > 0 {
+		return string(digits)
+	}
+	return normalized
 }
 
 func normalizeHeader(header string) string {
