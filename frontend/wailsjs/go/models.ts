@@ -22,6 +22,7 @@ export namespace entity {
 	    givenName: string;
 	    familyNameKana: string;
 	    givenNameKana: string;
+	    isPrintTarget: boolean;
 	    honorific: string;
 	    postalCode: string;
 	    prefecture: string;
@@ -47,6 +48,7 @@ export namespace entity {
 	        this.givenName = source["givenName"];
 	        this.familyNameKana = source["familyNameKana"];
 	        this.givenNameKana = source["givenNameKana"];
+	        this.isPrintTarget = source["isPrintTarget"];
 	        this.honorific = source["honorific"];
 	        this.postalCode = source["postalCode"];
 	        this.prefecture = source["prefecture"];
@@ -410,4 +412,3 @@ export namespace entity {
 	
 
 }
-

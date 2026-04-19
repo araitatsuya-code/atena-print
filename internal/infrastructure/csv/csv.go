@@ -32,11 +32,11 @@ func (a *Adapter) Export(contacts []entity.Contact, filePath string) error {
 }
 
 // csvHeader defines the canonical CSV column order.
-// 姓, 名, 姓（カナ）, 名（カナ）, 敬称, 郵便番号, 都道府県, 市区町村, 番地, 建物名, 会社名, 部署名, メモ
+// 姓, 名, 姓（カナ）, 名（カナ）, 敬称, 郵便番号, 都道府県, 市区町村, 番地, 建物名, 会社名, 部署名, メモ, 印刷対象
 var csvHeader = []string{
 	"姓", "名", "姓（カナ）", "名（カナ）", "敬称",
 	"郵便番号", "都道府県", "市区町村", "番地", "建物名",
-	"会社名", "部署名", "メモ",
+	"会社名", "部署名", "メモ", "印刷対象",
 }
 
 // Import reads a CSV file and returns parsed contacts and per-row errors.
@@ -163,12 +163,18 @@ func rowToContact(row []string, lineNum int) (entity.Contact, error) {
 		return entity.Contact{}, fmt.Errorf("行 %d: 郵便番号が無効です (%q)", lineNum, postal)
 	}
 
+	printTarget, err := parsePrintTarget(col(row, 13))
+	if err != nil {
+		return entity.Contact{}, fmt.Errorf("行 %d: 印刷対象の値が無効です (%q)", lineNum, col(row, 13))
+	}
+
 	return entity.Contact{
 		ID:             uuid.New().String(),
 		FamilyName:     col(row, 0),
 		GivenName:      col(row, 1),
 		FamilyNameKana: col(row, 2),
 		GivenNameKana:  col(row, 3),
+		IsPrintTarget:  printTarget,
 		Honorific:      honorific,
 		PostalCode:     postal,
 		Prefecture:     col(row, 6),
@@ -196,5 +202,25 @@ func contactToRow(c entity.Contact) []string {
 		c.Company,
 		c.Department,
 		c.Notes,
+		printTargetToCSV(c.IsPrintTarget),
 	}
+}
+
+func parsePrintTarget(raw string) (bool, error) {
+	v := strings.TrimSpace(strings.ToLower(raw))
+	switch v {
+	case "", "1", "true", "t", "yes", "y", "on", "対象", "印刷する", "する":
+		return true, nil
+	case "0", "false", "f", "no", "n", "off", "除外", "印刷しない", "しない":
+		return false, nil
+	default:
+		return false, fmt.Errorf("invalid print target: %q", raw)
+	}
+}
+
+func printTargetToCSV(v bool) string {
+	if v {
+		return "1"
+	}
+	return "0"
 }

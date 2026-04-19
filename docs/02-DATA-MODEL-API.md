@@ -16,6 +16,7 @@ type Contact struct {
     GivenName      string    `json:"givenName"`
     FamilyNameKana string    `json:"familyNameKana"`
     GivenNameKana  string    `json:"givenNameKana"`
+    IsPrintTarget  bool      `json:"isPrintTarget"`  // 印刷対象フラグ (true=印刷する)
     Honorific      string    `json:"honorific"`      // 様, 殿, 御中 etc.
     PostalCode     string    `json:"postalCode"`     // 7桁 (ハイフンなし)
     Prefecture     string    `json:"prefecture"`
@@ -179,6 +180,7 @@ CREATE TABLE contacts (
     given_name TEXT NOT NULL DEFAULT '',
     family_name_kana TEXT NOT NULL DEFAULT '',
     given_name_kana TEXT NOT NULL DEFAULT '',
+    print_target BOOLEAN NOT NULL DEFAULT 1,
     honorific TEXT NOT NULL DEFAULT '様',
     postal_code TEXT NOT NULL DEFAULT '',
     prefecture TEXT NOT NULL DEFAULT '',
@@ -237,6 +239,17 @@ INSERT INTO groups (id, name) VALUES ('family', '家族');
 INSERT INTO groups (id, name) VALUES ('friend', '友人');
 INSERT INTO groups (id, name) VALUES ('work', '仕事');
 ```
+
+## CSVの印刷対象列方針
+
+- 列名: `印刷対象` (末尾列)
+- インポート時:
+  - 列が存在しない/空欄は `true` (印刷する)
+  - `1`, `true`, `on` は `true`
+  - `0`, `false`, `off` は `false`
+- エクスポート時:
+  - `true` は `1`
+  - `false` は `0`
 
 ## Wails バインディング (API) 一覧
 

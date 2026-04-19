@@ -104,7 +104,7 @@
 
 - [x] `internal/usecase/csv_usecase.go`
 - [x] `internal/infrastructure/csv/csv.go`
-  - CSVカラムマッピング: 姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ
+  - CSVカラムマッピング: 姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ,印刷対象
 - [x] ImportCSV / ExportCSV / OpenCSVFileDialog / SaveCSVFileDialog を app.go にバインド
 - [x] フロントエンドにインポートボタン・エクスポートボタン (ファイル選択ダイアログ)
 

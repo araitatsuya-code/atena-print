@@ -48,8 +48,8 @@ function parseInputNumber(rawValue: string): number | null {
 }
 
 export default function PreviewArea() {
-  const { contacts, selectedIds } = useContactStore(
-    useShallow((s) => ({ contacts: s.contacts, selectedIds: s.selectedIds })),
+  const { contacts } = useContactStore(
+    useShallow((s) => ({ contacts: s.contacts })),
   )
   const {
     zoom,
@@ -80,7 +80,7 @@ export default function PreviewArea() {
     })),
   )
 
-  const selectedContacts = contacts.filter((c) => selectedIds.has(c.id))
+  const selectedContacts = contacts.filter((c) => c.isPrintTarget)
 
   // 選択件数が減ったときにインデックスを範囲内にクランプ
   useEffect(() => {
@@ -503,7 +503,7 @@ export default function PreviewArea() {
             </div>
           </div>
         ) : (
-          <p className="text-gray-400 text-sm">住所録から連絡先を選択してください</p>
+          <p className="text-gray-400 text-sm">住所録で印刷対象をONにしてください</p>
         )}
       </div>
 
