@@ -23,7 +23,7 @@ function App() {
   const { showPanel: showLabelPanel, togglePanel: toggleLabelPanel } = useLabelStore(
     useShallow((s) => ({ showPanel: s.showPanel, togglePanel: s.togglePanel })),
   )
-  const selectedCount = useContactStore((s) => s.selectedIds.size)
+  const selectedCount = useContactStore((s) => s.contacts.filter((c) => c.isPrintTarget).length)
 
   const showPreview = view === 'contacts' || view === 'preview'
 

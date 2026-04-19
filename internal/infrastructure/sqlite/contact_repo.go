@@ -23,11 +23,11 @@ func (r *ContactRepo) FindAll(groupID string) ([]entity.Contact, error) {
 	)
 	if groupID == "" {
 		rows, err = r.db.Query(`SELECT id, family_name, given_name, family_name_kana, given_name_kana,
-			honorific, postal_code, prefecture, city, street, building, company, department, notes,
+			print_target, honorific, postal_code, prefecture, city, street, building, company, department, notes,
 			created_at, updated_at FROM contacts ORDER BY family_name_kana, given_name_kana`)
 	} else {
 		rows, err = r.db.Query(`SELECT c.id, c.family_name, c.given_name, c.family_name_kana, c.given_name_kana,
-			c.honorific, c.postal_code, c.prefecture, c.city, c.street, c.building, c.company, c.department, c.notes,
+			c.print_target, c.honorific, c.postal_code, c.prefecture, c.city, c.street, c.building, c.company, c.department, c.notes,
 			c.created_at, c.updated_at
 			FROM contacts c
 			JOIN contact_groups cg ON c.id = cg.contact_id
@@ -43,7 +43,7 @@ func (r *ContactRepo) FindAll(groupID string) ([]entity.Contact, error) {
 
 func (r *ContactRepo) FindByID(id string) (*entity.Contact, error) {
 	row := r.db.QueryRow(`SELECT id, family_name, given_name, family_name_kana, given_name_kana,
-		honorific, postal_code, prefecture, city, street, building, company, department, notes,
+		print_target, honorific, postal_code, prefecture, city, street, building, company, department, notes,
 		created_at, updated_at FROM contacts WHERE id = ?`, id)
 	c, err := scanContact(row)
 	if err == sql.ErrNoRows {
@@ -57,10 +57,10 @@ func (r *ContactRepo) Create(c *entity.Contact) error {
 	c.CreatedAt = now
 	c.UpdatedAt = now
 	_, err := r.db.Exec(`INSERT INTO contacts
-		(id, family_name, given_name, family_name_kana, given_name_kana, honorific,
+		(id, family_name, given_name, family_name_kana, given_name_kana, print_target, honorific,
 		postal_code, prefecture, city, street, building, company, department, notes, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		c.ID, c.FamilyName, c.GivenName, c.FamilyNameKana, c.GivenNameKana, c.Honorific,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		c.ID, c.FamilyName, c.GivenName, c.FamilyNameKana, c.GivenNameKana, c.IsPrintTarget, c.Honorific,
 		c.PostalCode, c.Prefecture, c.City, c.Street, c.Building, c.Company, c.Department, c.Notes,
 		c.CreatedAt, c.UpdatedAt)
 	if err != nil {
@@ -72,10 +72,10 @@ func (r *ContactRepo) Create(c *entity.Contact) error {
 func (r *ContactRepo) Update(c *entity.Contact) error {
 	c.UpdatedAt = time.Now()
 	result, err := r.db.Exec(`UPDATE contacts SET
-		family_name=?, given_name=?, family_name_kana=?, given_name_kana=?, honorific=?,
+		family_name=?, given_name=?, family_name_kana=?, given_name_kana=?, print_target=?, honorific=?,
 		postal_code=?, prefecture=?, city=?, street=?, building=?, company=?, department=?, notes=?, updated_at=?
 		WHERE id=?`,
-		c.FamilyName, c.GivenName, c.FamilyNameKana, c.GivenNameKana, c.Honorific,
+		c.FamilyName, c.GivenName, c.FamilyNameKana, c.GivenNameKana, c.IsPrintTarget, c.Honorific,
 		c.PostalCode, c.Prefecture, c.City, c.Street, c.Building, c.Company, c.Department, c.Notes,
 		c.UpdatedAt, c.ID)
 	if err != nil {
@@ -102,7 +102,7 @@ func (r *ContactRepo) Delete(id string) error {
 func (r *ContactRepo) Search(query string) ([]entity.Contact, error) {
 	like := "%" + query + "%"
 	rows, err := r.db.Query(`SELECT id, family_name, given_name, family_name_kana, given_name_kana,
-		honorific, postal_code, prefecture, city, street, building, company, department, notes,
+		print_target, honorific, postal_code, prefecture, city, street, building, company, department, notes,
 		created_at, updated_at FROM contacts
 		WHERE family_name LIKE ? OR given_name LIKE ? OR family_name_kana LIKE ? OR given_name_kana LIKE ?
 		OR company LIKE ? OR postal_code LIKE ? OR city LIKE ?
@@ -120,7 +120,7 @@ func scanContacts(rows *sql.Rows) ([]entity.Contact, error) {
 	for rows.Next() {
 		c := entity.Contact{}
 		if err := rows.Scan(&c.ID, &c.FamilyName, &c.GivenName, &c.FamilyNameKana, &c.GivenNameKana,
-			&c.Honorific, &c.PostalCode, &c.Prefecture, &c.City, &c.Street, &c.Building,
+			&c.IsPrintTarget, &c.Honorific, &c.PostalCode, &c.Prefecture, &c.City, &c.Street, &c.Building,
 			&c.Company, &c.Department, &c.Notes, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -135,7 +135,7 @@ func scanContacts(rows *sql.Rows) ([]entity.Contact, error) {
 func scanContact(row *sql.Row) (*entity.Contact, error) {
 	c := &entity.Contact{}
 	err := row.Scan(&c.ID, &c.FamilyName, &c.GivenName, &c.FamilyNameKana, &c.GivenNameKana,
-		&c.Honorific, &c.PostalCode, &c.Prefecture, &c.City, &c.Street, &c.Building,
+		&c.IsPrintTarget, &c.Honorific, &c.PostalCode, &c.Prefecture, &c.City, &c.Street, &c.Building,
 		&c.Company, &c.Department, &c.Notes, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		return nil, err

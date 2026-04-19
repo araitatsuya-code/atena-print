@@ -1,0 +1,2 @@
+ALTER TABLE contacts
+ADD COLUMN print_target BOOLEAN NOT NULL DEFAULT 1;

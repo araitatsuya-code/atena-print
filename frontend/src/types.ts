@@ -6,6 +6,7 @@ export interface Contact {
   givenName: string
   familyNameKana: string
   givenNameKana: string
+  isPrintTarget: boolean
   honorific: string
   postalCode: string
   prefecture: string

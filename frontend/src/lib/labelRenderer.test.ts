@@ -33,6 +33,7 @@ const baseContact: Contact = {
   givenName: '太郎',
   familyNameKana: '',
   givenNameKana: '',
+  isPrintTarget: true,
   honorific: '様',
   postalCode: '',
   prefecture: '東京都',

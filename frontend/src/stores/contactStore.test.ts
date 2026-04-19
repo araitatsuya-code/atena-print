@@ -8,6 +8,7 @@ const makeContact = (id: string, familyName: string): Contact => ({
   givenName: '太郎',
   familyNameKana: 'タナカ',
   givenNameKana: 'タロウ',
+  isPrintTarget: true,
   honorific: '様',
   postalCode: '100-0001',
   prefecture: '東京都',

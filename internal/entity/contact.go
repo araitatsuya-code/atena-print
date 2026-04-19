@@ -8,6 +8,7 @@ type Contact struct {
 	GivenName      string    `json:"givenName"`
 	FamilyNameKana string    `json:"familyNameKana"`
 	GivenNameKana  string    `json:"givenNameKana"`
+	IsPrintTarget  bool      `json:"isPrintTarget"`
 	Honorific      string    `json:"honorific"`
 	PostalCode     string    `json:"postalCode"`
 	Prefecture     string    `json:"prefecture"`

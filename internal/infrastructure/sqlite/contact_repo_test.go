@@ -28,6 +28,7 @@ func makeContact(id, familyName, kana string) entity.Contact {
 		GivenName:      "太郎",
 		FamilyNameKana: kana,
 		GivenNameKana:  "タロウ",
+		IsPrintTarget:  true,
 		Honorific:      "様",
 		PostalCode:     "100-0001",
 		Prefecture:     "東京都",
@@ -56,6 +57,9 @@ func TestContactRepo_Create_FindByID(t *testing.T) {
 	}
 	if got.PostalCode != "100-0001" {
 		t.Errorf("PostalCode = %q, want 100-0001", got.PostalCode)
+	}
+	if !got.IsPrintTarget {
+		t.Error("IsPrintTarget = false, want true")
 	}
 	if got.CreatedAt.IsZero() {
 		t.Error("CreatedAt should be set")
@@ -133,6 +137,7 @@ func TestContactRepo_Update(t *testing.T) {
 
 	c.FamilyName = "山田"
 	c.FamilyNameKana = "ヤマダ"
+	c.IsPrintTarget = false
 	if err := repo.Update(&c); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
@@ -146,6 +151,9 @@ func TestContactRepo_Update(t *testing.T) {
 	}
 	if got.FamilyNameKana != "ヤマダ" {
 		t.Errorf("FamilyNameKana = %q, want ヤマダ", got.FamilyNameKana)
+	}
+	if got.IsPrintTarget {
+		t.Errorf("IsPrintTarget = %v, want false", got.IsPrintTarget)
 	}
 }
 

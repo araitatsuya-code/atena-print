@@ -69,9 +69,10 @@ export default function PrintConfirmDialog({ onClose }: Props) {
   const [selectedSenderId, setSelectedSenderId] = useState('')
   const [repeatFill, setRepeatFill] = useState(false)
   const [showBorder, setShowBorder] = useState(false)
+  const [targetOnly, setTargetOnly] = useState(true)
 
-  const { contacts, selectedIds } = useContactStore(
-    useShallow((s) => ({ contacts: s.contacts, selectedIds: s.selectedIds })),
+  const { contacts } = useContactStore(
+    useShallow((s) => ({ contacts: s.contacts })),
   )
   const { watermark, qrConfig } = useDecorationStore(
     useShallow((s) => ({ watermark: s.watermark, qrConfig: s.qrConfig })),
@@ -97,8 +98,13 @@ export default function PrintConfirmDialog({ onClose }: Props) {
       .catch(() => {})
   }, [])
 
-  const selectedContacts = contacts.filter((c) => selectedIds.has(c.id))
-  const count = selectedContacts.length
+  const printableContacts = targetOnly
+    ? contacts.filter((c) => c.isPrintTarget)
+    : contacts
+  const printTargetCount = contacts.filter((c) => c.isPrintTarget).length
+  const totalContacts = contacts.length
+  const additionalCount = Math.max(0, totalContacts - printTargetCount)
+  const count = printableContacts.length
   const labelsPerPage = layout.columns * layout.rows
 
   const paperLabel = `${layout.paperWidth}×${layout.paperHeight}mm (${layout.columns}列×${layout.rows}行)`
@@ -109,7 +115,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
       ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
       : { ...defaultTpl, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
 
-    let ids = selectedContacts.map((c) => c.id)
+    let ids = printableContacts.map((c) => c.id)
     if (repeatFill && ids.length > 0 && ids.length < labelsPerPage) {
       // シートが埋まるまで繰り返す
       const filled: string[] = []
@@ -149,7 +155,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
       })
     }
 
-    const contactByID = new Map(selectedContacts.map((c) => [c.id, c]))
+    const contactByID = new Map(printableContacts.map((c) => [c.id, c]))
     const snapshotInputs = ids.map((id) => {
       const contact = contactByID.get(id)
       if (!contact) {
@@ -239,6 +245,20 @@ export default function PrintConfirmDialog({ onClose }: Props) {
         <h2 className="text-base font-semibold text-gray-800">印刷確認</h2>
 
         <div className="space-y-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={targetOnly}
+              onChange={(e) => setTargetOnly(e.target.checked)}
+              className="w-3.5 h-3.5 accent-blue-600"
+            />
+            <span className="text-gray-600">印刷対象のみを抽出する</span>
+          </label>
+          {!targetOnly && additionalCount > 0 && (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
+              印刷対象OFFの連絡先を {additionalCount} 件含めて印刷します。
+            </p>
+          )}
           <div className="flex justify-between">
             <span className="text-gray-500">印刷件数</span>
             <span className="font-medium">{repeatFill && count < labelsPerPage ? labelsPerPage : count} 件</span>

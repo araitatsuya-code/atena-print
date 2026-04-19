@@ -52,8 +52,8 @@ export default function ContactList() {
     currentGroupId,
     searchQuery,
     setContacts,
+    setSelectedIds,
     toggleSelected,
-    selectAll,
     clearSelection,
     setCurrentGroupId,
     setSearchQuery,
@@ -67,6 +67,9 @@ export default function ContactList() {
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
   const [inlineSaveError, setInlineSaveError] = useState<string | null>(null)
   const [savingCellKey, setSavingCellKey] = useState<string | null>(null)
+  const [showPrintTargetOnly, setShowPrintTargetOnly] = useState(false)
+  const [bulkUpdatingPrintTargets, setBulkUpdatingPrintTargets] = useState(false)
+  const [updatingPrintTargetIds, setUpdatingPrintTargetIds] = useState<Set<string>>(new Set())
 
   const requestIdRef = useRef(0)
   const editingCellRef = useRef<EditingCell | null>(null)
@@ -77,6 +80,11 @@ export default function ContactList() {
   const getCellKey = (contactId: string, field: EditableField) => `${contactId}:${field}`
 
   const getFieldValue = (contact: Contact, field: EditableField) => contact[field] ?? ''
+  const displayContacts = showPrintTargetOnly
+    ? contacts.filter((c) => c.isPrintTarget)
+    : contacts
+  const selectedVisibleCount = displayContacts.filter((c) => selectedIds.has(c.id)).length
+  const printTargetCount = contacts.filter((c) => c.isPrintTarget).length
 
   const refreshGroups = () => {
     GetGroups().then(setGroups).catch(console.error)
@@ -122,11 +130,11 @@ export default function ContactList() {
 
   useEffect(() => {
     if (!editingCell) return
-    const exists = contacts.some((c) => c.id === editingCell.contactId)
+    const exists = displayContacts.some((c) => c.id === editingCell.contactId)
     if (!exists) {
       setEditingCell(null)
     }
-  }, [contacts, editingCell])
+  }, [displayContacts, editingCell])
 
   const refreshContacts = async () => {
     const result = searchQuery
@@ -181,6 +189,66 @@ export default function ContactList() {
     }
   }
 
+  const applySavedContacts = (savedList: Contact[]) => {
+    const savedByID = new Map(savedList.map((c) => [c.id, c]))
+    const latest = useContactStore.getState().contacts
+    setContacts(latest.map((item) => savedByID.get(item.id) ?? item))
+  }
+
+  const togglePrintTarget = async (contact: Contact) => {
+    if (bulkUpdatingPrintTargets) return
+    setInlineSaveError(null)
+    setUpdatingPrintTargetIds((prev) => {
+      const next = new Set(prev)
+      next.add(contact.id)
+      return next
+    })
+    try {
+      const saved = await SaveContact({
+        ...contact,
+        isPrintTarget: !contact.isPrintTarget,
+      } as Parameters<typeof SaveContact>[0])
+      applySavedContacts([saved])
+    } catch (err) {
+      console.error(err)
+      setInlineSaveError('印刷対象の更新に失敗しました。再度お試しください。')
+    } finally {
+      setUpdatingPrintTargetIds((prev) => {
+        const next = new Set(prev)
+        next.delete(contact.id)
+        return next
+      })
+    }
+  }
+
+  const setPrintTargetForVisibleContacts = async (value: boolean) => {
+    if (displayContacts.length === 0 || bulkUpdatingPrintTargets) return
+    setInlineSaveError(null)
+    setBulkUpdatingPrintTargets(true)
+    try {
+      const results = await Promise.allSettled(
+        displayContacts.map((contact) =>
+          SaveContact({
+            ...contact,
+            isPrintTarget: value,
+          } as Parameters<typeof SaveContact>[0]),
+        ),
+      )
+      const savedList = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
+      const failed = results.filter((result) => result.status === 'rejected')
+      failed.forEach((result) => console.error(result.reason))
+
+      if (savedList.length > 0) {
+        applySavedContacts(savedList)
+      }
+      if (failed.length > 0) {
+        setInlineSaveError(`印刷対象の一括更新に失敗しました（${failed.length}件）。再度お試しください。`)
+      }
+    } finally {
+      setBulkUpdatingPrintTargets(false)
+    }
+  }
+
   const beginEditing = (contact: Contact, field: EditableField) => {
     setInlineSaveError(null)
     const value = getFieldValue(contact, field)
@@ -222,7 +290,7 @@ export default function ContactList() {
   }
 
   const getTabTarget = (cell: EditingCell, direction: 1 | -1): CellTarget | null => {
-    const rowIndex = contacts.findIndex((c) => c.id === cell.contactId)
+    const rowIndex = displayContacts.findIndex((c) => c.id === cell.contactId)
     const colIndex = editableColumns.findIndex((col) => col.field === cell.field)
     if (rowIndex < 0 || colIndex < 0) return null
 
@@ -235,19 +303,19 @@ export default function ContactList() {
       nextCol = editableColumns.length - 1
       nextRow -= 1
     }
-    if (nextRow < 0 || nextRow >= contacts.length) return null
+    if (nextRow < 0 || nextRow >= displayContacts.length) return null
 
     return {
-      contactId: contacts[nextRow].id,
+      contactId: displayContacts[nextRow].id,
       field: editableColumns[nextCol].field,
     }
   }
 
   const getEnterTarget = (cell: EditingCell): CellTarget | null => {
-    const rowIndex = contacts.findIndex((c) => c.id === cell.contactId)
-    if (rowIndex < 0 || rowIndex + 1 >= contacts.length) return null
+    const rowIndex = displayContacts.findIndex((c) => c.id === cell.contactId)
+    if (rowIndex < 0 || rowIndex + 1 >= displayContacts.length) return null
     return {
-      contactId: contacts[rowIndex + 1].id,
+      contactId: displayContacts[rowIndex + 1].id,
       field: cell.field,
     }
   }
@@ -446,12 +514,59 @@ export default function ContactList() {
         </button>
       </div>
 
-      {/* 全選択/全解除 */}
+      {/* 選択/印刷対象コントロール */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 text-xs text-gray-500">
-        <span>{selectedIds.size > 0 ? `${selectedIds.size} 件選択中` : `${contacts.length} 件`}</span>
-        <div className="flex gap-2">
-          <button onClick={selectAll} className="hover:text-blue-600">全選択</button>
-          <button onClick={clearSelection} className="hover:text-blue-600">解除</button>
+        <span>
+          表示 {displayContacts.length} 件 / 印刷対象 {printTargetCount} 件
+          {selectedVisibleCount > 0 ? ` / 表示中選択 ${selectedVisibleCount} 件` : ''}
+        </span>
+        <button
+          onClick={() => {
+            setShowPrintTargetOnly((prev) => !prev)
+            clearSelection()
+            setEditingCell(null)
+          }}
+          className={`px-2 py-0.5 rounded border transition-colors ${
+            showPrintTargetOnly
+              ? 'bg-blue-50 border-blue-300 text-blue-700'
+              : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          {showPrintTargetOnly ? '全件表示' : '対象のみ表示'}
+        </button>
+      </div>
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 text-xs text-gray-500 gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSelectedIds(new Set(displayContacts.map((c) => c.id)))}
+            className="hover:text-blue-600 disabled:opacity-40"
+            disabled={displayContacts.length === 0}
+          >
+            表示中を全選択
+          </button>
+          <button
+            onClick={clearSelection}
+            className="hover:text-blue-600 disabled:opacity-40"
+            disabled={selectedIds.size === 0}
+          >
+            選択解除
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void setPrintTargetForVisibleContacts(true)}
+            className="hover:text-blue-600 disabled:opacity-40"
+            disabled={displayContacts.length === 0 || bulkUpdatingPrintTargets}
+          >
+            表示中を対象ON
+          </button>
+          <button
+            onClick={() => void setPrintTargetForVisibleContacts(false)}
+            className="hover:text-blue-600 disabled:opacity-40"
+            disabled={displayContacts.length === 0 || bulkUpdatingPrintTargets}
+          >
+            表示中を対象OFF
+          </button>
         </div>
       </div>
       {inlineSaveError && (
@@ -470,11 +585,17 @@ export default function ContactList() {
             {searchQuery ? '検索結果がありません' : '連絡先がありません'}
           </div>
         )}
-        {!loading && contacts.length > 0 && (
-          <table className="w-full min-w-[960px] border-separate border-spacing-0">
+        {!loading && contacts.length > 0 && displayContacts.length === 0 && (
+          <div className="text-center py-8 text-sm text-gray-400">
+            印刷対象の連絡先がありません
+          </div>
+        )}
+        {!loading && displayContacts.length > 0 && (
+          <table className="w-full min-w-[1040px] border-separate border-spacing-0">
             <thead className="sticky top-0 z-10 bg-gray-50 text-xs text-gray-500">
               <tr>
                 <th className="w-10 px-2 py-2 border-b border-gray-200 text-left">選択</th>
+                <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">印刷対象</th>
                 {editableColumns.map((col) => (
                   <th
                     key={col.field}
@@ -487,7 +608,7 @@ export default function ContactList() {
               </tr>
             </thead>
             <tbody>
-              {contacts.map((c) => (
+              {displayContacts.map((c) => (
                 <tr
                   key={c.id}
                   className={`hover:bg-gray-50 ${selectedIds.has(c.id) ? 'bg-blue-50/70' : ''}`}
@@ -500,6 +621,16 @@ export default function ContactList() {
                       onChange={() => toggleSelected(c.id)}
                       onClick={(e) => e.stopPropagation()}
                       className="mt-1 h-3.5 w-3.5 accent-blue-600"
+                    />
+                  </td>
+                  <td className="px-2 py-1.5 border-b border-gray-100 align-top">
+                    <input
+                      type="checkbox"
+                      checked={c.isPrintTarget}
+                      disabled={bulkUpdatingPrintTargets || updatingPrintTargetIds.has(c.id)}
+                      onChange={() => void togglePrintTarget(c)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-1 h-3.5 w-3.5 accent-emerald-600 disabled:opacity-40"
                     />
                   </td>
                   {editableColumns.map((col) => (

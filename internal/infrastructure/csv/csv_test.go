@@ -10,8 +10,8 @@ import (
 
 func TestImport(t *testing.T) {
 	t.Run("ヘッダー付きCSVをインポートできる", func(t *testing.T) {
-		content := "姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ\n" +
-			"山田,太郎,ヤマダ,タロウ,様,1234567,東京都,渋谷区,1-1,渋谷ビル,株式会社テスト,開発部,メモ1\n"
+		content := "姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ,印刷対象\n" +
+			"山田,太郎,ヤマダ,タロウ,様,1234567,東京都,渋谷区,1-1,渋谷ビル,株式会社テスト,開発部,メモ1,1\n"
 		f := writeTempCSV(t, content)
 		contacts, errs := Import(f)
 		if len(errs) != 0 {
@@ -29,6 +29,9 @@ func TestImport(t *testing.T) {
 		}
 		if c.Honorific != "様" {
 			t.Errorf("Honorific: got %q", c.Honorific)
+		}
+		if !c.IsPrintTarget {
+			t.Error("IsPrintTarget: got false, want true")
 		}
 		if c.ID == "" {
 			t.Error("ID should not be empty")
@@ -78,7 +81,7 @@ func TestImport(t *testing.T) {
 	})
 
 	t.Run("空行はスキップされる", func(t *testing.T) {
-		content := "姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ\n" +
+		content := "姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ,印刷対象\n" +
 			"\n" +
 			"鈴木,一郎,,,様,,,,,,,,\n"
 		f := writeTempCSV(t, content)
@@ -88,6 +91,71 @@ func TestImport(t *testing.T) {
 		}
 		if len(contacts) != 1 {
 			t.Fatalf("expected 1 contact, got %d", len(contacts))
+		}
+	})
+
+	t.Run("印刷対象列が空の場合はON扱いになる", func(t *testing.T) {
+		content := "姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ,印刷対象\n" +
+			"山田,太郎,ヤマダ,タロウ,様,1234567,東京都,渋谷区,1-1,渋谷ビル,株式会社テスト,開発部,メモ1,\n"
+		f := writeTempCSV(t, content)
+		contacts, errs := Import(f)
+		if len(errs) != 0 {
+			t.Fatalf("unexpected errors: %v", errs)
+		}
+		if len(contacts) != 1 {
+			t.Fatalf("expected 1 contact, got %d", len(contacts))
+		}
+		if !contacts[0].IsPrintTarget {
+			t.Error("IsPrintTarget: got false, want true")
+		}
+	})
+
+	t.Run("印刷対象列でOFFを取り込める", func(t *testing.T) {
+		content := "姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ,印刷対象\n" +
+			"山田,太郎,ヤマダ,タロウ,様,1234567,東京都,渋谷区,1-1,渋谷ビル,株式会社テスト,開発部,メモ1,0\n"
+		f := writeTempCSV(t, content)
+		contacts, errs := Import(f)
+		if len(errs) != 0 {
+			t.Fatalf("unexpected errors: %v", errs)
+		}
+		if len(contacts) != 1 {
+			t.Fatalf("expected 1 contact, got %d", len(contacts))
+		}
+		if contacts[0].IsPrintTarget {
+			t.Error("IsPrintTarget: got true, want false")
+		}
+	})
+
+	t.Run("印刷対象列で true/false を取り込める", func(t *testing.T) {
+		content := "姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ,印刷対象\n" +
+			"山田,太郎,ヤマダ,タロウ,様,1234567,東京都,渋谷区,1-1,渋谷ビル,株式会社テスト,開発部,メモ1,true\n" +
+			"佐藤,花子,サトウ,ハナコ,様,1234567,東京都,渋谷区,1-2,渋谷ビル,株式会社テスト,開発部,メモ2,false\n"
+		f := writeTempCSV(t, content)
+		contacts, errs := Import(f)
+		if len(errs) != 0 {
+			t.Fatalf("unexpected errors: %v", errs)
+		}
+		if len(contacts) != 2 {
+			t.Fatalf("expected 2 contact, got %d", len(contacts))
+		}
+		if !contacts[0].IsPrintTarget {
+			t.Error("contacts[0].IsPrintTarget: got false, want true")
+		}
+		if contacts[1].IsPrintTarget {
+			t.Error("contacts[1].IsPrintTarget: got true, want false")
+		}
+	})
+
+	t.Run("印刷対象列の不正値はエラーになる", func(t *testing.T) {
+		content := "姓,名,姓（カナ）,名（カナ）,敬称,郵便番号,都道府県,市区町村,番地,建物名,会社名,部署名,メモ,印刷対象\n" +
+			"山田,太郎,ヤマダ,タロウ,様,1234567,東京都,渋谷区,1-1,渋谷ビル,株式会社テスト,開発部,メモ1,yes\n"
+		f := writeTempCSV(t, content)
+		contacts, errs := Import(f)
+		if len(contacts) != 0 {
+			t.Fatalf("expected 0 contact, got %d", len(contacts))
+		}
+		if len(errs) == 0 {
+			t.Fatal("expected parse error")
 		}
 	})
 
@@ -106,13 +174,14 @@ func TestExport(t *testing.T) {
 	t.Run("CSVにエクスポートできる", func(t *testing.T) {
 		contacts := []entity.Contact{
 			{
-				ID:         "1",
-				FamilyName: "山田",
-				GivenName:  "太郎",
-				Honorific:  "御侍史",
-				PostalCode: "1234567",
-				Prefecture: "東京都",
-				City:       "渋谷区",
+				ID:            "1",
+				FamilyName:    "山田",
+				GivenName:     "太郎",
+				IsPrintTarget: false,
+				Honorific:     "御侍史",
+				PostalCode:    "1234567",
+				Prefecture:    "東京都",
+				City:          "渋谷区",
 			},
 		}
 		dir := t.TempDir()
@@ -135,6 +204,9 @@ func TestExport(t *testing.T) {
 		}
 		if imported[0].Honorific != "御侍史" {
 			t.Errorf("Honorific: got %q, want 御侍史", imported[0].Honorific)
+		}
+		if imported[0].IsPrintTarget {
+			t.Errorf("IsPrintTarget: got %v, want false", imported[0].IsPrintTarget)
 		}
 	})
 
