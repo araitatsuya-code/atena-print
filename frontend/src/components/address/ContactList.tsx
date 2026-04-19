@@ -72,6 +72,7 @@ export default function ContactList() {
   const editingCellRef = useRef<EditingCell | null>(null)
   const committingRef = useRef(false)
   const skipBlurRef = useRef(false)
+  const skipBlurResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const getCellKey = (contactId: string, field: EditableField) => `${contactId}:${field}`
 
@@ -110,6 +111,14 @@ export default function ContactList() {
   useEffect(() => {
     editingCellRef.current = editingCell
   }, [editingCell])
+
+  useEffect(() => {
+    return () => {
+      if (skipBlurResetTimerRef.current) {
+        clearTimeout(skipBlurResetTimerRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (!editingCell) return
@@ -181,6 +190,16 @@ export default function ContactList() {
       value,
       originalValue: value,
     })
+  }
+
+  const scheduleSkipBlurReset = () => {
+    if (skipBlurResetTimerRef.current) {
+      clearTimeout(skipBlurResetTimerRef.current)
+    }
+    skipBlurResetTimerRef.current = setTimeout(() => {
+      skipBlurRef.current = false
+      skipBlurResetTimerRef.current = null
+    }, 0)
   }
 
   const setEditingFromTarget = (target: CellTarget | null) => {
@@ -261,6 +280,20 @@ export default function ContactList() {
       return
     }
 
+    const trimmedValue = active.value.trim()
+    if (active.field === 'familyName' && !trimmedValue) {
+      setInlineSaveError('姓は必須です。')
+      return
+    }
+    if (active.field === 'givenName' && !trimmedValue) {
+      setInlineSaveError('名は必須です。')
+      return
+    }
+    if (active.field === 'postalCode' && !/^\d{7}$/.test(trimmedValue)) {
+      setInlineSaveError('郵便番号はハイフンなし7桁の数字で入力してください。')
+      return
+    }
+
     committingRef.current = true
     setSavingCellKey(getCellKey(active.contactId, active.field))
     setInlineSaveError(null)
@@ -268,7 +301,7 @@ export default function ContactList() {
     try {
       const saved = await SaveContact({
         ...contact,
-        [active.field]: active.value,
+        [active.field]: active.field === 'postalCode' ? trimmedValue : active.value,
       } as Parameters<typeof SaveContact>[0])
 
       const latest = useContactStore.getState().contacts
@@ -310,18 +343,29 @@ export default function ContactList() {
               skipBlurRef.current = false
               return
             }
+            const current = editingCellRef.current
+            if (!current || current.contactId !== contact.id || current.field !== field) {
+              return
+            }
             void commitEditing('none')
           }}
           onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing || e.keyCode === 229) {
+              return
+            }
             if (e.key === 'Enter') {
               e.preventDefault()
               e.stopPropagation()
+              skipBlurRef.current = true
+              scheduleSkipBlurReset()
               void commitEditing('enter')
               return
             }
             if (e.key === 'Tab') {
               e.preventDefault()
               e.stopPropagation()
+              skipBlurRef.current = true
+              scheduleSkipBlurReset()
               void commitEditing('tab', e.shiftKey ? -1 : 1)
               return
             }
@@ -329,6 +373,7 @@ export default function ContactList() {
               e.preventDefault()
               e.stopPropagation()
               skipBlurRef.current = true
+              scheduleSkipBlurReset()
               setInlineSaveError(null)
               setEditingCell(null)
             }
