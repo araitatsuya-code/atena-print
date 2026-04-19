@@ -234,6 +234,17 @@ CREATE TABLE print_history (
     qr_enabled BOOLEAN NOT NULL DEFAULT 0
 );
 
+CREATE TABLE contact_year_statuses (
+    contact_id TEXT NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+    year INTEGER NOT NULL,
+    sent BOOLEAN NOT NULL DEFAULT 0,
+    received BOOLEAN NOT NULL DEFAULT 0,
+    mourning BOOLEAN NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (contact_id, year)
+);
+
 -- デフォルトグループ
 INSERT INTO groups (id, name) VALUES ('family', '家族');
 INSERT INTO groups (id, name) VALUES ('friend', '友人');
@@ -264,6 +275,9 @@ INSERT INTO groups (id, name) VALUES ('work', '仕事');
 | `SearchContacts(query string)` | query | `[]Contact` | 検索 |
 | `ImportCSV(filePath string)` | filePath | `ImportResult` | CSVインポート |
 | `ExportCSV(ids []string, path string)` | ids, path | - | CSVエクスポート |
+| `GetContactYearStatuses(year int)` | year | `[]ContactYearStatus` | 指定年の年次ステータス取得 |
+| `SaveContactYearStatus(status ContactYearStatus)` | ContactYearStatus | `ContactYearStatus` | 年次ステータス保存（手動更新） |
+| `MarkContactsSentForYear(contactIDs []string, year int)` | contactIDs, year | - | 印刷後に送付済みを一括反映 |
 
 ### グループ
 

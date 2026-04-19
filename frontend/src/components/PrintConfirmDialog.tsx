@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react'
-import { GenerateLabelPDF, GetTempPDFPath, PrintPDF, SavePDFFileDialog, GetSenders } from '../../wailsjs/go/main/App'
+import {
+  GenerateLabelPDF,
+  GetTempPDFPath,
+  PrintPDF,
+  SavePDFFileDialog,
+  GetSenders,
+  MarkContactsSentForYear,
+} from '../../wailsjs/go/main/App'
 import { entity } from '../../wailsjs/go/models'
 import { useContactStore } from '../stores/contactStore'
 import { useDecorationStore } from '../stores/decorationStore'
 import { useLabelStore } from '../stores/labelStore'
 import { usePreviewStore } from '../stores/previewStore'
 import { useSenderStore } from '../stores/senderStore'
+import type { ContactYearStatus } from '../types'
 import { DEFAULT_TEMPLATE, DEFAULT_TEMPLATE_HORIZONTAL } from './preview/LabelCanvas'
 import { renderLabelSnapshotsToDataURLBatch } from '../lib/labelSnapshot'
 import { useShallow } from 'zustand/shallow'
@@ -70,9 +78,16 @@ export default function PrintConfirmDialog({ onClose }: Props) {
   const [repeatFill, setRepeatFill] = useState(false)
   const [showBorder, setShowBorder] = useState(false)
   const [targetOnly, setTargetOnly] = useState(true)
+  const [excludeMourning, setExcludeMourning] = useState(false)
+  const [unsentOnly, setUnsentOnly] = useState(false)
 
-  const { contacts } = useContactStore(
-    useShallow((s) => ({ contacts: s.contacts })),
+  const { contacts, annualStatusYear, annualStatuses, upsertAnnualStatuses } = useContactStore(
+    useShallow((s) => ({
+      contacts: s.contacts,
+      annualStatusYear: s.annualStatusYear,
+      annualStatuses: s.annualStatuses,
+      upsertAnnualStatuses: s.upsertAnnualStatuses,
+    })),
   )
   const { watermark, qrConfig } = useDecorationStore(
     useShallow((s) => ({ watermark: s.watermark, qrConfig: s.qrConfig })),
@@ -98,13 +113,25 @@ export default function PrintConfirmDialog({ onClose }: Props) {
       .catch(() => {})
   }, [])
 
-  const printableContacts = targetOnly
+  const withPrintTargetFilter = targetOnly
     ? contacts.filter((c) => c.isPrintTarget)
     : contacts
+  const printableContacts = withPrintTargetFilter.filter((contact) => {
+    const annual = annualStatuses[contact.id]
+    if (excludeMourning && annual?.mourning) {
+      return false
+    }
+    if (unsentOnly && annual?.sent) {
+      return false
+    }
+    return true
+  })
   const printTargetCount = contacts.filter((c) => c.isPrintTarget).length
   const totalContacts = contacts.length
   const additionalCount = Math.max(0, totalContacts - printTargetCount)
+  const filteredByAnnualCount = Math.max(0, withPrintTargetFilter.length - printableContacts.length)
   const count = printableContacts.length
+  const printableContactIDs = Array.from(new Set(printableContacts.map((c) => c.id)))
   const labelsPerPage = layout.columns * layout.rows
 
   const paperLabel = `${layout.paperWidth}×${layout.paperHeight}mm (${layout.columns}列×${layout.rows}行)`
@@ -191,6 +218,26 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     return String(e)
   }
 
+  async function markPrintedAsSent() {
+    if (printableContactIDs.length === 0) return
+    await MarkContactsSentForYear(printableContactIDs, annualStatusYear)
+
+    const now = new Date().toISOString()
+    const updatedStatuses: ContactYearStatus[] = printableContactIDs.map((contactID) => {
+      const current = annualStatuses[contactID]
+      return {
+        contactId: contactID,
+        year: annualStatusYear,
+        sent: true,
+        received: current?.received ?? false,
+        mourning: current?.mourning ?? false,
+        createdAt: current?.createdAt ?? now,
+        updatedAt: now,
+      }
+    })
+    upsertAnnualStatuses(updatedStatuses)
+  }
+
   async function generateLabelPDFWithFallback(outPath: string): Promise<string> {
     try {
       const imageJob = await buildJob(true)
@@ -234,6 +281,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
       const tmpPath = await GetTempPDFPath()
       const outPath = await generateLabelPDFWithFallback(tmpPath)
       await PrintPDF(outPath)
+      await markPrintedAsSent()
     })
   }
 
@@ -245,6 +293,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
         <h2 className="text-base font-semibold text-gray-800">印刷確認</h2>
 
         <div className="space-y-2 text-sm text-gray-700">
+          <p className="text-xs text-gray-500">年次ステータス対象年: {annualStatusYear}年</p>
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"
@@ -254,9 +303,32 @@ export default function PrintConfirmDialog({ onClose }: Props) {
             />
             <span className="text-gray-600">印刷対象のみを抽出する</span>
           </label>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={excludeMourning}
+              onChange={(e) => setExcludeMourning(e.target.checked)}
+              className="w-3.5 h-3.5 accent-rose-600"
+            />
+            <span className="text-gray-600">喪中受領を除外する</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={unsentOnly}
+              onChange={(e) => setUnsentOnly(e.target.checked)}
+              className="w-3.5 h-3.5 accent-indigo-600"
+            />
+            <span className="text-gray-600">未送付のみを抽出する</span>
+          </label>
           {!targetOnly && additionalCount > 0 && (
             <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
               印刷対象OFFの連絡先を {additionalCount} 件含めて印刷します。
+            </p>
+          )}
+          {filteredByAnnualCount > 0 && (
+            <p className="text-xs text-blue-700 bg-blue-50 rounded px-2 py-1">
+              年次ステータス条件で {filteredByAnnualCount} 件を除外しています。
             </p>
           )}
           <div className="flex justify-between">
@@ -289,6 +361,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
             />
             <span className="text-gray-600">ラベル枠線を印刷する</span>
           </label>
+          <p className="text-xs text-gray-500">印刷実行後、対象宛先を {annualStatusYear} 年の送付済みに自動更新します。</p>
         </div>
 
         {/* 差出人選択 */}

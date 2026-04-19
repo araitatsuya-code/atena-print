@@ -1,11 +1,13 @@
 import { create } from 'zustand'
-import type { Contact } from '../types'
+import type { Contact, ContactYearStatus } from '../types'
 
 interface ContactState {
   contacts: Contact[]
   selectedIds: Set<string>
   currentGroupId: string
   searchQuery: string
+  annualStatusYear: number
+  annualStatuses: Record<string, ContactYearStatus>
   setContacts: (contacts: Contact[]) => void
   setSelectedIds: (ids: Set<string>) => void
   toggleSelected: (id: string) => void
@@ -13,6 +15,9 @@ interface ContactState {
   clearSelection: () => void
   setCurrentGroupId: (groupId: string) => void
   setSearchQuery: (query: string) => void
+  setAnnualStatusYear: (year: number) => void
+  setAnnualStatuses: (statuses: ContactYearStatus[]) => void
+  upsertAnnualStatuses: (statuses: ContactYearStatus[]) => void
 }
 
 export const useContactStore = create<ContactState>((set, get) => ({
@@ -20,6 +25,8 @@ export const useContactStore = create<ContactState>((set, get) => ({
   selectedIds: new Set(),
   currentGroupId: '',
   searchQuery: '',
+  annualStatusYear: new Date().getFullYear(),
+  annualStatuses: {},
 
   setContacts: (contacts) => set({ contacts }),
   setSelectedIds: (ids) => set({ selectedIds: ids }),
@@ -42,4 +49,17 @@ export const useContactStore = create<ContactState>((set, get) => ({
   clearSelection: () => set({ selectedIds: new Set() }),
   setCurrentGroupId: (groupId) => set({ currentGroupId: groupId }),
   setSearchQuery: (query) => set({ searchQuery: query }),
+  setAnnualStatusYear: (year) => set({ annualStatusYear: year }),
+  setAnnualStatuses: (statuses) =>
+    set({
+      annualStatuses: Object.fromEntries(statuses.map((status) => [status.contactId, status])),
+    }),
+  upsertAnnualStatuses: (statuses) =>
+    set((state) => {
+      const next = { ...state.annualStatuses }
+      statuses.forEach((status) => {
+        next[status.contactId] = status
+      })
+      return { annualStatuses: next }
+    }),
 }))
