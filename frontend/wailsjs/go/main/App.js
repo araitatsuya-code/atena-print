@@ -50,6 +50,10 @@ export function GetContactGroups(arg1) {
   return window['go']['main']['App']['GetContactGroups'](arg1);
 }
 
+export function GetContactYearStatuses(arg1) {
+  return window['go']['main']['App']['GetContactYearStatuses'](arg1);
+}
+
 export function GetContacts(arg1) {
   return window['go']['main']['App']['GetContacts'](arg1);
 }
@@ -90,6 +94,10 @@ export function LookupPostal(arg1) {
   return window['go']['main']['App']['LookupPostal'](arg1);
 }
 
+export function MarkContactsSentForYear(arg1, arg2) {
+  return window['go']['main']['App']['MarkContactsSentForYear'](arg1, arg2);
+}
+
 export function OpenCSVFileDialog() {
   return window['go']['main']['App']['OpenCSVFileDialog']();
 }
@@ -108,6 +116,10 @@ export function SaveCSVFileDialog(arg1) {
 
 export function SaveContact(arg1) {
   return window['go']['main']['App']['SaveContact'](arg1);
+}
+
+export function SaveContactYearStatus(arg1) {
+  return window['go']['main']['App']['SaveContactYearStatus'](arg1);
 }
 
 export function SaveGroup(arg1) {

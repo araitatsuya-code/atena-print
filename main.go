@@ -37,6 +37,8 @@ func main() {
 
 	contactRepo := dbpkg.NewContactRepo(db)
 	contactUC := usecase.NewContactUseCase(contactRepo)
+	contactYearStatusRepo := dbpkg.NewContactYearStatusRepo(db)
+	contactYearStatusUC := usecase.NewContactYearStatusUseCase(contactYearStatusRepo)
 	csvUC := usecase.NewCSVUseCase(contactRepo, csvpkg.NewAdapter())
 	groupRepo := dbpkg.NewGroupRepo(db)
 	groupUC := usecase.NewGroupUseCase(groupRepo)
@@ -54,7 +56,7 @@ func main() {
 
 	dbPath := filepath.Join(appDataDir, "atena.db")
 	postalRepo := postal.NewRepo()
-	app := NewApp(contactUC, csvUC, groupUC, watermarkUC, qrCodeUC, printUC, senderUC, postalRepo, printHistoryUC, db, dbPath)
+	app := NewApp(contactUC, contactYearStatusUC, csvUC, groupUC, watermarkUC, qrCodeUC, printUC, senderUC, postalRepo, printHistoryUC, db, dbPath)
 
 	err = wails.Run(&options.App{
 		Title:  "Atena ラベル印刷",
