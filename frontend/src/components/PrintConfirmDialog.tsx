@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  CheckUnsupportedCharacters,
   GenerateLabelPDF,
   GetTempPDFPath,
   PrintPDF,
@@ -75,6 +76,9 @@ async function renderWatermarkToDataURL(
 export default function PrintConfirmDialog({ onClose }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [unsupportedWarnings, setUnsupportedWarnings] = useState<entity.UnsupportedCharacterWarning[]>([])
+  const [unsupportedCheckLoading, setUnsupportedCheckLoading] = useState(false)
+  const [unsupportedCheckError, setUnsupportedCheckError] = useState<string | null>(null)
   const [selectedSenderId, setSelectedSenderId] = useState('')
   const [repeatFill, setRepeatFill] = useState(false)
   const [showBorder, setShowBorder] = useState(false)
@@ -179,12 +183,13 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     : 0
   const count = printableContacts.length
   const printableContactIDs = Array.from(new Set(printableContacts.map((c) => c.id)))
-  const isPrintActionDisabled = loading || count === 0 || !annualFilterReady
+  const isPrintActionDisabled = loading || unsupportedCheckLoading || count === 0 || !annualFilterReady
   const labelsPerPage = layout.columns * layout.rows
 
   const paperLabel = `${layout.paperWidth}×${layout.paperHeight}mm (${layout.columns}列×${layout.rows}行)`
+  const printableContactKey = printableContacts.map((c) => c.id).join(',')
 
-  async function buildJob(includeLabelImages: boolean): Promise<entity.PrintJob> {
+  function resolveTemplateAndContactIDs() {
     const defaultTpl = orientation === 'horizontal' ? DEFAULT_TEMPLATE_HORIZONTAL : DEFAULT_TEMPLATE
     const tpl = selectedTemplate
       ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
@@ -199,6 +204,76 @@ export default function PrintConfirmDialog({ onClose }: Props) {
       }
       ids = filled.slice(0, labelsPerPage)
     }
+
+    return { tpl, ids }
+  }
+
+  useEffect(() => {
+    if (!annualFilterReady || count === 0) {
+      setUnsupportedWarnings([])
+      setUnsupportedCheckError(null)
+      setUnsupportedCheckLoading(false)
+      return
+    }
+
+    const defaultTpl = orientation === 'horizontal' ? DEFAULT_TEMPLATE_HORIZONTAL : DEFAULT_TEMPLATE
+    const tpl = selectedTemplate
+      ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
+      : { ...defaultTpl, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
+    let ids = printableContacts.map((c) => c.id)
+    if (repeatFill && ids.length > 0 && ids.length < labelsPerPage) {
+      const filled: string[] = []
+      while (filled.length < labelsPerPage) {
+        filled.push(...ids)
+      }
+      ids = filled.slice(0, labelsPerPage)
+    }
+    const checkJob = entity.PrintJob.createFrom({
+      contactIds: ids,
+      template: tpl,
+      senderId: selectedSenderId,
+      labelLayout: layout,
+      showBorder,
+    })
+
+    let active = true
+    setUnsupportedCheckLoading(true)
+    setUnsupportedCheckError(null)
+
+    CheckUnsupportedCharacters(checkJob)
+      .then((warnings) => {
+        if (!active) return
+        setUnsupportedWarnings(warnings ?? [])
+      })
+      .catch((e) => {
+        if (!active) return
+        setUnsupportedWarnings([])
+        setUnsupportedCheckError(formatError(e))
+      })
+      .finally(() => {
+        if (active) {
+          setUnsupportedCheckLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [
+    annualFilterReady,
+    count,
+    printableContactKey,
+    repeatFill,
+    labelsPerPage,
+    orientation,
+    selectedTemplate,
+    layout,
+    selectedSenderId,
+    showBorder,
+  ])
+
+  async function buildJob(includeLabelImages: boolean): Promise<entity.PrintJob> {
+    const { tpl, ids } = resolveTemplateAndContactIDs()
 
     // 透かしを PDF 用 base64 PNG に変換（プリセットは canvas レンダリング、カスタムは既存 data URL）
     // 互換フォールバック時は変換失敗を許容し、旧経路での継続を優先する。
@@ -386,6 +461,29 @@ export default function PrintConfirmDialog({ onClose }: Props) {
             <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
               年次ステータスを読み込み中です。読み込み完了後に抽出・印刷できます。
             </p>
+          )}
+          {unsupportedCheckLoading && count > 0 && annualFilterReady && (
+            <p className="text-xs text-gray-600 bg-gray-100 rounded px-2 py-1">
+              文字対応を確認中です...
+            </p>
+          )}
+          {unsupportedCheckError && (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
+              未対応文字チェックに失敗しました。印刷時に文字化けがないか確認してください。
+            </p>
+          )}
+          {unsupportedWarnings.length > 0 && (
+            <div className="text-xs text-amber-900 bg-amber-50 rounded px-2 py-2 space-y-1">
+              <p className="font-medium">未対応文字の可能性があります（印刷前確認）</p>
+              {unsupportedWarnings.slice(0, 5).map((warning) => (
+                <p key={`${warning.contactId}-${warning.characters.join('')}`}>
+                  {warning.contactName || warning.contactId}: {warning.characters.join(' ')}
+                </p>
+              ))}
+              {unsupportedWarnings.length > 5 && (
+                <p>ほか {unsupportedWarnings.length - 5} 件</p>
+              )}
+            </div>
           )}
           <div className="flex justify-between">
             <span className="text-gray-500">印刷件数</span>

@@ -42,6 +42,10 @@ export function GenerateQRPreview(arg1) {
   return window['go']['main']['App']['GenerateQRPreview'](arg1);
 }
 
+export function CheckUnsupportedCharacters(arg1) {
+  return window['go']['main']['App']['CheckUnsupportedCharacters'](arg1);
+}
+
 export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
 }
