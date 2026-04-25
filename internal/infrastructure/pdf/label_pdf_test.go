@@ -2,7 +2,10 @@ package pdf
 
 import (
 	"os"
+	"strings"
 	"testing"
+
+	"atena-label/internal/entity"
 )
 
 // TestJapaneseCmapScoreWithSongti verifies that the Traditional Chinese face
@@ -61,6 +64,83 @@ func TestExtractTTFFromTTCRoundtrip(t *testing.T) {
 		t.Fatal("empty font bytes from validateFontBytes")
 	}
 	t.Logf("Font bytes: %d", len(fb))
+}
+
+func TestDetectUnsupportedCharacters_NoFontsWarnsNonASCII(t *testing.T) {
+	g := &Generator{}
+	job := entity.PrintJob{
+		Template: entity.Template{
+			Orientation: "vertical",
+			Recipient: entity.TextConfig{
+				NameFontFamily:    "serif",
+				AddressFontFamily: "serif",
+			},
+		},
+	}
+	contacts := []entity.Contact{
+		{
+			ID:         "c1",
+			FamilyName: "髙橋",
+			GivenName:  "太郎",
+			Prefecture: "東京都",
+			City:       "渋谷区",
+		},
+	}
+
+	warnings, err := g.DetectUnsupportedCharacters(job, contacts)
+	if err != nil {
+		t.Fatalf("DetectUnsupportedCharacters: %v", err)
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("warning count = %d, want 1", len(warnings))
+	}
+	if warnings[0].ContactID != "c1" {
+		t.Fatalf("warning contact ID = %q, want c1", warnings[0].ContactID)
+	}
+	if !containsString(warnings[0].Characters, "髙") {
+		t.Fatalf("expected unsupported chars to include 髙, got %v", warnings[0].Characters)
+	}
+}
+
+func TestDetectUnsupportedCharacters_NoFontsASCIIOnly(t *testing.T) {
+	g := &Generator{}
+	job := entity.PrintJob{
+		Template: entity.Template{
+			Orientation: "horizontal",
+			Recipient: entity.TextConfig{
+				NameFontFamily:    "serif",
+				AddressFontFamily: "serif",
+			},
+		},
+	}
+	contacts := []entity.Contact{
+		{
+			ID:         "c1",
+			FamilyName: "John",
+			GivenName:  "Smith",
+			Honorific:  "Mr",
+			Prefecture: "CA",
+			City:       "SF",
+			Street:     "1st-Street",
+		},
+	}
+
+	warnings, err := g.DetectUnsupportedCharacters(job, contacts)
+	if err != nil {
+		t.Fatalf("DetectUnsupportedCharacters: %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("warning count = %d, want 0 (%v)", len(warnings), warnings)
+	}
+}
+
+func containsString(values []string, target string) bool {
+	for _, v := range values {
+		if strings.EqualFold(v, target) {
+			return true
+		}
+	}
+	return false
 }
 
 func readUint32BE(b []byte) uint32 {

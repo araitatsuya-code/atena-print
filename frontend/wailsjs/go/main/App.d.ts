@@ -22,6 +22,8 @@ export function GenerateLabelPDF(arg1:entity.PrintJob,arg2:string):Promise<strin
 
 export function GenerateQRPreview(arg1:entity.QRConfig):Promise<Array<number>>;
 
+export function CheckUnsupportedCharacters(arg1:entity.PrintJob):Promise<Array<entity.UnsupportedCharacterWarning>>;
+
 export function GetAppVersion():Promise<string>;
 
 export function GetCSVImportPlan(arg1:string):Promise<any>;

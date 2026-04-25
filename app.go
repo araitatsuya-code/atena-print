@@ -331,6 +331,18 @@ func (a *App) GenerateLabelPDF(job entity.PrintJob, outPath string) (string, err
 	return path, nil
 }
 
+// CheckUnsupportedCharacters returns unsupported glyph warnings grouped by contact.
+func (a *App) CheckUnsupportedCharacters(job entity.PrintJob) ([]entity.UnsupportedCharacterWarning, error) {
+	warnings, err := a.printUseCase.CheckUnsupportedCharacters(job)
+	if err != nil {
+		return nil, fmt.Errorf("CheckUnsupportedCharacters: %w", err)
+	}
+	if warnings == nil {
+		warnings = []entity.UnsupportedCharacterWarning{}
+	}
+	return warnings, nil
+}
+
 // PrintPDF opens the given PDF file in the OS default viewer/printer.
 func (a *App) PrintPDF(pdfPath string) error {
 	if err := a.printUseCase.Print(pdfPath); err != nil {
