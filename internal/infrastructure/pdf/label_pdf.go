@@ -7,9 +7,11 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"runtime"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/jung-kurt/gofpdf"
 	qrcode "github.com/skip2/go-qrcode"
@@ -710,6 +712,369 @@ func drawQR(pdf *gofpdf.Fpdf, qr *entity.QRConfig, pngBytes []byte, originX, ori
 	pdf.ImageOptions(imgKey, qrX, qrY, sizeMM, sizeMM, false, gofpdf.ImageOptions{ImageType: "PNG"}, 0, "")
 }
 
+const (
+	nameHorizontalMinFontPt       = 7.0
+	nameHorizontalSplitThreshold  = 12
+	nameHorizontalLineHeightRatio = 1.35
+	nameHorizontalRightPaddingMm  = 2.0
+	nameHorizontalBottomPaddingMm = 2.0
+	nameHorizontalAddressGapMm    = 1.2
+	nameHorizontalGlyphWidthRatio = 0.95
+	nameVerticalMinFontPt         = 6.0
+	nameVerticalBottomPaddingMm   = 2.0
+	nameVerticalLeftPaddingMm     = 2.0
+	nameVerticalAddressGapMm      = 1.2
+	nameVerticalColumnGapRatio    = 0.2
+	nameVerticalCharHeightRatio   = 1.05
+	nameVerticalMaxColumns        = 3
+)
+
+var jointNameSeparators = map[rune]struct{}{
+	'・': {}, '･': {}, '/': {}, '／': {}, '&': {}, '＆': {},
+}
+
+type horizontalNameLayout struct {
+	Lines       []string
+	FontPt      float64
+	LineHeightM float64
+}
+
+type verticalNameLayout struct {
+	Columns []string
+	FontPt  float64
+}
+
+func estimateTextUnits(text string) float64 {
+	units := 0.0
+	for _, ch := range text {
+		switch {
+		case ch == ' ' || ch == '\u3000':
+			units += 0.55
+		case isHalfWidthRune(ch):
+			units += 0.55
+		case ch == 'ー' || ch == 'ｰ' || ch == '-':
+			units += 0.8
+		default:
+			units += 1
+		}
+	}
+	return units
+}
+
+func isHalfWidthRune(ch rune) bool {
+	return (ch >= 0x20 && ch <= 0x7E) || (ch >= 0xFF61 && ch <= 0xFF9F)
+}
+
+func estimateLineWidthMm(text string, fontPt float64) float64 {
+	return estimateTextUnits(text) * fontPt * ptToMm * nameHorizontalGlyphWidthRatio
+}
+
+func listFontCandidates(basePt, minPt float64) []float64 {
+	floor := minPt
+	if basePt < floor {
+		floor = basePt
+	}
+	if basePt <= floor+1e-6 {
+		return []float64{basePt}
+	}
+
+	out := make([]float64, 0, int((basePt-floor)*2)+2)
+	for pt := basePt; pt >= floor-1e-6; pt -= 0.5 {
+		out = append(out, math.Round(pt*10)/10)
+	}
+	if len(out) == 0 || math.Abs(out[len(out)-1]-floor) > 1e-6 {
+		out = append(out, floor)
+	}
+
+	uniq := make([]float64, 0, len(out))
+	seen := map[float64]struct{}{}
+	for _, pt := range out {
+		if _, ok := seen[pt]; ok {
+			continue
+		}
+		seen[pt] = struct{}{}
+		uniq = append(uniq, pt)
+	}
+	return uniq
+}
+
+func splitEvenly(text string, pieces int) []string {
+	runes := []rune(text)
+	if pieces <= 1 || len(runes) <= 1 {
+		return []string{text}
+	}
+
+	bucketCount := pieces
+	if bucketCount > len(runes) {
+		bucketCount = len(runes)
+	}
+	out := make([]string, 0, bucketCount)
+	idx := 0
+	for i := 0; i < bucketCount; i++ {
+		remainingChars := len(runes) - idx
+		remainingBuckets := bucketCount - i
+		take := (remainingChars + remainingBuckets - 1) / remainingBuckets
+		out = append(out, string(runes[idx:idx+take]))
+		idx += take
+	}
+	return out
+}
+
+func splitJointNameBody(nameBody string) []string {
+	out := []string{}
+	buf := []rune{}
+	for _, ch := range nameBody {
+		if _, ok := jointNameSeparators[ch]; ok {
+			if len(buf) > 0 {
+				part := append([]rune{}, buf...)
+				part = append(part, ch)
+				out = append(out, string(part))
+				buf = buf[:0]
+			}
+			continue
+		}
+		buf = append(buf, ch)
+	}
+	if len(buf) > 0 {
+		out = append(out, string(buf))
+	}
+	if len(out) < 2 {
+		return nil
+	}
+	return out
+}
+
+func buildHorizontalNameCandidates(contact *entity.Contact, honorific string) [][]string {
+	nameBody := contact.FamilyName + contact.GivenName
+	defaultNameLine := nameBody + "\u3000" + honorific
+
+	orgLines := []string{}
+	if v := strings.TrimSpace(contact.Company); v != "" {
+		orgLines = append(orgLines, v)
+	}
+	if v := strings.TrimSpace(contact.Department); v != "" {
+		orgLines = append(orgLines, v)
+	}
+
+	splitNameLines := []string{defaultNameLine}
+	if jointParts := splitJointNameBody(nameBody); len(jointParts) >= 2 {
+		splitNameLines = append([]string{}, jointParts...)
+		splitNameLines[len(splitNameLines)-1] = splitNameLines[len(splitNameLines)-1] + "\u3000" + honorific
+	} else if utf8.RuneCountInString(nameBody) >= nameHorizontalSplitThreshold {
+		parts := splitEvenly(nameBody, 2)
+		if len(parts) == 2 {
+			splitNameLines = []string{parts[0], parts[1] + "\u3000" + honorific}
+		}
+	}
+
+	mergedOrgLines := orgLines
+	if len(orgLines) > 1 {
+		mergedOrgLines = []string{strings.Join(orgLines, " ")}
+	}
+
+	candidates := make([][]string, 0, 6)
+	seen := map[string]struct{}{}
+	add := func(lines []string) {
+		normalized := make([]string, 0, len(lines))
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
+			normalized = append(normalized, line)
+		}
+		if len(normalized) == 0 {
+			return
+		}
+		key := strings.Join(normalized, "\n")
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		candidates = append(candidates, normalized)
+	}
+
+	add(append(append([]string{}, orgLines...), defaultNameLine))
+	add(append(append([]string{}, orgLines...), splitNameLines...))
+	add(append(append([]string{}, mergedOrgLines...), defaultNameLine))
+	add(append(append([]string{}, mergedOrgLines...), splitNameLines...))
+	add([]string{defaultNameLine})
+	add(splitNameLines)
+
+	return candidates
+}
+
+func computeHorizontalNameLayout(contact *entity.Contact, tmpl entity.Template, honorific string) horizontalNameLayout {
+	rec := tmpl.Recipient
+	candidates := buildHorizontalNameCandidates(contact, honorific)
+
+	baseFontPt := rec.NameFont
+	minFontPt := rec.NameFont
+	if nameHorizontalMinFontPt < minFontPt {
+		minFontPt = nameHorizontalMinFontPt
+	}
+
+	availableWidthMm := tmpl.LabelWidth - rec.NameX - nameHorizontalRightPaddingMm
+	if availableWidthMm < 10 {
+		availableWidthMm = 10
+	}
+	availableHeightMm := tmpl.LabelHeight - rec.NameY - nameHorizontalBottomPaddingMm
+	if rec.AddressY > rec.NameY {
+		availableHeightMm = math.Min(availableHeightMm, rec.AddressY-rec.NameY-nameHorizontalAddressGapMm)
+	}
+	minRequiredHeight := minFontPt * ptToMm * nameHorizontalLineHeightRatio
+	if availableHeightMm < minRequiredHeight {
+		availableHeightMm = minRequiredHeight
+	}
+
+	fontCandidates := listFontCandidates(baseFontPt, minFontPt)
+	for _, lines := range candidates {
+		for _, fontPt := range fontCandidates {
+			lineHeightMm := fontPt * ptToMm * nameHorizontalLineHeightRatio
+			if lineHeightMm*float64(len(lines)) > availableHeightMm+1e-6 {
+				continue
+			}
+			maxLineWidthMm := 0.0
+			for _, line := range lines {
+				w := estimateLineWidthMm(line, fontPt)
+				if w > maxLineWidthMm {
+					maxLineWidthMm = w
+				}
+			}
+			if maxLineWidthMm <= availableWidthMm+1e-6 {
+				return horizontalNameLayout{
+					Lines:       lines,
+					FontPt:      fontPt,
+					LineHeightM: lineHeightMm,
+				}
+			}
+		}
+	}
+
+	fallback := []string{contact.FamilyName + contact.GivenName + "\u3000" + honorific}
+	if len(candidates) > 0 {
+		fallback = candidates[len(candidates)-1]
+	}
+	return horizontalNameLayout{
+		Lines:       fallback,
+		FontPt:      minFontPt,
+		LineHeightM: minFontPt * ptToMm * nameHorizontalLineHeightRatio,
+	}
+}
+
+func buildVerticalNameCandidates(nameBody, honorific string) [][]string {
+	fullName := nameBody + honorific
+	candidates := make([][]string, 0, nameVerticalMaxColumns+1)
+	seen := map[string]struct{}{}
+	add := func(cols []string) {
+		normalized := make([]string, 0, len(cols))
+		for _, line := range cols {
+			if line == "" {
+				continue
+			}
+			normalized = append(normalized, line)
+		}
+		if len(normalized) == 0 {
+			return
+		}
+		key := strings.Join(normalized, "\n")
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		candidates = append(candidates, normalized)
+	}
+
+	add([]string{fullName})
+
+	if joint := splitJointNameBody(nameBody); len(joint) >= 2 {
+		cols := append([]string{}, joint...)
+		if len(cols) > nameVerticalMaxColumns {
+			merged := append([]string{}, cols[:nameVerticalMaxColumns-1]...)
+			merged = append(merged, strings.Join(cols[nameVerticalMaxColumns-1:], ""))
+			cols = merged
+		}
+		cols[len(cols)-1] = cols[len(cols)-1] + honorific
+		add(cols)
+	}
+
+	for n := 2; n <= nameVerticalMaxColumns; n++ {
+		cols := splitEvenly(nameBody, n)
+		if len(cols) <= 1 {
+			continue
+		}
+		cols[len(cols)-1] = cols[len(cols)-1] + honorific
+		add(cols)
+	}
+
+	return candidates
+}
+
+func computeVerticalNameLayout(contact *entity.Contact, tmpl entity.Template, honorific string) verticalNameLayout {
+	rec := tmpl.Recipient
+	nameBody := contact.FamilyName + contact.GivenName
+	candidates := buildVerticalNameCandidates(nameBody, honorific)
+
+	baseFontPt := rec.NameFont
+	minFontPt := rec.NameFont
+	if nameVerticalMinFontPt < minFontPt {
+		minFontPt = nameVerticalMinFontPt
+	}
+	fontCandidates := listFontCandidates(baseFontPt, minFontPt)
+
+	availableHeightMm := tmpl.LabelHeight - rec.NameY - nameVerticalBottomPaddingMm
+	minRequiredHeight := minFontPt * ptToMm * nameVerticalCharHeightRatio
+	if availableHeightMm < minRequiredHeight {
+		availableHeightMm = minRequiredHeight
+	}
+
+	leftLimitMm := nameVerticalLeftPaddingMm
+	if rec.AddressX > 0 && rec.AddressX < rec.NameX {
+		limit := rec.AddressX + rec.AddressFont*ptToMm*1.2 + nameVerticalAddressGapMm
+		if limit > leftLimitMm {
+			leftLimitMm = limit
+		}
+	}
+	availableWidthMm := rec.NameX - leftLimitMm
+	minRequiredWidth := minFontPt * ptToMm
+	if availableWidthMm < minRequiredWidth {
+		availableWidthMm = minRequiredWidth
+	}
+
+	for _, columns := range candidates {
+		maxChars := 0
+		for _, line := range columns {
+			if n := utf8.RuneCountInString(line); n > maxChars {
+				maxChars = n
+			}
+		}
+		if maxChars <= 0 {
+			continue
+		}
+
+		for _, fontPt := range fontCandidates {
+			fontMm := fontPt * ptToMm
+			colGap := fontMm * nameVerticalColumnGapRatio
+			requiredWidthMm := fontMm*float64(len(columns)) + colGap*float64(len(columns)-1)
+			requiredHeightMm := float64(maxChars) * fontMm * nameVerticalCharHeightRatio
+			if requiredWidthMm <= availableWidthMm+1e-6 && requiredHeightMm <= availableHeightMm+1e-6 {
+				return verticalNameLayout{
+					Columns: columns,
+					FontPt:  fontPt,
+				}
+			}
+		}
+	}
+
+	fallback := []string{nameBody + honorific}
+	if len(candidates) > 0 {
+		fallback = candidates[len(candidates)-1]
+	}
+	return verticalNameLayout{
+		Columns: fallback,
+		FontPt:  minFontPt,
+	}
+}
+
 // drawLabel renders postal code, recipient and sender onto a single label cell.
 func drawLabel(
 	pdf *gofpdf.Fpdf,
@@ -769,17 +1134,6 @@ func drawLabel(
 		honorific = "様"
 	}
 
-	var nameLines []string
-	if contact.Company != "" {
-		nameLines = append(nameLines, contact.Company)
-		if contact.Department != "" {
-			nameLines = append(nameLines, contact.Department)
-		}
-	}
-	// 横書きはアプリ同様に全角スペースで姓名と敬称を区切る
-	fullName := contact.FamilyName + contact.GivenName + "\u3000" + honorific
-	nameLines = append(nameLines, fullName)
-
 	// ── 住所を2行(横書き) / 2カラム(縦書き)に分割 ─────────────────────────
 	// アプリプレビューと同じく「都道府県+市区町村」/「番地+建物名」で分割する。
 	addrLine1 := contact.Prefecture + contact.City
@@ -796,12 +1150,10 @@ func drawLabel(
 	}
 
 	if tmpl.Orientation == "vertical" {
-		// 縦書き: プレビュー drawVerticalBlock と同じ右端基準・列幅
-		setFont(rec.NameFont, rec.NameFontFamily)
-		nameFontMm := rec.NameFont * ptToMm
-		// 縦書きは「氏名+敬称」を同一列で描画
-		drawVerticalBlockPDF(pdf, []string{contact.FamilyName + contact.GivenName + honorific},
-			ox+rec.NameX, oy+rec.NameY, nameFontMm)
+		// 縦書き: 長文や連名は自動で縮小/列分割して枠内に収める
+		nameLayout := computeVerticalNameLayout(contact, tmpl, honorific)
+		setFont(nameLayout.FontPt, rec.NameFontFamily)
+		drawVerticalBlockPDF(pdf, nameLayout.Columns, ox+rec.NameX, oy+rec.NameY, nameLayout.FontPt*ptToMm)
 
 		setFont(rec.AddressFont, rec.AddressFontFamily)
 		addrFontMm := rec.AddressFont * ptToMm
@@ -812,13 +1164,12 @@ func drawLabel(
 		}
 		drawVerticalBlockPDF(pdf, kanjiAddrLines, ox+rec.AddressX, oy+rec.AddressY, addrFontMm)
 	} else {
-		// 横書き: 行高をプレビューと同じ pt→mm 変換で計算
-		setFont(rec.NameFont, rec.NameFontFamily)
-		nameFontMm := rec.NameFont * ptToMm
-		nameLineH := nameFontMm * 1.4 // プレビューの nameFont は単一行なので余裕を持たせる
-		for i, line := range nameLines {
-			pdf.SetXY(ox+rec.NameX, oy+rec.NameY+float64(i)*nameLineH)
-			pdf.CellFormat(0, nameLineH, line, "", 0, "L", false, 0, "")
+		// 横書き: 長文や連名は自動で縮小/改行し、優先順で行構成を調整する
+		nameLayout := computeHorizontalNameLayout(contact, tmpl, honorific)
+		setFont(nameLayout.FontPt, rec.NameFontFamily)
+		for i, line := range nameLayout.Lines {
+			pdf.SetXY(ox+rec.NameX, oy+rec.NameY+float64(i)*nameLayout.LineHeightM)
+			pdf.CellFormat(0, nameLayout.LineHeightM, line, "", 0, "L", false, 0, "")
 		}
 
 		setFont(rec.AddressFont, rec.AddressFontFamily)
