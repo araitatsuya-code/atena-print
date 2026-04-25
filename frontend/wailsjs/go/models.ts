@@ -421,6 +421,23 @@ export namespace entity {
 		    return a;
 		}
 	}
+
+	export class UnsupportedCharacterWarning {
+	    contactId: string;
+	    contactName: string;
+	    characters: string[];
+
+	    static createFrom(source: any = {}) {
+	        return new UnsupportedCharacterWarning(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.contactId = source["contactId"];
+	        this.contactName = source["contactName"];
+	        this.characters = source["characters"];
+	    }
+	}
 	
 	export class Sender {
 	    id: string;

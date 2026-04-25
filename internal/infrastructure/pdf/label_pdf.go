@@ -9,7 +9,9 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/jung-kurt/gofpdf"
 	qrcode "github.com/skip2/go-qrcode"
@@ -527,6 +529,437 @@ func drawLabelImages(
 	}
 
 	return nil
+}
+
+type textSegment struct {
+	Field      string
+	FontFamily string
+	Text       string
+}
+
+type fontRuneChecker struct {
+	fmt4  *cmapFormat4
+	fmt12 []cmapFormat12Group
+}
+
+type cmapFormat4 struct {
+	data      []byte
+	segCount  int
+	endBase   int
+	startBase int
+	deltaBase int
+	rangeBase int
+}
+
+type cmapFormat12Group struct {
+	startCode uint32
+	endCode   uint32
+	startGID  uint32
+}
+
+func newFontRuneChecker(fontBytes []byte) *fontRuneChecker {
+	if len(fontBytes) == 0 {
+		return &fontRuneChecker{}
+	}
+
+	cmap := findCmapTable(fontBytes)
+	if len(cmap) == 0 {
+		return &fontRuneChecker{}
+	}
+
+	fmt4, fmt12 := parseUnicodeCmaps(cmap)
+	return &fontRuneChecker{
+		fmt4:  fmt4,
+		fmt12: fmt12,
+	}
+}
+
+func (c *fontRuneChecker) SupportsRune(r rune) bool {
+	if r == '\n' || r == '\r' || r == '\t' {
+		return true
+	}
+	if r >= 0x20 && r <= 0x7E {
+		return true
+	}
+	if c == nil {
+		return false
+	}
+
+	if c.fmt4 != nil && r >= 0 && r <= 0xFFFF {
+		if supportsRuneFormat4(c.fmt4, uint16(r)) {
+			return true
+		}
+	}
+	if len(c.fmt12) > 0 && supportsRuneFormat12(c.fmt12, uint32(r)) {
+		return true
+	}
+	return false
+}
+
+func findCmapTable(ttfBytes []byte) []byte {
+	if len(ttfBytes) < 12 {
+		return nil
+	}
+	numTables := int(binary.BigEndian.Uint16(ttfBytes[4:6]))
+	for i := 0; i < numTables; i++ {
+		base := 12 + i*16
+		if base+16 > len(ttfBytes) {
+			return nil
+		}
+		if string(ttfBytes[base:base+4]) != "cmap" {
+			continue
+		}
+		off := binary.BigEndian.Uint32(ttfBytes[base+8 : base+12])
+		length := binary.BigEndian.Uint32(ttfBytes[base+12 : base+16])
+		if off == 0 || length == 0 || int(off+length) > len(ttfBytes) {
+			return nil
+		}
+		return ttfBytes[off : off+length]
+	}
+	return nil
+}
+
+func parseUnicodeCmaps(cmap []byte) (*cmapFormat4, []cmapFormat12Group) {
+	if len(cmap) < 4 {
+		return nil, nil
+	}
+	numSubtables := int(binary.BigEndian.Uint16(cmap[2:4]))
+	var fmt4Off, fmt12Off uint32
+	for i := 0; i < numSubtables; i++ {
+		base := 4 + i*8
+		if base+8 > len(cmap) {
+			break
+		}
+		platformID := binary.BigEndian.Uint16(cmap[base : base+2])
+		encodingID := binary.BigEndian.Uint16(cmap[base+2 : base+4])
+		off := binary.BigEndian.Uint32(cmap[base+4 : base+8])
+		if off+2 > uint32(len(cmap)) {
+			continue
+		}
+		format := binary.BigEndian.Uint16(cmap[off : off+2])
+		switch format {
+		case 4:
+			if platformID == 3 && encodingID == 1 {
+				fmt4Off = off
+			} else if platformID == 0 && encodingID >= 3 && fmt4Off == 0 {
+				fmt4Off = off
+			} else if fmt4Off == 0 {
+				fmt4Off = off
+			}
+		case 12:
+			if (platformID == 3 && encodingID == 10) || (platformID == 0 && encodingID == 4) {
+				if fmt12Off == 0 {
+					fmt12Off = off
+				}
+			} else if fmt12Off == 0 {
+				fmt12Off = off
+			}
+		}
+	}
+
+	var parsedFmt4 *cmapFormat4
+	if fmt4Off != 0 {
+		parsedFmt4 = parseCmapFormat4(cmap, fmt4Off)
+	}
+	var parsedFmt12 []cmapFormat12Group
+	if fmt12Off != 0 {
+		parsedFmt12 = parseCmapFormat12(cmap, fmt12Off)
+	}
+	return parsedFmt4, parsedFmt12
+}
+
+func parseCmapFormat4(cmap []byte, off uint32) *cmapFormat4 {
+	if int(off)+16 > len(cmap) {
+		return nil
+	}
+	sub := cmap[off:]
+	segCount := int(binary.BigEndian.Uint16(sub[6:8])) / 2
+	if segCount <= 0 {
+		return nil
+	}
+
+	endBase := 14
+	startBase := endBase + segCount*2 + 2
+	deltaBase := startBase + segCount*2
+	rangeBase := deltaBase + segCount*2
+	if rangeBase+segCount*2 > len(sub) {
+		return nil
+	}
+
+	return &cmapFormat4{
+		data:      sub,
+		segCount:  segCount,
+		endBase:   endBase,
+		startBase: startBase,
+		deltaBase: deltaBase,
+		rangeBase: rangeBase,
+	}
+}
+
+func parseCmapFormat12(cmap []byte, off uint32) []cmapFormat12Group {
+	if int(off)+16 > len(cmap) {
+		return nil
+	}
+	sub := cmap[off:]
+	numGroups := int(binary.BigEndian.Uint32(sub[12:16]))
+	if numGroups <= 0 || 16+numGroups*12 > len(sub) {
+		return nil
+	}
+
+	groups := make([]cmapFormat12Group, 0, numGroups)
+	for i := 0; i < numGroups; i++ {
+		base := 16 + i*12
+		groups = append(groups, cmapFormat12Group{
+			startCode: binary.BigEndian.Uint32(sub[base : base+4]),
+			endCode:   binary.BigEndian.Uint32(sub[base+4 : base+8]),
+			startGID:  binary.BigEndian.Uint32(sub[base+8 : base+12]),
+		})
+	}
+	return groups
+}
+
+func supportsRuneFormat4(fmt4 *cmapFormat4, cp uint16) bool {
+	sub := fmt4.data
+	for s := 0; s < fmt4.segCount; s++ {
+		end := binary.BigEndian.Uint16(sub[fmt4.endBase+s*2 : fmt4.endBase+s*2+2])
+		if cp > end {
+			continue
+		}
+
+		start := binary.BigEndian.Uint16(sub[fmt4.startBase+s*2 : fmt4.startBase+s*2+2])
+		if cp < start {
+			return false
+		}
+
+		delta := int16(binary.BigEndian.Uint16(sub[fmt4.deltaBase+s*2 : fmt4.deltaBase+s*2+2]))
+		rangeOff := binary.BigEndian.Uint16(sub[fmt4.rangeBase+s*2 : fmt4.rangeBase+s*2+2])
+		if rangeOff == 0 {
+			return uint16(int(cp)+int(delta)) != 0
+		}
+
+		// idRangeOffset points to a glyph ID array relative to the current idRangeOffset word.
+		rangeWordPos := fmt4.rangeBase + s*2
+		glyphPos := rangeWordPos + int(rangeOff) + int(cp-start)*2
+		if glyphPos+2 > len(sub) {
+			return false
+		}
+		glyph := binary.BigEndian.Uint16(sub[glyphPos : glyphPos+2])
+		if glyph == 0 {
+			return false
+		}
+		glyph = uint16(int(glyph) + int(delta))
+		return glyph != 0
+	}
+	return false
+}
+
+func supportsRuneFormat12(groups []cmapFormat12Group, cp uint32) bool {
+	low, high := 0, len(groups)-1
+	for low <= high {
+		mid := low + (high-low)/2
+		g := groups[mid]
+		if cp < g.startCode {
+			high = mid - 1
+			continue
+		}
+		if cp > g.endCode {
+			low = mid + 1
+			continue
+		}
+		gid := g.startGID + (cp - g.startCode)
+		return gid != 0
+	}
+	return false
+}
+
+func formatPostalCodeForLabel(raw string) string {
+	digits := strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, raw)
+	if len(digits) == 7 {
+		return digits[:3] + "-" + digits[3:]
+	}
+	return digits
+}
+
+func collectAddressLines(contact entity.Contact) []string {
+	addrLine1 := contact.Prefecture + contact.City
+	addrLine2 := contact.Street
+	if contact.Building != "" {
+		addrLine2 += "\u3000" + contact.Building
+	}
+	lines := []string{}
+	if addrLine1 != "" {
+		lines = append(lines, addrLine1)
+	}
+	if addrLine2 != "" {
+		lines = append(lines, addrLine2)
+	}
+	return lines
+}
+
+func labelTextSegments(contact entity.Contact, tmpl entity.Template) []textSegment {
+	segments := []textSegment{}
+
+	if tmpl.PostalCode != nil && contact.PostalCode != "" {
+		segments = append(segments, textSegment{
+			Field:      "postalCode",
+			FontFamily: tmpl.PostalCode.FontFamily,
+			Text:       "〒" + formatPostalCodeForLabel(contact.PostalCode),
+		})
+	}
+
+	rec := tmpl.Recipient
+	honorific := contact.Honorific
+	if honorific == "" {
+		honorific = "様"
+	}
+
+	if tmpl.Orientation == "vertical" {
+		segments = append(segments, textSegment{
+			Field:      "recipientName",
+			FontFamily: rec.NameFontFamily,
+			Text:       contact.FamilyName + contact.GivenName + honorific,
+		})
+		for _, line := range collectAddressLines(contact) {
+			segments = append(segments, textSegment{
+				Field:      "recipientAddress",
+				FontFamily: rec.AddressFontFamily,
+				Text:       toKanjiNumerals(line),
+			})
+		}
+		return segments
+	}
+
+	if contact.Company != "" {
+		segments = append(segments, textSegment{
+			Field:      "recipientName",
+			FontFamily: rec.NameFontFamily,
+			Text:       contact.Company,
+		})
+		if contact.Department != "" {
+			segments = append(segments, textSegment{
+				Field:      "recipientName",
+				FontFamily: rec.NameFontFamily,
+				Text:       contact.Department,
+			})
+		}
+	}
+	segments = append(segments, textSegment{
+		Field:      "recipientName",
+		FontFamily: rec.NameFontFamily,
+		Text:       contact.FamilyName + contact.GivenName + "\u3000" + honorific,
+	})
+	for _, line := range collectAddressLines(contact) {
+		segments = append(segments, textSegment{
+			Field:      "recipientAddress",
+			FontFamily: rec.AddressFontFamily,
+			Text:       line,
+		})
+	}
+	return segments
+}
+
+func fallbackContactName(contact entity.Contact) string {
+	name := strings.TrimSpace(contact.FamilyName + contact.GivenName)
+	if name != "" {
+		return name
+	}
+	if contact.Company != "" {
+		return contact.Company
+	}
+	return contact.ID
+}
+
+func shouldSkipGlyphCheckRune(r rune) bool {
+	return unicode.IsSpace(r) || unicode.IsControl(r)
+}
+
+// DetectUnsupportedCharacters checks whether each printable rune can be rendered by the selected font family.
+func (g *Generator) DetectUnsupportedCharacters(
+	job entity.PrintJob,
+	contacts []entity.Contact,
+) ([]entity.UnsupportedCharacterWarning, error) {
+	serifChecker := newFontRuneChecker(g.fontBytes)
+	sansChecker := newFontRuneChecker(g.sansFontBytes)
+	hasSerifFont := len(g.fontBytes) > 0
+	hasSansFont := len(g.sansFontBytes) > 0
+
+	selectChecker := func(family string) *fontRuneChecker {
+		if family == "sans-serif" && hasSansFont {
+			return sansChecker
+		}
+		if hasSerifFont {
+			return serifChecker
+		}
+		return &fontRuneChecker{}
+	}
+
+	warnings := make([]entity.UnsupportedCharacterWarning, 0)
+	warningIndexByContact := make(map[string]int, len(contacts))
+
+	for _, contact := range contacts {
+		segments := labelTextSegments(contact, job.Template)
+		if len(segments) == 0 {
+			continue
+		}
+
+		unsupportedRunes := make(map[rune]struct{})
+		for _, segment := range segments {
+			checker := selectChecker(segment.FontFamily)
+			for _, r := range segment.Text {
+				if shouldSkipGlyphCheckRune(r) {
+					continue
+				}
+				if !checker.SupportsRune(r) {
+					unsupportedRunes[r] = struct{}{}
+				}
+			}
+		}
+		if len(unsupportedRunes) == 0 {
+			continue
+		}
+
+		runes := make([]rune, 0, len(unsupportedRunes))
+		for r := range unsupportedRunes {
+			runes = append(runes, r)
+		}
+		sort.Slice(runes, func(i, j int) bool { return runes[i] < runes[j] })
+
+		chars := make([]string, 0, len(runes))
+		for _, r := range runes {
+			chars = append(chars, string(r))
+		}
+
+		idx, exists := warningIndexByContact[contact.ID]
+		if !exists {
+			warnings = append(warnings, entity.UnsupportedCharacterWarning{
+				ContactID:   contact.ID,
+				ContactName: fallbackContactName(contact),
+				Characters:  chars,
+			})
+			warningIndexByContact[contact.ID] = len(warnings) - 1
+			continue
+		}
+
+		// Merge duplicates when the same contact appears multiple times (e.g. repeat fill).
+		existing := make(map[string]struct{}, len(warnings[idx].Characters))
+		for _, ch := range warnings[idx].Characters {
+			existing[ch] = struct{}{}
+		}
+		for _, ch := range chars {
+			if _, ok := existing[ch]; ok {
+				continue
+			}
+			warnings[idx].Characters = append(warnings[idx].Characters, ch)
+		}
+		sort.Strings(warnings[idx].Characters)
+	}
+
+	return warnings, nil
 }
 
 // GenerateLabelPDF generates an A4 label PDF and returns the raw bytes.
