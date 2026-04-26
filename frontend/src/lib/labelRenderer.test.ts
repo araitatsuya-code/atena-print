@@ -129,4 +129,54 @@ describe('renderLabelTextLayer', () => {
       }),
     )
   })
+
+  it('縦書きで長い氏名は自動で複数列に分割する', () => {
+    const ctx = createMockContext()
+
+    renderLabelTextLayer(
+      ctx as unknown as CanvasRenderingContext2D,
+      {
+        ...baseContact,
+        familyName: '山田太郎次郎三郎四郎五郎六郎七郎八郎九郎十郎',
+        givenName: '',
+      },
+      baseTemplate,
+      { pxPerMm: 1, showBackground: false, showBorder: false },
+    )
+
+    expect(drawVerticalBlock).toHaveBeenCalledTimes(2)
+    const nameCall = vi.mocked(drawVerticalBlock).mock.calls[0][0]
+    expect(nameCall.lines.length).toBeGreaterThan(1)
+  })
+
+  it('横書きで連名は自動で改行して描画する', () => {
+    const ctx = createMockContext()
+    const fillText = vi.mocked(ctx.fillText)
+
+    renderLabelTextLayer(
+      ctx as unknown as CanvasRenderingContext2D,
+      {
+        ...baseContact,
+        familyName: '山田太郎・山田花子',
+        givenName: '',
+      },
+      {
+        ...baseTemplate,
+        orientation: 'horizontal',
+        labelWidth: 23,
+        labelHeight: 30,
+        recipient: {
+          ...baseTemplate.recipient,
+          nameX: 5,
+          nameY: 4,
+          addressY: 16,
+        },
+      },
+      { pxPerMm: 1, showBackground: false, showBorder: false },
+    )
+
+    const renderedTexts = fillText.mock.calls.map(([text]) => text)
+    expect(renderedTexts[0]).toBe('山田太郎・')
+    expect(renderedTexts[1]).toBe('山田花子　様')
+  })
 })
