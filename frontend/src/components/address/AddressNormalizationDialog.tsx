@@ -81,8 +81,8 @@ export default function AddressNormalizationDialog({ onClose, onCompleted }: Pro
       const typed = applied as AddressNormalizationApplyResult
       setResult(typed)
       await onCompleted()
-      setStep('result')
       await loadPreview()
+      setStep('result')
     } catch (err) {
       console.error(err)
       setError(`一括更新に失敗しました: ${String(err)}`)
@@ -102,8 +102,8 @@ export default function AddressNormalizationDialog({ onClose, onCompleted }: Pro
       await onCompleted()
       setResult(null)
       setStep('preview')
-      setNotice(`ロールバック完了: ${typed.restoredCount}件復元しました。`)
       await loadPreview()
+      setNotice(`ロールバック完了: ${typed.restoredCount}件復元しました。`)
     } catch (err) {
       console.error(err)
       setError(`ロールバックに失敗しました: ${String(err)}`)
