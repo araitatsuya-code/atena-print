@@ -10,6 +10,10 @@ export function AnalyzeCSVImport(arg1, arg2) {
   return window['go']['main']['App']['AnalyzeCSVImport'](arg1, arg2);
 }
 
+export function ApplyAddressNormalization(arg1) {
+  return window['go']['main']['App']['ApplyAddressNormalization'](arg1);
+}
+
 export function DeleteContacts(arg1) {
   return window['go']['main']['App']['DeleteContacts'](arg1);
 }
@@ -48,6 +52,10 @@ export function CheckUnsupportedCharacters(arg1) {
 
 export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
+}
+
+export function GetAddressNormalizationPreview() {
+  return window['go']['main']['App']['GetAddressNormalizationPreview']();
 }
 
 export function GetCSVImportPlan(arg1) {
@@ -124,6 +132,10 @@ export function PrintPDF(arg1) {
 
 export function RemoveContactFromGroup(arg1, arg2) {
   return window['go']['main']['App']['RemoveContactFromGroup'](arg1, arg2);
+}
+
+export function RollbackAddressNormalization(arg1) {
+  return window['go']['main']['App']['RollbackAddressNormalization'](arg1);
 }
 
 export function SaveCSVFileDialog(arg1) {

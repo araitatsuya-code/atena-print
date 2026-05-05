@@ -6,6 +6,8 @@ export function AddContactToGroup(arg1:string,arg2:string):Promise<void>;
 
 export function AnalyzeCSVImport(arg1:string,arg2:{[key: string]: number}):Promise<any>;
 
+export function ApplyAddressNormalization(arg1:Array<any>):Promise<any>;
+
 export function DeleteContacts(arg1:Array<string>):Promise<void>;
 
 export function DeleteGroup(arg1:string):Promise<void>;
@@ -25,6 +27,8 @@ export function GenerateQRPreview(arg1:entity.QRConfig):Promise<Array<number>>;
 export function CheckUnsupportedCharacters(arg1:entity.PrintJob):Promise<Array<entity.UnsupportedCharacterWarning>>;
 
 export function GetAppVersion():Promise<string>;
+
+export function GetAddressNormalizationPreview():Promise<any>;
 
 export function GetCSVImportPlan(arg1:string):Promise<any>;
 
@@ -63,6 +67,8 @@ export function OpenCSVFileDialog():Promise<string>;
 export function PrintPDF(arg1:string):Promise<void>;
 
 export function RemoveContactFromGroup(arg1:string,arg2:string):Promise<void>;
+
+export function RollbackAddressNormalization(arg1:string):Promise<any>;
 
 export function SaveCSVFileDialog(arg1:string):Promise<string>;
 

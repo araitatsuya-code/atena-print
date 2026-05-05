@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -25,6 +26,7 @@ type App struct {
 	ctx                 context.Context
 	contactUseCase      *usecase.ContactUseCase
 	contactYearStatusUC *usecase.ContactYearStatusUseCase
+	addressNormUseCase  *usecase.AddressNormalizationUseCase
 	csvUseCase          *usecase.CSVUseCase
 	groupUseCase        *usecase.GroupUseCase
 	watermarkUseCase    *usecase.WatermarkUseCase
@@ -35,6 +37,13 @@ type App struct {
 	printHistoryUseCase *usecase.PrintHistoryUseCase
 	db                  *sql.DB
 	dbPath              string
+	normMu              sync.Mutex
+	lastNormBatch       *addressNormalizationRollbackBatch
+}
+
+type addressNormalizationRollbackBatch struct {
+	BatchID  string
+	Contacts []entity.Contact
 }
 
 // NewApp creates a new App application struct
@@ -42,6 +51,7 @@ func NewApp(contactUC *usecase.ContactUseCase, contactYearStatusUC *usecase.Cont
 	return &App{
 		contactUseCase:      contactUC,
 		contactYearStatusUC: contactYearStatusUC,
+		addressNormUseCase:  usecase.NewAddressNormalizationUseCase(postalRepo),
 		csvUseCase:          csvUC,
 		groupUseCase:        groupUC,
 		watermarkUseCase:    watermarkUC,
@@ -105,6 +115,144 @@ func (a *App) SearchContacts(query string) ([]entity.Contact, error) {
 		return nil, fmt.Errorf("SearchContacts: %w", err)
 	}
 	return contacts, nil
+}
+
+// GetAddressNormalizationPreview returns normalization candidates derived from postal code master data.
+func (a *App) GetAddressNormalizationPreview() (entity.AddressNormalizationPreview, error) {
+	contacts, err := a.contactUseCase.List("")
+	if err != nil {
+		return entity.AddressNormalizationPreview{}, fmt.Errorf("GetAddressNormalizationPreview: %w", err)
+	}
+
+	preview := a.addressNormUseCase.BuildPreview(contacts)
+	a.normMu.Lock()
+	if a.lastNormBatch != nil && len(a.lastNormBatch.Contacts) > 0 {
+		preview.CanRollback = true
+		preview.RollbackBatchID = a.lastNormBatch.BatchID
+	}
+	a.normMu.Unlock()
+
+	return preview, nil
+}
+
+// ApplyAddressNormalization applies selected normalization candidates and records rollback data.
+func (a *App) ApplyAddressNormalization(selections []entity.AddressNormalizationSelection) (entity.AddressNormalizationApplyResult, error) {
+	contacts, err := a.contactUseCase.List("")
+	if err != nil {
+		return entity.AddressNormalizationApplyResult{}, fmt.Errorf("ApplyAddressNormalization list contacts: %w", err)
+	}
+
+	preview := a.addressNormUseCase.BuildPreview(contacts)
+	result := entity.AddressNormalizationApplyResult{
+		Errors: []string{},
+	}
+	if len(preview.Candidates) == 0 {
+		return result, nil
+	}
+
+	selected := make(map[string]bool, len(selections))
+	useSelection := len(selections) > 0
+	for _, selection := range selections {
+		selected[selection.ContactID] = selection.Apply
+	}
+
+	rollbackContacts := make([]entity.Contact, 0, len(preview.Candidates))
+	for _, candidate := range preview.Candidates {
+		if useSelection {
+			apply, ok := selected[candidate.ContactID]
+			if !ok || !apply {
+				result.SkippedCount++
+				continue
+			}
+		}
+
+		current, getErr := a.contactUseCase.Get(candidate.ContactID)
+		if getErr != nil {
+			result.FailedCount++
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: 取得失敗: %v", candidate.DisplayName, getErr))
+			continue
+		}
+		if current == nil {
+			result.FailedCount++
+			result.Errors = append(result.Errors, fmt.Sprintf("contactId=%s: 連絡先が見つかりません", candidate.ContactID))
+			continue
+		}
+
+		before := *current
+		next := before
+		next.Prefecture = candidate.After.Prefecture
+		next.City = candidate.After.City
+		next.Street = candidate.After.Street
+
+		if before.Prefecture == next.Prefecture &&
+			before.City == next.City &&
+			before.Street == next.Street {
+			result.SkippedCount++
+			continue
+		}
+
+		if _, saveErr := a.contactUseCase.Save(next); saveErr != nil {
+			result.FailedCount++
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: 更新失敗: %v", candidate.DisplayName, saveErr))
+			continue
+		}
+
+		result.AppliedCount++
+		rollbackContacts = append(rollbackContacts, before)
+	}
+
+	if result.AppliedCount > 0 {
+		batchID := fmt.Sprintf("addrnorm-%d", time.Now().UnixNano())
+		result.BatchID = batchID
+		result.CanRollback = true
+
+		a.normMu.Lock()
+		a.lastNormBatch = &addressNormalizationRollbackBatch{
+			BatchID:  batchID,
+			Contacts: rollbackContacts,
+		}
+		a.normMu.Unlock()
+	}
+
+	return result, nil
+}
+
+// RollbackAddressNormalization restores the latest applied normalization batch.
+func (a *App) RollbackAddressNormalization(batchID string) (entity.AddressNormalizationRollbackResult, error) {
+	result := entity.AddressNormalizationRollbackResult{
+		Errors: []string{},
+	}
+
+	a.normMu.Lock()
+	batch := a.lastNormBatch
+	a.normMu.Unlock()
+
+	if batch == nil || len(batch.Contacts) == 0 {
+		return result, fmt.Errorf("RollbackAddressNormalization: ロールバック可能な履歴がありません")
+	}
+	if batchID != "" && batch.BatchID != batchID {
+		return result, fmt.Errorf("RollbackAddressNormalization: 指定バッチが見つかりません")
+	}
+
+	result.BatchID = batch.BatchID
+	for _, snapshot := range batch.Contacts {
+		if _, err := a.contactUseCase.Save(snapshot); err != nil {
+			result.FailedCount++
+			result.Errors = append(result.Errors, fmt.Sprintf("contactId=%s: 復元失敗: %v", snapshot.ID, err))
+			continue
+		}
+		result.RestoredCount++
+	}
+
+	if result.FailedCount == 0 {
+		a.normMu.Lock()
+		if a.lastNormBatch != nil && a.lastNormBatch.BatchID == batch.BatchID {
+			a.lastNormBatch = nil
+		}
+		a.normMu.Unlock()
+	}
+
+	return result, nil
 }
 
 // GetContactYearStatuses returns all yearly statuses in the specified year.
