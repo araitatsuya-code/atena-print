@@ -170,6 +170,56 @@ export interface CSVImportExecutionResult {
   errors: string[]
 }
 
+export interface AddressNormalizationAddress {
+  prefecture: string
+  city: string
+  street: string
+}
+
+export interface AddressNormalizationDiff {
+  field: 'prefecture' | 'city' | 'street'
+  before: string
+  after: string
+}
+
+export interface AddressNormalizationCandidate {
+  contactId: string
+  displayName: string
+  postalCode: string
+  before: AddressNormalizationAddress
+  after: AddressNormalizationAddress
+  diffs: AddressNormalizationDiff[]
+}
+
+export interface AddressNormalizationPreview {
+  totalContacts: number
+  convertibleCount: number
+  candidates: AddressNormalizationCandidate[]
+  canRollback: boolean
+  rollbackBatchId?: string
+}
+
+export interface AddressNormalizationSelection {
+  contactId: string
+  apply: boolean
+}
+
+export interface AddressNormalizationApplyResult {
+  batchId?: string
+  appliedCount: number
+  skippedCount: number
+  failedCount: number
+  errors: string[]
+  canRollback: boolean
+}
+
+export interface AddressNormalizationRollbackResult {
+  batchId?: string
+  restoredCount: number
+  failedCount: number
+  errors: string[]
+}
+
 export interface PrintHistory {
   id: string
   printedAt: string

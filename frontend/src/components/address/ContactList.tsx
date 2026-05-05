@@ -16,6 +16,7 @@ import type { Contact, ContactYearStatus, Group } from '../../types'
 import ContactEditModal from './ContactEditModal'
 import GroupManageDialog from './GroupManageDialog'
 import CSVImportWizard from './CSVImportWizard'
+import AddressNormalizationDialog from './AddressNormalizationDialog'
 
 type EditableField = 'familyName' | 'givenName' | 'honorific' | 'postalCode' | 'prefecture' | 'city' | 'street'
 type NavigationMode = 'none' | 'enter' | 'tab'
@@ -76,6 +77,7 @@ export default function ContactList() {
   // undefined = モーダル非表示, null = 新規作成, Contact = 編集
   const [showGroupManage, setShowGroupManage] = useState(false)
   const [importWizardFilePath, setImportWizardFilePath] = useState<string | null>(null)
+  const [showAddressNormalization, setShowAddressNormalization] = useState(false)
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
   const [inlineSaveError, setInlineSaveError] = useState<string | null>(null)
   const [savingCellKey, setSavingCellKey] = useState<string | null>(null)
@@ -874,6 +876,12 @@ export default function ContactList() {
           CSV取込
         </button>
         <button
+          onClick={() => setShowAddressNormalization(true)}
+          className="px-3 py-1.5 text-sm bg-gray-50 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
+        >
+          住所正規化
+        </button>
+        <button
           onClick={handleExport}
           className="px-3 py-1.5 text-sm bg-gray-50 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
         >
@@ -910,6 +918,13 @@ export default function ContactList() {
         <CSVImportWizard
           filePath={importWizardFilePath}
           onClose={() => setImportWizardFilePath(null)}
+          onCompleted={refreshContacts}
+        />
+      )}
+
+      {showAddressNormalization && (
+        <AddressNormalizationDialog
+          onClose={() => setShowAddressNormalization(false)}
           onCompleted={refreshContacts}
         />
       )}
