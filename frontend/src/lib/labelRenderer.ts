@@ -269,7 +269,7 @@ function computeVerticalNameLayout(contact: Contact, tpl: Template): VerticalNam
     tpl.labelHeight - rc.nameY - NAME_AUTO_LAYOUT_RULES.verticalBottomPaddingMm,
   )
 
-  let leftLimitMm = NAME_AUTO_LAYOUT_RULES.verticalLeftPaddingMm
+  let leftLimitMm: number = NAME_AUTO_LAYOUT_RULES.verticalLeftPaddingMm
   if (rc.addressX > 0 && rc.addressX < rc.nameX) {
     leftLimitMm = Math.max(
       leftLimitMm,

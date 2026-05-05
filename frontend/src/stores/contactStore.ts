@@ -4,6 +4,7 @@ import type { Contact, ContactYearStatus } from '../types'
 interface ContactState {
   contacts: Contact[]
   selectedIds: Set<string>
+  focusContactId: string | null
   currentGroupId: string
   searchQuery: string
   annualStatusYear: number
@@ -12,6 +13,8 @@ interface ContactState {
   annualStatusesLoading: boolean
   setContacts: (contacts: Contact[]) => void
   setSelectedIds: (ids: Set<string>) => void
+  setFocusContactId: (id: string | null) => void
+  clearFocusContactId: () => void
   toggleSelected: (id: string) => void
   selectAll: () => void
   clearSelection: () => void
@@ -26,6 +29,7 @@ interface ContactState {
 export const useContactStore = create<ContactState>((set, get) => ({
   contacts: [],
   selectedIds: new Set(),
+  focusContactId: null,
   currentGroupId: '',
   searchQuery: '',
   annualStatusYear: new Date().getFullYear(),
@@ -35,6 +39,8 @@ export const useContactStore = create<ContactState>((set, get) => ({
 
   setContacts: (contacts) => set({ contacts }),
   setSelectedIds: (ids) => set({ selectedIds: ids }),
+  setFocusContactId: (id) => set({ focusContactId: id }),
+  clearFocusContactId: () => set({ focusContactId: null }),
 
   toggleSelected: (id) => {
     const ids = new Set(get().selectedIds)

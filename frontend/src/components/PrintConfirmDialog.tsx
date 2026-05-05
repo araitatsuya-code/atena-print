@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   CheckUnsupportedCharacters,
   GenerateLabelPDF,
@@ -18,10 +18,12 @@ import { useSenderStore } from '../stores/senderStore'
 import type { ContactYearStatus } from '../types'
 import { DEFAULT_TEMPLATE, DEFAULT_TEMPLATE_HORIZONTAL } from './preview/LabelCanvas'
 import { renderLabelSnapshotsToDataURLBatch } from '../lib/labelSnapshot'
+import { buildPreprintWarnings } from '../lib/printPreflight'
 import { useShallow } from 'zustand/shallow'
 
 interface Props {
   onClose: () => void
+  onJumpToContact: (contactID: string) => void
 }
 
 /** プリセット透かし絵文字マップ (WatermarkLayer と同じ定義) */
@@ -73,12 +75,14 @@ async function renderWatermarkToDataURL(
   return canvas.toDataURL('image/png')
 }
 
-export default function PrintConfirmDialog({ onClose }: Props) {
+export default function PrintConfirmDialog({ onClose, onJumpToContact }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [unsupportedWarnings, setUnsupportedWarnings] = useState<entity.UnsupportedCharacterWarning[]>([])
   const [unsupportedCheckLoading, setUnsupportedCheckLoading] = useState(false)
   const [unsupportedCheckError, setUnsupportedCheckError] = useState<string | null>(null)
+  const [strictWarningMode, setStrictWarningMode] = useState(false)
+  const [warningAcknowledged, setWarningAcknowledged] = useState(false)
   const [selectedSenderId, setSelectedSenderId] = useState('')
   const [repeatFill, setRepeatFill] = useState(false)
   const [showBorder, setShowBorder] = useState(false)
@@ -183,17 +187,20 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     : 0
   const count = printableContacts.length
   const printableContactIDs = Array.from(new Set(printableContacts.map((c) => c.id)))
-  const isPrintActionDisabled = loading || unsupportedCheckLoading || count === 0 || !annualFilterReady
   const labelsPerPage = layout.columns * layout.rows
 
   const paperLabel = `${layout.paperWidth}×${layout.paperHeight}mm (${layout.columns}列×${layout.rows}行)`
   const printableContactKey = printableContacts.map((c) => c.id).join(',')
 
-  function resolveTemplateAndContactIDs() {
+  function resolveTemplate() {
     const defaultTpl = orientation === 'horizontal' ? DEFAULT_TEMPLATE_HORIZONTAL : DEFAULT_TEMPLATE
-    const tpl = selectedTemplate
+    return selectedTemplate
       ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
       : { ...defaultTpl, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
+  }
+
+  function resolveTemplateAndContactIDs() {
+    const tpl = resolveTemplate()
 
     let ids = printableContacts.map((c) => c.id)
     if (repeatFill && ids.length > 0 && ids.length < labelsPerPage) {
@@ -208,6 +215,25 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     return { tpl, ids }
   }
 
+  const resolvedTemplate = useMemo(resolveTemplate, [orientation, selectedTemplate, layout])
+  const preprintWarnings = useMemo(
+    () => buildPreprintWarnings(printableContacts, resolvedTemplate, unsupportedWarnings),
+    [printableContacts, resolvedTemplate, unsupportedWarnings],
+  )
+  const warningSignature = preprintWarnings.map((warning) => warning.id).join('|')
+
+  useEffect(() => {
+    setWarningAcknowledged(false)
+  }, [warningSignature, strictWarningMode])
+
+  const requiresWarningConfirmation = strictWarningMode && preprintWarnings.length > 0
+  const isPrintActionDisabled =
+    loading ||
+    unsupportedCheckLoading ||
+    count === 0 ||
+    !annualFilterReady ||
+    (requiresWarningConfirmation && !warningAcknowledged)
+
   useEffect(() => {
     if (!annualFilterReady || count === 0) {
       setUnsupportedWarnings([])
@@ -216,10 +242,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
       return
     }
 
-    const defaultTpl = orientation === 'horizontal' ? DEFAULT_TEMPLATE_HORIZONTAL : DEFAULT_TEMPLATE
-    const tpl = selectedTemplate
-      ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
-      : { ...defaultTpl, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
+    const tpl = resolvedTemplate
     let ids = printableContacts.map((c) => c.id)
     if (repeatFill && ids.length > 0 && ids.length < labelsPerPage) {
       const filled: string[] = []
@@ -265,9 +288,7 @@ export default function PrintConfirmDialog({ onClose }: Props) {
     printableContactKey,
     repeatFill,
     labelsPerPage,
-    orientation,
-    selectedTemplate,
-    layout,
+    resolvedTemplate,
     selectedSenderId,
     showBorder,
   ])
@@ -472,16 +493,51 @@ export default function PrintConfirmDialog({ onClose }: Props) {
               未対応文字チェックに失敗しました。印刷時に文字化けがないか確認してください。
             </p>
           )}
-          {unsupportedWarnings.length > 0 && (
-            <div className="text-xs text-amber-900 bg-amber-50 rounded px-2 py-2 space-y-1">
-              <p className="font-medium">未対応文字の可能性があります（印刷前確認）</p>
-              {unsupportedWarnings.slice(0, 5).map((warning) => (
-                <p key={`${warning.contactId}-${warning.characters.join('')}`}>
-                  {warning.contactName || warning.contactId}: {warning.characters.join(' ')}
-                </p>
+          <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+            <input
+              type="checkbox"
+              checked={strictWarningMode}
+              onChange={(e) => setStrictWarningMode(e.target.checked)}
+              className="w-3.5 h-3.5 accent-amber-600"
+            />
+            <span className="text-gray-600">警告確認を必須にする（未確認時は印刷不可）</span>
+          </label>
+          {preprintWarnings.length > 0 && (
+            <div className="text-xs text-amber-900 bg-amber-50 rounded px-2 py-2 space-y-2">
+              <p className="font-medium">印刷前チェックで {preprintWarnings.length} 件の警告があります</p>
+              {preprintWarnings.slice(0, 8).map((warning) => (
+                <div key={warning.id} className="flex items-start justify-between gap-2">
+                  <p className="leading-5">
+                    <span className="font-medium">
+                      {warning.kind === 'required' && '必須不足'}
+                      {warning.kind === 'overflow' && 'はみ出し'}
+                      {warning.kind === 'unsupported' && '未対応文字'}
+                    </span>
+                    {' '}
+                    {warning.contactName}: {warning.message}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onJumpToContact(warning.contactId)}
+                    className="shrink-0 rounded border border-amber-300 bg-white px-2 py-0.5 text-[11px] text-amber-800 hover:bg-amber-100"
+                  >
+                    該当へ移動
+                  </button>
+                </div>
               ))}
-              {unsupportedWarnings.length > 5 && (
-                <p>ほか {unsupportedWarnings.length - 5} 件</p>
+              {preprintWarnings.length > 8 && (
+                <p>ほか {preprintWarnings.length - 8} 件</p>
+              )}
+              {requiresWarningConfirmation && (
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={warningAcknowledged}
+                    onChange={(e) => setWarningAcknowledged(e.target.checked)}
+                    className="w-3.5 h-3.5 accent-amber-700"
+                  />
+                  <span>警告内容を確認しました</span>
+                </label>
               )}
             </div>
           )}
