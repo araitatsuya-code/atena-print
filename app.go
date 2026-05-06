@@ -35,6 +35,7 @@ type App struct {
 	senderUseCase       *usecase.SenderUseCase
 	postalRepo          repository.PostalRepository
 	printHistoryUseCase *usecase.PrintHistoryUseCase
+	backupUseCase       *usecase.BackupUseCase
 	db                  *sql.DB
 	dbPath              string
 	normMu              sync.Mutex
@@ -47,7 +48,7 @@ type addressNormalizationRollbackBatch struct {
 }
 
 // NewApp creates a new App application struct
-func NewApp(contactUC *usecase.ContactUseCase, contactYearStatusUC *usecase.ContactYearStatusUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, printUC *usecase.PrintUseCase, senderUC *usecase.SenderUseCase, postalRepo repository.PostalRepository, printHistoryUC *usecase.PrintHistoryUseCase, db *sql.DB, dbPath string) *App {
+func NewApp(contactUC *usecase.ContactUseCase, contactYearStatusUC *usecase.ContactYearStatusUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, printUC *usecase.PrintUseCase, senderUC *usecase.SenderUseCase, postalRepo repository.PostalRepository, printHistoryUC *usecase.PrintHistoryUseCase, backupUC *usecase.BackupUseCase, db *sql.DB, dbPath string) *App {
 	return &App{
 		contactUseCase:      contactUC,
 		contactYearStatusUC: contactYearStatusUC,
@@ -60,6 +61,7 @@ func NewApp(contactUC *usecase.ContactUseCase, contactYearStatusUC *usecase.Cont
 		senderUseCase:       senderUC,
 		postalRepo:          postalRepo,
 		printHistoryUseCase: printHistoryUC,
+		backupUseCase:       backupUC,
 		db:                  db,
 		dbPath:              dbPath,
 	}
@@ -69,6 +71,21 @@ func NewApp(contactUC *usecase.ContactUseCase, contactYearStatusUC *usecase.Cont
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	if a.backupUseCase != nil {
+		if err := a.backupUseCase.Startup(ctx); err != nil {
+			log.Printf("backup startup failed: %v", err)
+		}
+	}
+}
+
+// shutdown is called right before the app terminates.
+func (a *App) shutdown(ctx context.Context) {
+	_ = ctx
+	if a.backupUseCase != nil {
+		if err := a.backupUseCase.Shutdown(a.ctx); err != nil {
+			log.Printf("backup shutdown failed: %v", err)
+		}
+	}
 }
 
 // GetContacts returns all contacts, optionally filtered by groupID.
@@ -630,6 +647,55 @@ func (a *App) ImportDB() (bool, error) {
 		return false, fmt.Errorf("ImportDB 配置失敗: %w", err)
 	}
 	return true, nil
+}
+
+// GetBackupSettings returns current automatic backup settings.
+func (a *App) GetBackupSettings() (entity.BackupSettings, error) {
+	if a.backupUseCase == nil {
+		return entity.BackupSettings{}, fmt.Errorf("GetBackupSettings: backup usecase is not initialized")
+	}
+	settings, err := a.backupUseCase.GetSettings()
+	if err != nil {
+		return entity.BackupSettings{}, fmt.Errorf("GetBackupSettings: %w", err)
+	}
+	return settings, nil
+}
+
+// SaveBackupSettings updates automatic backup settings and restarts scheduler.
+func (a *App) SaveBackupSettings(settings entity.BackupSettings) (entity.BackupSettings, error) {
+	if a.backupUseCase == nil {
+		return entity.BackupSettings{}, fmt.Errorf("SaveBackupSettings: backup usecase is not initialized")
+	}
+	saved, err := a.backupUseCase.SaveSettings(settings)
+	if err != nil {
+		return entity.BackupSettings{}, fmt.Errorf("SaveBackupSettings: %w", err)
+	}
+	return saved, nil
+}
+
+// ListBackupGenerations returns restorable backup generations.
+func (a *App) ListBackupGenerations() ([]entity.BackupGeneration, error) {
+	if a.backupUseCase == nil {
+		return nil, fmt.Errorf("ListBackupGenerations: backup usecase is not initialized")
+	}
+	list, err := a.backupUseCase.ListGenerations()
+	if err != nil {
+		return nil, fmt.Errorf("ListBackupGenerations: %w", err)
+	}
+	return list, nil
+}
+
+// RestoreBackupGeneration schedules restore for one backup generation.
+// The actual file replacement is applied on next app startup.
+func (a *App) RestoreBackupGeneration(backupID string) (entity.RestoreBackupResult, error) {
+	if a.backupUseCase == nil {
+		return entity.RestoreBackupResult{}, fmt.Errorf("RestoreBackupGeneration: backup usecase is not initialized")
+	}
+	result, err := a.backupUseCase.RestoreGeneration(a.ctx, backupID)
+	if err != nil {
+		return entity.RestoreBackupResult{}, fmt.Errorf("RestoreBackupGeneration: %w", err)
+	}
+	return result, nil
 }
 
 func copyFile(src, dst string) error {

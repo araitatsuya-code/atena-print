@@ -82,6 +82,10 @@ export function GetDashboardStats() {
   return window['go']['main']['App']['GetDashboardStats']();
 }
 
+export function GetBackupSettings() {
+  return window['go']['main']['App']['GetBackupSettings']();
+}
+
 export function GetGroups() {
   return window['go']['main']['App']['GetGroups']();
 }
@@ -118,6 +122,10 @@ export function LookupPostal(arg1) {
   return window['go']['main']['App']['LookupPostal'](arg1);
 }
 
+export function ListBackupGenerations() {
+  return window['go']['main']['App']['ListBackupGenerations']();
+}
+
 export function MarkContactsSentForYear(arg1, arg2) {
   return window['go']['main']['App']['MarkContactsSentForYear'](arg1, arg2);
 }
@@ -136,6 +144,14 @@ export function RemoveContactFromGroup(arg1, arg2) {
 
 export function RollbackAddressNormalization(arg1) {
   return window['go']['main']['App']['RollbackAddressNormalization'](arg1);
+}
+
+export function RestoreBackupGeneration(arg1) {
+  return window['go']['main']['App']['RestoreBackupGeneration'](arg1);
+}
+
+export function SaveBackupSettings(arg1) {
+  return window['go']['main']['App']['SaveBackupSettings'](arg1);
 }
 
 export function SaveCSVFileDialog(arg1) {

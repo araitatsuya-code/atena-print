@@ -29,7 +29,12 @@ func main() {
 		log.Fatal("data dir:", err)
 	}
 
-	db, err := dbpkg.Open(filepath.Join(appDataDir, "atena.db"))
+	dbPath := filepath.Join(appDataDir, "atena.db")
+	if err := dbpkg.ApplyPendingRestore(appDataDir, dbPath); err != nil {
+		log.Fatal("Apply pending restore:", err)
+	}
+
+	db, err := dbpkg.Open(dbPath)
 	if err != nil {
 		log.Fatal("Open DB:", err)
 	}
@@ -54,9 +59,10 @@ func main() {
 	printHistoryRepo := dbpkg.NewPrintHistoryRepo(db)
 	printHistoryUC := usecase.NewPrintHistoryUseCase(printHistoryRepo)
 
-	dbPath := filepath.Join(appDataDir, "atena.db")
+	backupRepo := dbpkg.NewBackupRepo(db, appDataDir)
+	backupUC := usecase.NewBackupUseCase(backupRepo)
 	postalRepo := postal.NewRepo()
-	app := NewApp(contactUC, contactYearStatusUC, csvUC, groupUC, watermarkUC, qrCodeUC, printUC, senderUC, postalRepo, printHistoryUC, db, dbPath)
+	app := NewApp(contactUC, contactYearStatusUC, csvUC, groupUC, watermarkUC, qrCodeUC, printUC, senderUC, postalRepo, printHistoryUC, backupUC, db, dbPath)
 
 	err = wails.Run(&options.App{
 		Title:  "Atena ラベル印刷",
@@ -67,6 +73,7 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 255, G: 255, B: 255, A: 1},
 		OnStartup:        app.startup,
+		OnShutdown:       app.shutdown,
 		Bind: []interface{}{
 			app,
 		},

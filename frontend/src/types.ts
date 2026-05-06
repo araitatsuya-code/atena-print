@@ -234,4 +234,29 @@ export interface DashboardStats {
   groupCount: number
 }
 
+export interface BackupTimingSettings {
+  onStartup: boolean
+  onShutdown: boolean
+  intervalMinutes: number
+}
+
+export interface BackupSettings {
+  timing: BackupTimingSettings
+  maxGenerations: number
+}
+
+export interface BackupGeneration {
+  id: string
+  createdAt: string
+  contactCount: number
+  trigger: string
+}
+
+export interface RestoreBackupResult {
+  restored: boolean
+  backupId: string
+  preservedBackupId: string
+  restartRequired: boolean
+}
+
 export type View = 'dashboard' | 'contacts' | 'preview' | 'senders' | 'settings'
