@@ -21,11 +21,9 @@ interface LabelState {
   layout: LabelLayout
   orientation: 'vertical' | 'horizontal'
   selectedSender: Sender | null
-  showPanel: boolean
   setLayout: (layout: Partial<LabelLayout>) => void
   setOrientation: (orientation: 'vertical' | 'horizontal') => void
   setSelectedSender: (sender: Sender | null) => void
-  togglePanel: () => void
   resetOffset: () => void
 }
 
@@ -35,11 +33,9 @@ export const useLabelStore = create<LabelState>()(
       layout: defaultLayout,
       orientation: 'vertical',
       selectedSender: null,
-      showPanel: false,
       setLayout: (layout) => set({ layout: { ...get().layout, ...layout } }),
       setOrientation: (orientation) => set({ orientation }),
       setSelectedSender: (sender) => set({ selectedSender: sender }),
-      togglePanel: () => set({ showPanel: !get().showPanel }),
       resetOffset: () => set({ layout: { ...get().layout, offsetX: 0, offsetY: 0 } }),
     }),
     {
