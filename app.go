@@ -3,13 +3,11 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
 	"sync"
 	"time"
 
@@ -22,23 +20,6 @@ import (
 
 // AppVersion はアプリのバージョン文字列。
 const AppVersion = "1.0.0"
-
-const (
-	defaultBackupIntervalMinutes = 0
-	defaultBackupMaxGenerations  = 20
-)
-
-type backupIndex struct {
-	Generations []backupIndexEntry `json:"generations"`
-}
-
-type backupIndexEntry struct {
-	ID           string    `json:"id"`
-	CreatedAt    time.Time `json:"createdAt"`
-	ContactCount int       `json:"contactCount"`
-	Trigger      string    `json:"trigger"`
-	FileName     string    `json:"fileName"`
-}
 
 // App struct
 type App struct {
@@ -54,17 +35,11 @@ type App struct {
 	senderUseCase       *usecase.SenderUseCase
 	postalRepo          repository.PostalRepository
 	printHistoryUseCase *usecase.PrintHistoryUseCase
+	backupUseCase       *usecase.BackupUseCase
 	db                  *sql.DB
 	dbPath              string
 	normMu              sync.Mutex
 	lastNormBatch       *addressNormalizationRollbackBatch
-	backupMu            sync.Mutex
-	backupSettings      entity.BackupSettings
-	backupSettingsPath  string
-	backupIndexPath     string
-	backupDir           string
-	backupTickerStop    chan struct{}
-	backupTickerDone    chan struct{}
 }
 
 type addressNormalizationRollbackBatch struct {
@@ -73,8 +48,7 @@ type addressNormalizationRollbackBatch struct {
 }
 
 // NewApp creates a new App application struct
-func NewApp(contactUC *usecase.ContactUseCase, contactYearStatusUC *usecase.ContactYearStatusUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, printUC *usecase.PrintUseCase, senderUC *usecase.SenderUseCase, postalRepo repository.PostalRepository, printHistoryUC *usecase.PrintHistoryUseCase, db *sql.DB, dbPath string) *App {
-	dataDir := filepath.Dir(dbPath)
+func NewApp(contactUC *usecase.ContactUseCase, contactYearStatusUC *usecase.ContactYearStatusUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, printUC *usecase.PrintUseCase, senderUC *usecase.SenderUseCase, postalRepo repository.PostalRepository, printHistoryUC *usecase.PrintHistoryUseCase, backupUC *usecase.BackupUseCase, db *sql.DB, dbPath string) *App {
 	return &App{
 		contactUseCase:      contactUC,
 		contactYearStatusUC: contactYearStatusUC,
@@ -87,12 +61,9 @@ func NewApp(contactUC *usecase.ContactUseCase, contactYearStatusUC *usecase.Cont
 		senderUseCase:       senderUC,
 		postalRepo:          postalRepo,
 		printHistoryUseCase: printHistoryUC,
+		backupUseCase:       backupUC,
 		db:                  db,
 		dbPath:              dbPath,
-		backupSettings:      defaultBackupSettings(),
-		backupSettingsPath:  filepath.Join(dataDir, "backup_settings.json"),
-		backupIndexPath:     filepath.Join(dataDir, "backup_index.json"),
-		backupDir:           filepath.Join(dataDir, "backups"),
 	}
 }
 
@@ -100,22 +71,9 @@ func NewApp(contactUC *usecase.ContactUseCase, contactYearStatusUC *usecase.Cont
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-
-	if err := a.loadBackupSettings(); err != nil {
-		log.Printf("backup settings load failed: %v", err)
-	}
-	if err := a.reconfigureBackupTicker(); err != nil {
-		log.Printf("backup scheduler start failed: %v", err)
-	}
-
-	settings, err := a.GetBackupSettings()
-	if err != nil {
-		log.Printf("backup settings read failed: %v", err)
-		return
-	}
-	if settings.Timing.OnStartup {
-		if _, err := a.runManagedBackup("startup"); err != nil {
-			log.Printf("startup backup failed: %v", err)
+	if a.backupUseCase != nil {
+		if err := a.backupUseCase.Startup(ctx); err != nil {
+			log.Printf("backup startup failed: %v", err)
 		}
 	}
 }
@@ -123,16 +81,9 @@ func (a *App) startup(ctx context.Context) {
 // shutdown is called right before the app terminates.
 func (a *App) shutdown(ctx context.Context) {
 	_ = ctx
-	a.stopBackupTicker()
-
-	settings, err := a.GetBackupSettings()
-	if err != nil {
-		log.Printf("backup settings read failed: %v", err)
-		return
-	}
-	if settings.Timing.OnShutdown {
-		if _, err := a.runManagedBackup("shutdown"); err != nil {
-			log.Printf("shutdown backup failed: %v", err)
+	if a.backupUseCase != nil {
+		if err := a.backupUseCase.Shutdown(a.ctx); err != nil {
+			log.Printf("backup shutdown failed: %v", err)
 		}
 	}
 }
@@ -700,351 +651,51 @@ func (a *App) ImportDB() (bool, error) {
 
 // GetBackupSettings returns current automatic backup settings.
 func (a *App) GetBackupSettings() (entity.BackupSettings, error) {
-	a.backupMu.Lock()
-	defer a.backupMu.Unlock()
-	return normalizeBackupSettings(a.backupSettings), nil
+	if a.backupUseCase == nil {
+		return entity.BackupSettings{}, fmt.Errorf("GetBackupSettings: backup usecase is not initialized")
+	}
+	settings, err := a.backupUseCase.GetSettings()
+	if err != nil {
+		return entity.BackupSettings{}, fmt.Errorf("GetBackupSettings: %w", err)
+	}
+	return settings, nil
 }
 
 // SaveBackupSettings updates automatic backup settings and restarts scheduler.
 func (a *App) SaveBackupSettings(settings entity.BackupSettings) (entity.BackupSettings, error) {
-	normalized := normalizeBackupSettings(settings)
-
-	a.backupMu.Lock()
-	a.backupSettings = normalized
-	if err := a.persistBackupSettingsLocked(); err != nil {
-		a.backupMu.Unlock()
+	if a.backupUseCase == nil {
+		return entity.BackupSettings{}, fmt.Errorf("SaveBackupSettings: backup usecase is not initialized")
+	}
+	saved, err := a.backupUseCase.SaveSettings(settings)
+	if err != nil {
 		return entity.BackupSettings{}, fmt.Errorf("SaveBackupSettings: %w", err)
 	}
-	a.backupMu.Unlock()
-
-	if err := a.reconfigureBackupTicker(); err != nil {
-		return entity.BackupSettings{}, fmt.Errorf("SaveBackupSettings scheduler: %w", err)
-	}
-	return normalized, nil
+	return saved, nil
 }
 
 // ListBackupGenerations returns restorable backup generations.
 func (a *App) ListBackupGenerations() ([]entity.BackupGeneration, error) {
-	a.backupMu.Lock()
-	index, err := a.loadBackupIndexLocked()
+	if a.backupUseCase == nil {
+		return nil, fmt.Errorf("ListBackupGenerations: backup usecase is not initialized")
+	}
+	list, err := a.backupUseCase.ListGenerations()
 	if err != nil {
-		a.backupMu.Unlock()
 		return nil, fmt.Errorf("ListBackupGenerations: %w", err)
 	}
-	filtered := make([]backupIndexEntry, 0, len(index.Generations))
-	changed := false
-	for _, entry := range index.Generations {
-		if entry.FileName == "" {
-			changed = true
-			continue
-		}
-		fullPath := filepath.Join(a.backupDir, entry.FileName)
-		if _, statErr := os.Stat(fullPath); statErr != nil {
-			if os.IsNotExist(statErr) {
-				changed = true
-				continue
-			}
-			a.backupMu.Unlock()
-			return nil, fmt.Errorf("ListBackupGenerations stat %s: %w", entry.FileName, statErr)
-		}
-		filtered = append(filtered, entry)
-	}
-	if changed {
-		index.Generations = filtered
-		if err := a.saveBackupIndexLocked(index); err != nil {
-			a.backupMu.Unlock()
-			return nil, fmt.Errorf("ListBackupGenerations cleanup index: %w", err)
-		}
-	}
-
-	list := make([]entity.BackupGeneration, 0, len(index.Generations))
-	for _, entry := range index.Generations {
-		list = append(list, entity.BackupGeneration{
-			ID:           entry.ID,
-			CreatedAt:    entry.CreatedAt,
-			ContactCount: entry.ContactCount,
-			Trigger:      entry.Trigger,
-		})
-	}
-	a.backupMu.Unlock()
-
-	sort.Slice(list, func(i, j int) bool {
-		return list[i].CreatedAt.After(list[j].CreatedAt)
-	})
 	return list, nil
 }
 
-// RestoreBackupGeneration restores one backup generation.
-// The restored data is reflected after app restart.
+// RestoreBackupGeneration schedules restore for one backup generation.
+// The actual file replacement is applied on next app startup.
 func (a *App) RestoreBackupGeneration(backupID string) (entity.RestoreBackupResult, error) {
-	if backupID == "" {
-		return entity.RestoreBackupResult{}, fmt.Errorf("RestoreBackupGeneration: backupID is required")
+	if a.backupUseCase == nil {
+		return entity.RestoreBackupResult{}, fmt.Errorf("RestoreBackupGeneration: backup usecase is not initialized")
 	}
-
-	a.backupMu.Lock()
-	index, err := a.loadBackupIndexLocked()
+	result, err := a.backupUseCase.RestoreGeneration(a.ctx, backupID)
 	if err != nil {
-		a.backupMu.Unlock()
-		return entity.RestoreBackupResult{}, fmt.Errorf("RestoreBackupGeneration load index: %w", err)
+		return entity.RestoreBackupResult{}, fmt.Errorf("RestoreBackupGeneration: %w", err)
 	}
-	var target *backupIndexEntry
-	for i := range index.Generations {
-		if index.Generations[i].ID == backupID {
-			target = &index.Generations[i]
-			break
-		}
-	}
-	if target == nil {
-		a.backupMu.Unlock()
-		return entity.RestoreBackupResult{}, fmt.Errorf("RestoreBackupGeneration: 指定した世代が見つかりません")
-	}
-	src := filepath.Join(a.backupDir, target.FileName)
-	a.backupMu.Unlock()
-
-	restoreSourceTmp := a.dbPath + ".restore-source.tmp"
-	if err := copyFile(src, restoreSourceTmp); err != nil {
-		return entity.RestoreBackupResult{}, fmt.Errorf("RestoreBackupGeneration cache source: %w", err)
-	}
-	defer os.Remove(restoreSourceTmp)
-
-	preserved, err := a.runManagedBackup("before_restore")
-	if err != nil {
-		return entity.RestoreBackupResult{}, fmt.Errorf("RestoreBackupGeneration preserve current data: %w", err)
-	}
-
-	tmp := a.dbPath + ".restore.tmp"
-	if err := copyFile(restoreSourceTmp, tmp); err != nil {
-		return entity.RestoreBackupResult{}, fmt.Errorf("RestoreBackupGeneration copy: %w", err)
-	}
-	_ = os.Remove(a.dbPath)
-	if err := os.Rename(tmp, a.dbPath); err != nil {
-		_ = os.Remove(tmp)
-		return entity.RestoreBackupResult{}, fmt.Errorf("RestoreBackupGeneration replace: %w", err)
-	}
-
-	return entity.RestoreBackupResult{
-		Restored:          true,
-		BackupID:          backupID,
-		PreservedBackupID: preserved.ID,
-		RestartRequired:   true,
-	}, nil
-}
-
-func (a *App) loadBackupSettings() error {
-	a.backupMu.Lock()
-	defer a.backupMu.Unlock()
-
-	data, err := os.ReadFile(a.backupSettingsPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			a.backupSettings = defaultBackupSettings()
-			return a.persistBackupSettingsLocked()
-		}
-		return err
-	}
-
-	var settings entity.BackupSettings
-	if err := json.Unmarshal(data, &settings); err != nil {
-		return err
-	}
-	a.backupSettings = normalizeBackupSettings(settings)
-	return nil
-}
-
-func (a *App) persistBackupSettingsLocked() error {
-	if err := os.MkdirAll(filepath.Dir(a.backupSettingsPath), 0755); err != nil {
-		return err
-	}
-	body, err := json.MarshalIndent(a.backupSettings, "", "  ")
-	if err != nil {
-		return err
-	}
-	tmp := a.backupSettingsPath + ".tmp"
-	if err := os.WriteFile(tmp, body, 0644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, a.backupSettingsPath)
-}
-
-func (a *App) runManagedBackup(trigger string) (entity.BackupGeneration, error) {
-	a.backupMu.Lock()
-	backupDir := a.backupDir
-	maxGenerations := normalizeBackupSettings(a.backupSettings).MaxGenerations
-	a.backupMu.Unlock()
-
-	if err := os.MkdirAll(backupDir, 0755); err != nil {
-		return entity.BackupGeneration{}, err
-	}
-
-	now := time.Now()
-	backupID := fmt.Sprintf("bkp-%d", now.UnixNano())
-	fileName := fmt.Sprintf("atena-backup-%s-%s.db", now.Format("20060102-150405"), backupID)
-	dest := filepath.Join(backupDir, fileName)
-
-	_ = os.Remove(dest)
-	if _, err := a.db.ExecContext(a.ctx, "VACUUM INTO ?", dest); err != nil {
-		return entity.BackupGeneration{}, err
-	}
-
-	contactCount := 0
-	if err := a.db.QueryRowContext(a.ctx, "SELECT COUNT(*) FROM contacts").Scan(&contactCount); err != nil {
-		contactCount = 0
-	}
-
-	a.backupMu.Lock()
-	defer a.backupMu.Unlock()
-	index, err := a.loadBackupIndexLocked()
-	if err != nil {
-		return entity.BackupGeneration{}, err
-	}
-	index.Generations = append(index.Generations, backupIndexEntry{
-		ID:           backupID,
-		CreatedAt:    now,
-		ContactCount: contactCount,
-		Trigger:      trigger,
-		FileName:     fileName,
-	})
-	sort.Slice(index.Generations, func(i, j int) bool {
-		return index.Generations[i].CreatedAt.After(index.Generations[j].CreatedAt)
-	})
-	if len(index.Generations) > maxGenerations {
-		for _, old := range index.Generations[maxGenerations:] {
-			_ = os.Remove(filepath.Join(backupDir, old.FileName))
-		}
-		index.Generations = index.Generations[:maxGenerations]
-	}
-	if err := a.saveBackupIndexLocked(index); err != nil {
-		return entity.BackupGeneration{}, err
-	}
-
-	return entity.BackupGeneration{
-		ID:           backupID,
-		CreatedAt:    now,
-		ContactCount: contactCount,
-		Trigger:      trigger,
-	}, nil
-}
-
-func (a *App) loadBackupIndexLocked() (backupIndex, error) {
-	var idx backupIndex
-
-	data, err := os.ReadFile(a.backupIndexPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return backupIndex{Generations: []backupIndexEntry{}}, nil
-		}
-		return backupIndex{}, err
-	}
-	if err := json.Unmarshal(data, &idx); err != nil {
-		return backupIndex{}, err
-	}
-	if idx.Generations == nil {
-		idx.Generations = []backupIndexEntry{}
-	}
-	return idx, nil
-}
-
-func (a *App) saveBackupIndexLocked(idx backupIndex) error {
-	if err := os.MkdirAll(filepath.Dir(a.backupIndexPath), 0755); err != nil {
-		return err
-	}
-	body, err := json.MarshalIndent(idx, "", "  ")
-	if err != nil {
-		return err
-	}
-	tmp := a.backupIndexPath + ".tmp"
-	if err := os.WriteFile(tmp, body, 0644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, a.backupIndexPath)
-}
-
-func (a *App) reconfigureBackupTicker() error {
-	a.backupMu.Lock()
-	settings := normalizeBackupSettings(a.backupSettings)
-	oldStop := a.backupTickerStop
-	oldDone := a.backupTickerDone
-	a.backupTickerStop = nil
-	a.backupTickerDone = nil
-
-	interval := settings.Timing.IntervalMinutes
-	var newStop chan struct{}
-	var newDone chan struct{}
-	if interval > 0 {
-		newStop = make(chan struct{})
-		newDone = make(chan struct{})
-		a.backupTickerStop = newStop
-		a.backupTickerDone = newDone
-	}
-	a.backupMu.Unlock()
-
-	if oldStop != nil {
-		close(oldStop)
-		if oldDone != nil {
-			<-oldDone
-		}
-	}
-
-	if interval <= 0 {
-		return nil
-	}
-
-	go func(intervalMinutes int, stop <-chan struct{}, done chan<- struct{}) {
-		ticker := time.NewTicker(time.Duration(intervalMinutes) * time.Minute)
-		defer ticker.Stop()
-		defer close(done)
-
-		for {
-			select {
-			case <-ticker.C:
-				if _, err := a.runManagedBackup("interval"); err != nil {
-					log.Printf("periodic backup failed: %v", err)
-				}
-			case <-stop:
-				return
-			}
-		}
-	}(interval, newStop, newDone)
-
-	return nil
-}
-
-func (a *App) stopBackupTicker() {
-	a.backupMu.Lock()
-	stop := a.backupTickerStop
-	done := a.backupTickerDone
-	a.backupTickerStop = nil
-	a.backupTickerDone = nil
-	a.backupMu.Unlock()
-
-	if stop != nil {
-		close(stop)
-	}
-	if done != nil {
-		<-done
-	}
-}
-
-func defaultBackupSettings() entity.BackupSettings {
-	return entity.BackupSettings{
-		Timing: entity.BackupTimingSettings{
-			OnStartup:       true,
-			OnShutdown:      true,
-			IntervalMinutes: defaultBackupIntervalMinutes,
-		},
-		MaxGenerations: defaultBackupMaxGenerations,
-	}
-}
-
-func normalizeBackupSettings(settings entity.BackupSettings) entity.BackupSettings {
-	normalized := settings
-	if normalized.MaxGenerations <= 0 {
-		normalized.MaxGenerations = defaultBackupMaxGenerations
-	}
-	if normalized.Timing.IntervalMinutes < 0 {
-		normalized.Timing.IntervalMinutes = defaultBackupIntervalMinutes
-	}
-	return normalized
+	return result, nil
 }
 
 func copyFile(src, dst string) error {

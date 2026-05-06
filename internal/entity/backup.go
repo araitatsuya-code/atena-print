@@ -23,6 +23,22 @@ type BackupGeneration struct {
 	Trigger      string    `json:"trigger"`
 }
 
+// BackupGenerationRecord stores generation metadata with backing file info.
+type BackupGenerationRecord struct {
+	ID           string    `json:"id"`
+	CreatedAt    time.Time `json:"createdAt"`
+	ContactCount int       `json:"contactCount"`
+	Trigger      string    `json:"trigger"`
+	FileName     string    `json:"fileName"`
+}
+
+// PendingRestore represents a restore request applied on next startup.
+type PendingRestore struct {
+	BackupID    string    `json:"backupId"`
+	SourcePath  string    `json:"sourcePath"`
+	RequestedAt time.Time `json:"requestedAt"`
+}
+
 // RestoreBackupResult summarizes restore execution.
 type RestoreBackupResult struct {
 	Restored          bool   `json:"restored"`
