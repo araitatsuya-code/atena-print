@@ -53,6 +53,7 @@ export default function ContactList() {
   const {
     contacts,
     selectedIds,
+    focusContactId,
     currentGroupId,
     searchQuery,
     annualStatusYear,
@@ -61,6 +62,7 @@ export default function ContactList() {
     annualStatusesLoading,
     setContacts,
     setSelectedIds,
+    clearFocusContactId,
     toggleSelected,
     clearSelection,
     setCurrentGroupId,
@@ -88,10 +90,12 @@ export default function ContactList() {
   const [updatingAnnualStatusKeys, setUpdatingAnnualStatusKeys] = useState<Set<string>>(new Set())
 
   const requestIdRef = useRef(0)
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map())
   const editingCellRef = useRef<EditingCell | null>(null)
   const committingRef = useRef(false)
   const skipBlurRef = useRef(false)
   const skipBlurResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [focusedRowId, setFocusedRowID] = useState<string | null>(null)
 
   const getCellKey = (contactId: string, field: EditableField) => `${contactId}:${field}`
 
@@ -193,6 +197,47 @@ export default function ContactList() {
       setEditingCell(null)
     }
   }, [displayContacts, editingCell])
+
+  useEffect(() => {
+    if (!focusContactId) return
+    if (showPrintTargetOnly) {
+      setShowPrintTargetOnly(false)
+      return
+    }
+    if (searchQuery) {
+      setSearchQuery('')
+      return
+    }
+    if (currentGroupId) {
+      setCurrentGroupId('')
+      return
+    }
+    if (loading) return
+    if (!displayContacts.some((contact) => contact.id === focusContactId)) return
+
+    setSelectedIds(new Set([focusContactId]))
+    setFocusedRowID(focusContactId)
+    clearFocusContactId()
+
+    const row = rowRefs.current.get(focusContactId)
+    row?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+
+    const timer = setTimeout(() => {
+      setFocusedRowID((current) => (current === focusContactId ? null : current))
+    }, 2500)
+    return () => clearTimeout(timer)
+  }, [
+    focusContactId,
+    showPrintTargetOnly,
+    searchQuery,
+    currentGroupId,
+    loading,
+    displayContacts,
+    setSelectedIds,
+    clearFocusContactId,
+    setSearchQuery,
+    setCurrentGroupId,
+  ])
 
   const refreshContacts = async () => {
     const result = searchQuery
@@ -788,7 +833,20 @@ export default function ContactList() {
                 return (
                   <tr
                     key={c.id}
-                    className={`hover:bg-gray-50 ${selectedIds.has(c.id) ? 'bg-blue-50/70' : ''}`}
+                    ref={(el) => {
+                      if (el) {
+                        rowRefs.current.set(c.id, el)
+                      } else {
+                        rowRefs.current.delete(c.id)
+                      }
+                    }}
+                    className={`hover:bg-gray-50 ${
+                      focusedRowId === c.id
+                        ? 'bg-amber-100'
+                        : selectedIds.has(c.id)
+                          ? 'bg-blue-50/70'
+                          : ''
+                    }`}
                     onDoubleClick={() => setEditTarget(c)}
                   >
                     <td className="px-2 py-1.5 border-b border-gray-100 align-top">

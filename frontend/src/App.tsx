@@ -23,9 +23,31 @@ function App() {
   const { showPanel: showLabelPanel, togglePanel: toggleLabelPanel } = useLabelStore(
     useShallow((s) => ({ showPanel: s.showPanel, togglePanel: s.togglePanel })),
   )
-  const selectedCount = useContactStore((s) => s.contacts.filter((c) => c.isPrintTarget).length)
+  const {
+    selectedCount,
+    setSelectedIds,
+    setCurrentGroupId,
+    setSearchQuery,
+    setFocusContactId,
+  } = useContactStore(
+    useShallow((s) => ({
+      selectedCount: s.contacts.filter((c) => c.isPrintTarget).length,
+      setSelectedIds: s.setSelectedIds,
+      setCurrentGroupId: s.setCurrentGroupId,
+      setSearchQuery: s.setSearchQuery,
+      setFocusContactId: s.setFocusContactId,
+    })),
+  )
 
   const showPreview = view === 'contacts' || view === 'preview'
+  const handleJumpToContact = (contactID: string) => {
+    setShowPrintDialog(false)
+    setView('contacts')
+    setCurrentGroupId('')
+    setSearchQuery('')
+    setSelectedIds(new Set([contactID]))
+    setFocusContactId(contactID)
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 text-gray-900">
@@ -115,7 +137,12 @@ function App() {
         {view === 'settings' && <Settings />}
       </main>
 
-      {showPrintDialog && <PrintConfirmDialog onClose={() => setShowPrintDialog(false)} />}
+      {showPrintDialog && (
+        <PrintConfirmDialog
+          onClose={() => setShowPrintDialog(false)}
+          onJumpToContact={handleJumpToContact}
+        />
+      )}
     </div>
   )
 }
