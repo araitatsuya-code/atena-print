@@ -100,6 +100,19 @@ export default function ContactList() {
   const getCellKey = (contactId: string, field: EditableField) => `${contactId}:${field}`
 
   const getFieldValue = (contact: Contact, field: EditableField) => contact[field] ?? ''
+  const getDisplayName = (contact: Contact) => {
+    const fullName = `${contact.familyName}${contact.givenName}`.trim()
+    if (fullName) return fullName
+    const company = contact.company.trim()
+    if (company) return company
+    return '名称未設定'
+  }
+  const getDisplayAddress = (contact: Contact) => {
+    const address = `${contact.prefecture}${contact.city}${contact.street}${contact.building}`.trim()
+    if (address) return address
+    if (contact.postalCode.trim()) return `〒${contact.postalCode}`
+    return '住所未設定'
+  }
   const displayContacts = showPrintTargetOnly
     ? contacts.filter((c) => c.isPrintTarget)
     : contacts
@@ -115,12 +128,29 @@ export default function ContactList() {
     sent: false,
     received: false,
     mourning: false,
-    createdAt: '',
-    updatedAt: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   })
 
   const getAnnualStatus = (contactID: string): ContactYearStatus =>
     annualStatuses[contactID] ?? getDefaultAnnualStatus(contactID)
+
+  const buildAnnualStatusPayload = (
+    contactID: string,
+    patch: Partial<Pick<ContactYearStatus, AnnualStatusField>>,
+    requestYear: number,
+  ): Parameters<typeof SaveContactYearStatus>[0] => {
+    const current = getAnnualStatus(contactID)
+    const now = new Date().toISOString()
+    const createdAt = current.createdAt?.trim() ? current.createdAt : now
+    return {
+      ...current,
+      ...patch,
+      year: requestYear,
+      createdAt,
+      updatedAt: now,
+    } as Parameters<typeof SaveContactYearStatus>[0]
+  }
 
   const refreshGroups = () => {
     GetGroups().then(setGroups).catch(console.error)
@@ -356,11 +386,9 @@ export default function ContactList() {
     })
     try {
       const current = getAnnualStatus(contactID)
-      const saved = await SaveContactYearStatus({
-        ...current,
-        [field]: !current[field],
-        year: requestYear,
-      } as Parameters<typeof SaveContactYearStatus>[0])
+      const saved = await SaveContactYearStatus(
+        buildAnnualStatusPayload(contactID, { [field]: !current[field] }, requestYear),
+      )
       if (useContactStore.getState().annualStatusYear === requestYear) {
         upsertAnnualStatuses([saved])
       }
@@ -383,14 +411,9 @@ export default function ContactList() {
     setBulkUpdatingAnnualStatus(true)
     try {
       const results = await Promise.allSettled(
-        selectedVisibleContacts.map((contact) => {
-          const current = getAnnualStatus(contact.id)
-          return SaveContactYearStatus({
-            ...current,
-            ...patch,
-            year: requestYear,
-          } as Parameters<typeof SaveContactYearStatus>[0])
-        }),
+        selectedVisibleContacts.map((contact) =>
+          SaveContactYearStatus(buildAnnualStatusPayload(contact.id, patch, requestYear)),
+        ),
       )
       const savedList = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
       const failed = results.filter((result) => result.status === 'rejected')
@@ -812,6 +835,7 @@ export default function ContactList() {
             <thead className="sticky top-0 z-10 bg-gray-50 text-xs text-gray-500">
               <tr>
                 <th className="w-10 px-2 py-2 border-b border-gray-200 text-left">選択</th>
+                <th className="min-w-[220px] px-2 py-2 border-b border-gray-200 text-left font-medium">宛先</th>
                 <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">印刷対象</th>
                 <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">{annualStatusYear}送付</th>
                 <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">{annualStatusYear}受取</th>
@@ -857,6 +881,12 @@ export default function ContactList() {
                         onClick={(e) => e.stopPropagation()}
                         className="mt-1 h-3.5 w-3.5 accent-blue-600"
                       />
+                    </td>
+                    <td className="px-2 py-1.5 border-b border-gray-100 align-top">
+                      <div className="min-w-[220px] max-w-[300px]">
+                        <p className="truncate text-sm font-medium text-gray-800">{getDisplayName(c)}</p>
+                        <p className="truncate text-xs text-gray-500">{getDisplayAddress(c)}</p>
+                      </div>
                     </td>
                     <td className="px-2 py-1.5 border-b border-gray-100 align-top">
                       <input

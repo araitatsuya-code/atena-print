@@ -16,6 +16,426 @@ export namespace entity {
 	        this.town = source["town"];
 	    }
 	}
+	export class AddressNormalizationAddress {
+	    prefecture: string;
+	    city: string;
+	    street: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AddressNormalizationAddress(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.prefecture = source["prefecture"];
+	        this.city = source["city"];
+	        this.street = source["street"];
+	    }
+	}
+	export class AddressNormalizationApplyResult {
+	    batchId?: string;
+	    appliedCount: number;
+	    skippedCount: number;
+	    failedCount: number;
+	    errors: string[];
+	    canRollback: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AddressNormalizationApplyResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.batchId = source["batchId"];
+	        this.appliedCount = source["appliedCount"];
+	        this.skippedCount = source["skippedCount"];
+	        this.failedCount = source["failedCount"];
+	        this.errors = source["errors"];
+	        this.canRollback = source["canRollback"];
+	    }
+	}
+	export class AddressNormalizationDiff {
+	    field: string;
+	    before: string;
+	    after: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AddressNormalizationDiff(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.field = source["field"];
+	        this.before = source["before"];
+	        this.after = source["after"];
+	    }
+	}
+	export class AddressNormalizationCandidate {
+	    contactId: string;
+	    displayName: string;
+	    postalCode: string;
+	    before: AddressNormalizationAddress;
+	    after: AddressNormalizationAddress;
+	    diffs: AddressNormalizationDiff[];
+	
+	    static createFrom(source: any = {}) {
+	        return new AddressNormalizationCandidate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.contactId = source["contactId"];
+	        this.displayName = source["displayName"];
+	        this.postalCode = source["postalCode"];
+	        this.before = this.convertValues(source["before"], AddressNormalizationAddress);
+	        this.after = this.convertValues(source["after"], AddressNormalizationAddress);
+	        this.diffs = this.convertValues(source["diffs"], AddressNormalizationDiff);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class AddressNormalizationPreview {
+	    totalContacts: number;
+	    convertibleCount: number;
+	    candidates: AddressNormalizationCandidate[];
+	    canRollback: boolean;
+	    rollbackBatchId?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AddressNormalizationPreview(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.totalContacts = source["totalContacts"];
+	        this.convertibleCount = source["convertibleCount"];
+	        this.candidates = this.convertValues(source["candidates"], AddressNormalizationCandidate);
+	        this.canRollback = source["canRollback"];
+	        this.rollbackBatchId = source["rollbackBatchId"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AddressNormalizationRollbackResult {
+	    batchId?: string;
+	    restoredCount: number;
+	    failedCount: number;
+	    errors: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new AddressNormalizationRollbackResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.batchId = source["batchId"];
+	        this.restoredCount = source["restoredCount"];
+	        this.failedCount = source["failedCount"];
+	        this.errors = source["errors"];
+	    }
+	}
+	export class AddressNormalizationSelection {
+	    contactId: string;
+	    apply: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AddressNormalizationSelection(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.contactId = source["contactId"];
+	        this.apply = source["apply"];
+	    }
+	}
+	export class BackupGeneration {
+	    id: string;
+	    createdAt: string;
+	    contactCount: number;
+	    trigger: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BackupGeneration(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.createdAt = source["createdAt"];
+	        this.contactCount = source["contactCount"];
+	        this.trigger = source["trigger"];
+	    }
+	}
+	export class BackupTimingSettings {
+	    onStartup: boolean;
+	    onShutdown: boolean;
+	    intervalMinutes: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new BackupTimingSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.onStartup = source["onStartup"];
+	        this.onShutdown = source["onShutdown"];
+	        this.intervalMinutes = source["intervalMinutes"];
+	    }
+	}
+	export class BackupSettings {
+	    timing: BackupTimingSettings;
+	    maxGenerations: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new BackupSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.timing = this.convertValues(source["timing"], BackupTimingSettings);
+	        this.maxGenerations = source["maxGenerations"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class CSVContactSnapshot {
+	    id?: string;
+	    displayName: string;
+	    postalCode: string;
+	    prefecture: string;
+	    city: string;
+	    street: string;
+	    company: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CSVContactSnapshot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.displayName = source["displayName"];
+	        this.postalCode = source["postalCode"];
+	        this.prefecture = source["prefecture"];
+	        this.city = source["city"];
+	        this.street = source["street"];
+	        this.company = source["company"];
+	    }
+	}
+	export class CSVDuplicateCandidate {
+	    rowNumber: number;
+	    incoming: CSVContactSnapshot;
+	    existing: CSVContactSnapshot;
+	    suggestedAction: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CSVDuplicateCandidate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rowNumber = source["rowNumber"];
+	        this.incoming = this.convertValues(source["incoming"], CSVContactSnapshot);
+	        this.existing = this.convertValues(source["existing"], CSVContactSnapshot);
+	        this.suggestedAction = source["suggestedAction"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CSVDuplicateResolution {
+	    rowNumber: number;
+	    action: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CSVDuplicateResolution(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rowNumber = source["rowNumber"];
+	        this.action = source["action"];
+	    }
+	}
+	export class CSVImportAnalysis {
+	    duplicateRule: string;
+	    validRowCount: number;
+	    errors: string[];
+	    duplicates: CSVDuplicateCandidate[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CSVImportAnalysis(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.duplicateRule = source["duplicateRule"];
+	        this.validRowCount = source["validRowCount"];
+	        this.errors = source["errors"];
+	        this.duplicates = this.convertValues(source["duplicates"], CSVDuplicateCandidate);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CSVImportExecutionResult {
+	    totalRows: number;
+	    created: number;
+	    updated: number;
+	    skipped: number;
+	    duplicateResolved: number;
+	    errors: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CSVImportExecutionResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.totalRows = source["totalRows"];
+	        this.created = source["created"];
+	        this.updated = source["updated"];
+	        this.skipped = source["skipped"];
+	        this.duplicateResolved = source["duplicateResolved"];
+	        this.errors = source["errors"];
+	    }
+	}
+	export class CSVImportField {
+	    key: string;
+	    label: string;
+	    required: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new CSVImportField(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.label = source["label"];
+	        this.required = source["required"];
+	    }
+	}
+	export class CSVImportPlan {
+	    headers: string[];
+	    sampleRows: string[][];
+	    suggestedMapping: Record<string, number>;
+	    fieldDefinitions: CSVImportField[];
+	    rowCount: number;
+	    duplicateRule: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CSVImportPlan(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.headers = source["headers"];
+	        this.sampleRows = source["sampleRows"];
+	        this.suggestedMapping = source["suggestedMapping"];
+	        this.fieldDefinitions = this.convertValues(source["fieldDefinitions"], CSVImportField);
+	        this.rowCount = source["rowCount"];
+	        this.duplicateRule = source["duplicateRule"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class Contact {
 	    id: string;
 	    familyName: string;
@@ -421,24 +841,25 @@ export namespace entity {
 		    return a;
 		}
 	}
-
-	export class UnsupportedCharacterWarning {
-	    contactId: string;
-	    contactName: string;
-	    characters: string[];
-
+	
+	export class RestoreBackupResult {
+	    restored: boolean;
+	    backupId: string;
+	    preservedBackupId: string;
+	    restartRequired: boolean;
+	
 	    static createFrom(source: any = {}) {
-	        return new UnsupportedCharacterWarning(source);
+	        return new RestoreBackupResult(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.contactId = source["contactId"];
-	        this.contactName = source["contactName"];
-	        this.characters = source["characters"];
+	        this.restored = source["restored"];
+	        this.backupId = source["backupId"];
+	        this.preservedBackupId = source["preservedBackupId"];
+	        this.restartRequired = source["restartRequired"];
 	    }
 	}
-	
 	export class Sender {
 	    id: string;
 	    familyName: string;
@@ -471,5 +892,22 @@ export namespace entity {
 	}
 	
 	
+	export class UnsupportedCharacterWarning {
+	    contactId: string;
+	    contactName: string;
+	    characters: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new UnsupportedCharacterWarning(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.contactId = source["contactId"];
+	        this.contactName = source["contactName"];
+	        this.characters = source["characters"];
+	    }
+	}
 
 }
+
