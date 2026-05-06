@@ -4,9 +4,11 @@ import {entity} from '../models';
 
 export function AddContactToGroup(arg1:string,arg2:string):Promise<void>;
 
-export function AnalyzeCSVImport(arg1:string,arg2:{[key: string]: number}):Promise<any>;
+export function AnalyzeCSVImport(arg1:string,arg2:Record<string, number>):Promise<entity.CSVImportAnalysis>;
 
-export function ApplyAddressNormalization(arg1:Array<any>):Promise<any>;
+export function ApplyAddressNormalization(arg1:Array<entity.AddressNormalizationSelection>):Promise<entity.AddressNormalizationApplyResult>;
+
+export function CheckUnsupportedCharacters(arg1:entity.PrintJob):Promise<Array<entity.UnsupportedCharacterWarning>>;
 
 export function DeleteContacts(arg1:Array<string>):Promise<void>;
 
@@ -24,13 +26,13 @@ export function GenerateLabelPDF(arg1:entity.PrintJob,arg2:string):Promise<strin
 
 export function GenerateQRPreview(arg1:entity.QRConfig):Promise<Array<number>>;
 
-export function CheckUnsupportedCharacters(arg1:entity.PrintJob):Promise<Array<entity.UnsupportedCharacterWarning>>;
+export function GetAddressNormalizationPreview():Promise<entity.AddressNormalizationPreview>;
 
 export function GetAppVersion():Promise<string>;
 
-export function GetAddressNormalizationPreview():Promise<any>;
+export function GetBackupSettings():Promise<entity.BackupSettings>;
 
-export function GetCSVImportPlan(arg1:string):Promise<any>;
+export function GetCSVImportPlan(arg1:string):Promise<entity.CSVImportPlan>;
 
 export function GetContact(arg1:string):Promise<entity.Contact>;
 
@@ -41,8 +43,6 @@ export function GetContactYearStatuses(arg1:number):Promise<Array<entity.Contact
 export function GetContacts(arg1:string):Promise<Array<entity.Contact>>;
 
 export function GetDashboardStats():Promise<entity.DashboardStats>;
-
-export function GetBackupSettings():Promise<any>;
 
 export function GetGroups():Promise<Array<entity.Group>>;
 
@@ -56,13 +56,13 @@ export function GetWatermarkPresets():Promise<Array<entity.Watermark>>;
 
 export function ImportCSV(arg1:string):Promise<entity.ImportResult>;
 
-export function ImportCSVWithOptions(arg1:string,arg2:{[key: string]: number},arg3:Array<any>):Promise<any>;
+export function ImportCSVWithOptions(arg1:string,arg2:Record<string, number>,arg3:Array<entity.CSVDuplicateResolution>):Promise<entity.CSVImportExecutionResult>;
 
 export function ImportDB():Promise<boolean>;
 
-export function LookupPostal(arg1:string):Promise<entity.Address>;
+export function ListBackupGenerations():Promise<Array<entity.BackupGeneration>>;
 
-export function ListBackupGenerations():Promise<any>;
+export function LookupPostal(arg1:string):Promise<entity.Address>;
 
 export function MarkContactsSentForYear(arg1:Array<string>,arg2:number):Promise<void>;
 
@@ -72,11 +72,11 @@ export function PrintPDF(arg1:string):Promise<void>;
 
 export function RemoveContactFromGroup(arg1:string,arg2:string):Promise<void>;
 
-export function RollbackAddressNormalization(arg1:string):Promise<any>;
+export function RestoreBackupGeneration(arg1:string):Promise<entity.RestoreBackupResult>;
 
-export function RestoreBackupGeneration(arg1:string):Promise<any>;
+export function RollbackAddressNormalization(arg1:string):Promise<entity.AddressNormalizationRollbackResult>;
 
-export function SaveBackupSettings(arg1:any):Promise<any>;
+export function SaveBackupSettings(arg1:entity.BackupSettings):Promise<entity.BackupSettings>;
 
 export function SaveCSVFileDialog(arg1:string):Promise<string>;
 

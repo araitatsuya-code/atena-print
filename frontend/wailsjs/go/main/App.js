@@ -14,6 +14,10 @@ export function ApplyAddressNormalization(arg1) {
   return window['go']['main']['App']['ApplyAddressNormalization'](arg1);
 }
 
+export function CheckUnsupportedCharacters(arg1) {
+  return window['go']['main']['App']['CheckUnsupportedCharacters'](arg1);
+}
+
 export function DeleteContacts(arg1) {
   return window['go']['main']['App']['DeleteContacts'](arg1);
 }
@@ -46,16 +50,16 @@ export function GenerateQRPreview(arg1) {
   return window['go']['main']['App']['GenerateQRPreview'](arg1);
 }
 
-export function CheckUnsupportedCharacters(arg1) {
-  return window['go']['main']['App']['CheckUnsupportedCharacters'](arg1);
+export function GetAddressNormalizationPreview() {
+  return window['go']['main']['App']['GetAddressNormalizationPreview']();
 }
 
 export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
 }
 
-export function GetAddressNormalizationPreview() {
-  return window['go']['main']['App']['GetAddressNormalizationPreview']();
+export function GetBackupSettings() {
+  return window['go']['main']['App']['GetBackupSettings']();
 }
 
 export function GetCSVImportPlan(arg1) {
@@ -80,10 +84,6 @@ export function GetContacts(arg1) {
 
 export function GetDashboardStats() {
   return window['go']['main']['App']['GetDashboardStats']();
-}
-
-export function GetBackupSettings() {
-  return window['go']['main']['App']['GetBackupSettings']();
 }
 
 export function GetGroups() {
@@ -118,12 +118,12 @@ export function ImportDB() {
   return window['go']['main']['App']['ImportDB']();
 }
 
-export function LookupPostal(arg1) {
-  return window['go']['main']['App']['LookupPostal'](arg1);
-}
-
 export function ListBackupGenerations() {
   return window['go']['main']['App']['ListBackupGenerations']();
+}
+
+export function LookupPostal(arg1) {
+  return window['go']['main']['App']['LookupPostal'](arg1);
 }
 
 export function MarkContactsSentForYear(arg1, arg2) {
@@ -142,12 +142,12 @@ export function RemoveContactFromGroup(arg1, arg2) {
   return window['go']['main']['App']['RemoveContactFromGroup'](arg1, arg2);
 }
 
-export function RollbackAddressNormalization(arg1) {
-  return window['go']['main']['App']['RollbackAddressNormalization'](arg1);
-}
-
 export function RestoreBackupGeneration(arg1) {
   return window['go']['main']['App']['RestoreBackupGeneration'](arg1);
+}
+
+export function RollbackAddressNormalization(arg1) {
+  return window['go']['main']['App']['RollbackAddressNormalization'](arg1);
 }
 
 export function SaveBackupSettings(arg1) {

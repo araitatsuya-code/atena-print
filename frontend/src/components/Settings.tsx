@@ -8,6 +8,7 @@ import {
   RestoreBackupGeneration,
   SaveBackupSettings,
 } from '../../wailsjs/go/main/App'
+import { entity } from '../../wailsjs/go/models'
 import type { BackupGeneration, BackupSettings } from '../types'
 
 const triggerLabelMap: Record<string, string> = {
@@ -38,8 +39,24 @@ export default function Settings() {
     setLoadingBackups(true)
     try {
       const [settings, generations] = await Promise.all([GetBackupSettings(), ListBackupGenerations()])
-      setBackupSettings(settings as BackupSettings)
-      setBackupGenerations(generations as BackupGeneration[])
+      const typedSettings = settings as entity.BackupSettings
+      setBackupSettings({
+        timing: {
+          onStartup: typedSettings.timing?.onStartup ?? true,
+          onShutdown: typedSettings.timing?.onShutdown ?? true,
+          intervalMinutes: typedSettings.timing?.intervalMinutes ?? 0,
+        },
+        maxGenerations: typedSettings.maxGenerations ?? 20,
+      })
+      const typedGenerations = generations as entity.BackupGeneration[]
+      setBackupGenerations(
+        typedGenerations.map((generation) => ({
+          id: generation.id,
+          createdAt: String(generation.createdAt ?? ''),
+          contactCount: generation.contactCount,
+          trigger: generation.trigger,
+        })),
+      )
     } finally {
       setLoadingBackups(false)
     }
@@ -74,8 +91,17 @@ export default function Settings() {
     setBackupSettingsMsg('')
     setSavingBackupSettings(true)
     try {
-      const saved = await SaveBackupSettings(backupSettings)
-      setBackupSettings(saved as BackupSettings)
+      const payload = new entity.BackupSettings(backupSettings)
+      const saved = await SaveBackupSettings(payload)
+      const typed = saved as entity.BackupSettings
+      setBackupSettings({
+        timing: {
+          onStartup: typed.timing?.onStartup ?? true,
+          onShutdown: typed.timing?.onShutdown ?? true,
+          intervalMinutes: typed.timing?.intervalMinutes ?? 0,
+        },
+        maxGenerations: typed.maxGenerations ?? 20,
+      })
       setBackupSettingsMsg('自動バックアップ設定を保存しました。')
       await loadBackupData()
     } catch (e) {

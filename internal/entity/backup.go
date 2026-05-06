@@ -17,10 +17,10 @@ type BackupSettings struct {
 
 // BackupGeneration is one restorable backup snapshot.
 type BackupGeneration struct {
-	ID           string    `json:"id"`
-	CreatedAt    time.Time `json:"createdAt"`
-	ContactCount int       `json:"contactCount"`
-	Trigger      string    `json:"trigger"`
+	ID           string `json:"id"`
+	CreatedAt    string `json:"createdAt"`
+	ContactCount int    `json:"contactCount"`
+	Trigger      string `json:"trigger"`
 }
 
 // BackupGenerationRecord stores generation metadata with backing file info.

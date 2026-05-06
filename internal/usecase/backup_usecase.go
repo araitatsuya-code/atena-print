@@ -122,18 +122,19 @@ func (uc *BackupUseCase) ListGenerations() ([]entity.BackupGeneration, error) {
 			return nil, fmt.Errorf("save cleaned generations: %w", err)
 		}
 	}
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].CreatedAt.After(filtered[j].CreatedAt)
+	})
+
 	out := make([]entity.BackupGeneration, 0, len(filtered))
 	for _, record := range filtered {
 		out = append(out, entity.BackupGeneration{
 			ID:           record.ID,
-			CreatedAt:    record.CreatedAt,
+			CreatedAt:    record.CreatedAt.Format(time.RFC3339Nano),
 			ContactCount: record.ContactCount,
 			Trigger:      record.Trigger,
 		})
 	}
-	sort.Slice(out, func(i, j int) bool {
-		return out[i].CreatedAt.After(out[j].CreatedAt)
-	})
 	return out, nil
 }
 
@@ -244,7 +245,7 @@ func (uc *BackupUseCase) runManagedBackup(ctx context.Context, trigger string) (
 	}
 	return entity.BackupGeneration{
 		ID:           backupID,
-		CreatedAt:    now,
+		CreatedAt:    now.Format(time.RFC3339Nano),
 		ContactCount: contactCount,
 		Trigger:      trigger,
 	}, nil

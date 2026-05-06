@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import {
   GetContacts,
   GetGroups,
@@ -34,22 +34,37 @@ interface CellTarget {
   field: EditableField
 }
 
+interface ColumnResizeState {
+  key: string
+  minWidth: number
+  startX: number
+  startWidth: number
+}
+
 const editableColumns: Array<{
   field: EditableField
   label: string
-  widthClass: string
+  defaultWidth: number
+  minWidth: number
   placeholder?: string
 }> = [
-  { field: 'familyName', label: '姓', widthClass: 'min-w-[100px]', placeholder: '姓' },
-  { field: 'givenName', label: '名', widthClass: 'min-w-[100px]', placeholder: '名' },
-  { field: 'honorific', label: '敬称', widthClass: 'min-w-[90px]', placeholder: '様' },
-  { field: 'postalCode', label: '郵便番号', widthClass: 'min-w-[120px]', placeholder: '1000001' },
-  { field: 'prefecture', label: '都道府県', widthClass: 'min-w-[120px]', placeholder: '東京都' },
-  { field: 'city', label: '市区町村', widthClass: 'min-w-[130px]', placeholder: '千代田区' },
-  { field: 'street', label: '番地', widthClass: 'min-w-[160px]', placeholder: '1-1-1' },
+  { field: 'familyName', label: '姓', defaultWidth: 110, minWidth: 100, placeholder: '姓' },
+  { field: 'givenName', label: '名', defaultWidth: 110, minWidth: 100, placeholder: '名' },
+  { field: 'honorific', label: '敬称', defaultWidth: 96, minWidth: 90, placeholder: '様' },
+  { field: 'postalCode', label: '郵便番号', defaultWidth: 130, minWidth: 120, placeholder: '1000001' },
+  { field: 'prefecture', label: '都道府県', defaultWidth: 130, minWidth: 120, placeholder: '東京都' },
+  { field: 'city', label: '市区町村', defaultWidth: 140, minWidth: 130, placeholder: '千代田区' },
+  { field: 'street', label: '番地', defaultWidth: 180, minWidth: 160, placeholder: '1-1-1' },
 ]
 
 export default function ContactList() {
+  const summaryColumnKey = 'summary'
+  const detailColumnKey = 'detail'
+  const defaultSummaryColumnWidth = 260
+  const minSummaryColumnWidth = 220
+  const defaultDetailColumnWidth = 80
+  const minDetailColumnWidth = 64
+
   const {
     contacts,
     selectedIds,
@@ -88,11 +103,23 @@ export default function ContactList() {
   const [updatingPrintTargetIds, setUpdatingPrintTargetIds] = useState<Set<string>>(new Set())
   const [bulkUpdatingAnnualStatus, setBulkUpdatingAnnualStatus] = useState(false)
   const [updatingAnnualStatusKeys, setUpdatingAnnualStatusKeys] = useState<Set<string>>(new Set())
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    const widths: Record<string, number> = {
+      [summaryColumnKey]: defaultSummaryColumnWidth,
+      [detailColumnKey]: defaultDetailColumnWidth,
+    }
+    editableColumns.forEach((col) => {
+      widths[col.field] = col.defaultWidth
+    })
+    return widths
+  })
+  const [resizingColumnKey, setResizingColumnKey] = useState<string | null>(null)
 
   const requestIdRef = useRef(0)
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map())
   const editingCellRef = useRef<EditingCell | null>(null)
   const committingRef = useRef(false)
+  const resizingRef = useRef<ColumnResizeState | null>(null)
   const skipBlurRef = useRef(false)
   const skipBlurResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [focusedRowId, setFocusedRowID] = useState<string | null>(null)
@@ -100,6 +127,19 @@ export default function ContactList() {
   const getCellKey = (contactId: string, field: EditableField) => `${contactId}:${field}`
 
   const getFieldValue = (contact: Contact, field: EditableField) => contact[field] ?? ''
+  const getDisplayName = (contact: Contact) => {
+    const fullName = `${contact.familyName}${contact.givenName}`.trim()
+    if (fullName) return fullName
+    const company = contact.company.trim()
+    if (company) return company
+    return '名称未設定'
+  }
+  const getDisplayAddress = (contact: Contact) => {
+    const address = `${contact.prefecture}${contact.city}${contact.street}${contact.building}`.trim()
+    if (address) return address
+    if (contact.postalCode.trim()) return `〒${contact.postalCode}`
+    return '住所未設定'
+  }
   const displayContacts = showPrintTargetOnly
     ? contacts.filter((c) => c.isPrintTarget)
     : contacts
@@ -115,12 +155,29 @@ export default function ContactList() {
     sent: false,
     received: false,
     mourning: false,
-    createdAt: '',
-    updatedAt: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   })
 
   const getAnnualStatus = (contactID: string): ContactYearStatus =>
     annualStatuses[contactID] ?? getDefaultAnnualStatus(contactID)
+
+  const buildAnnualStatusPayload = (
+    contactID: string,
+    patch: Partial<Pick<ContactYearStatus, AnnualStatusField>>,
+    requestYear: number,
+  ): Parameters<typeof SaveContactYearStatus>[0] => {
+    const current = getAnnualStatus(contactID)
+    const now = new Date().toISOString()
+    const createdAt = current.createdAt?.trim() ? current.createdAt : now
+    return {
+      ...current,
+      ...patch,
+      year: requestYear,
+      createdAt,
+      updatedAt: now,
+    } as Parameters<typeof SaveContactYearStatus>[0]
+  }
 
   const refreshGroups = () => {
     GetGroups().then(setGroups).catch(console.error)
@@ -187,6 +244,32 @@ export default function ContactList() {
       if (skipBlurResetTimerRef.current) {
         clearTimeout(skipBlurResetTimerRef.current)
       }
+    }
+  }, [])
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const resizing = resizingRef.current
+      if (!resizing) return
+      const nextWidth = Math.max(resizing.minWidth, resizing.startWidth + (event.clientX - resizing.startX))
+      setColumnWidths((prev) => {
+        if (prev[resizing.key] === nextWidth) return prev
+        return { ...prev, [resizing.key]: nextWidth }
+      })
+    }
+    const handlePointerUp = () => {
+      resizingRef.current = null
+      setResizingColumnKey(null)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
     }
   }, [])
 
@@ -356,11 +439,9 @@ export default function ContactList() {
     })
     try {
       const current = getAnnualStatus(contactID)
-      const saved = await SaveContactYearStatus({
-        ...current,
-        [field]: !current[field],
-        year: requestYear,
-      } as Parameters<typeof SaveContactYearStatus>[0])
+      const saved = await SaveContactYearStatus(
+        buildAnnualStatusPayload(contactID, { [field]: !current[field] }, requestYear),
+      )
       if (useContactStore.getState().annualStatusYear === requestYear) {
         upsertAnnualStatuses([saved])
       }
@@ -383,14 +464,9 @@ export default function ContactList() {
     setBulkUpdatingAnnualStatus(true)
     try {
       const results = await Promise.allSettled(
-        selectedVisibleContacts.map((contact) => {
-          const current = getAnnualStatus(contact.id)
-          return SaveContactYearStatus({
-            ...current,
-            ...patch,
-            year: requestYear,
-          } as Parameters<typeof SaveContactYearStatus>[0])
-        }),
+        selectedVisibleContacts.map((contact) =>
+          SaveContactYearStatus(buildAnnualStatusPayload(contact.id, patch, requestYear)),
+        ),
       )
       const savedList = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
       const failed = results.filter((result) => result.status === 'rejected')
@@ -626,6 +702,34 @@ export default function ContactList() {
     )
   }
 
+  const startColumnResize = (key: string, minWidth: number, event: ReactMouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    resizingRef.current = {
+      key,
+      minWidth,
+      startX: event.clientX,
+      startWidth: columnWidths[key] ?? minWidth,
+    }
+    setResizingColumnKey(key)
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }
+
+  const renderResizeHandle = (key: string, minWidth: number) => (
+    <button
+      type="button"
+      onMouseDown={(e) => startColumnResize(key, minWidth, e)}
+      className={`absolute right-0 top-0 z-20 h-full w-3 cursor-col-resize touch-none ${
+        resizingColumnKey === key ? 'bg-blue-200' : 'hover:bg-blue-100'
+      }`}
+      aria-label="列幅を調整"
+      title="ドラッグして列幅を変更"
+    >
+      <span className="mx-auto block h-full w-px bg-gray-300" />
+    </button>
+  )
+
   const tabs = [{ id: '', name: 'すべて' }, ...groups]
   const currentYear = new Date().getFullYear()
   const minYear = currentYear - 10
@@ -808,10 +912,20 @@ export default function ContactList() {
           </div>
         )}
         {!loading && displayContacts.length > 0 && (
-          <table className="w-full min-w-[1220px] border-separate border-spacing-0">
+          <table className="w-full min-w-[1220px] table-fixed border-separate border-spacing-0">
             <thead className="sticky top-0 z-10 bg-gray-50 text-xs text-gray-500">
               <tr>
                 <th className="w-10 px-2 py-2 border-b border-gray-200 text-left">選択</th>
+                <th
+                  className="relative px-2 py-2 border-b border-gray-200 text-left font-medium select-none"
+                  style={{
+                    width: columnWidths[summaryColumnKey],
+                    minWidth: minSummaryColumnWidth,
+                  }}
+                >
+                  宛先
+                  {renderResizeHandle(summaryColumnKey, minSummaryColumnWidth)}
+                </th>
                 <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">印刷対象</th>
                 <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">{annualStatusYear}送付</th>
                 <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">{annualStatusYear}受取</th>
@@ -819,12 +933,26 @@ export default function ContactList() {
                 {editableColumns.map((col) => (
                   <th
                     key={col.field}
-                    className={`${col.widthClass} px-2 py-2 border-b border-gray-200 text-left font-medium`}
+                    className="relative px-2 py-2 border-b border-gray-200 text-left font-medium select-none"
+                    style={{
+                      width: columnWidths[col.field],
+                      minWidth: col.minWidth,
+                    }}
                   >
                     {col.label}
+                    {renderResizeHandle(col.field, col.minWidth)}
                   </th>
                 ))}
-                <th className="w-16 px-2 py-2 border-b border-gray-200 text-left font-medium">詳細</th>
+                <th
+                  className="relative px-2 py-2 border-b border-gray-200 text-left font-medium select-none"
+                  style={{
+                    width: columnWidths[detailColumnKey],
+                    minWidth: minDetailColumnWidth,
+                  }}
+                >
+                  詳細
+                  {renderResizeHandle(detailColumnKey, minDetailColumnWidth)}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -857,6 +985,17 @@ export default function ContactList() {
                         onClick={(e) => e.stopPropagation()}
                         className="mt-1 h-3.5 w-3.5 accent-blue-600"
                       />
+                    </td>
+                    <td className="px-2 py-1.5 border-b border-gray-100 align-top">
+                      <div
+                        style={{
+                          width: columnWidths[summaryColumnKey],
+                          minWidth: minSummaryColumnWidth,
+                        }}
+                      >
+                        <p className="truncate text-sm font-medium text-gray-800">{getDisplayName(c)}</p>
+                        <p className="truncate text-xs text-gray-500">{getDisplayAddress(c)}</p>
+                      </div>
                     </td>
                     <td className="px-2 py-1.5 border-b border-gray-100 align-top">
                       <input
@@ -899,11 +1038,24 @@ export default function ContactList() {
                       />
                     </td>
                     {editableColumns.map((col) => (
-                      <td key={col.field} className="px-2 py-1.5 border-b border-gray-100 align-top">
+                      <td
+                        key={col.field}
+                        className="px-2 py-1.5 border-b border-gray-100 align-top"
+                        style={{
+                          width: columnWidths[col.field],
+                          minWidth: col.minWidth,
+                        }}
+                      >
                         {renderEditableCell(c, col.field, col.placeholder)}
                       </td>
                     ))}
-                    <td className="px-2 py-1.5 border-b border-gray-100 align-top">
+                    <td
+                      className="px-2 py-1.5 border-b border-gray-100 align-top"
+                      style={{
+                        width: columnWidths[detailColumnKey],
+                        minWidth: minDetailColumnWidth,
+                      }}
+                    >
                       <button
                         onClick={() => setEditTarget(c)}
                         className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-200 hover:text-gray-700"
