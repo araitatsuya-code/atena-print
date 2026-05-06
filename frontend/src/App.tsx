@@ -9,9 +9,9 @@ import PrintConfirmDialog from './components/PrintConfirmDialog'
 import SenderManager from './components/sender/SenderManager'
 import Dashboard from './components/Dashboard'
 import Settings from './components/Settings'
-import { useDecorationStore } from './stores/decorationStore'
-import { useLabelStore } from './stores/labelStore'
 import { useContactStore } from './stores/contactStore'
+
+type RightPanel = 'label' | 'design' | null
 
 function App() {
   const minContactPaneWidth = 300
@@ -21,15 +21,14 @@ function App() {
   const [showPrintDialog, setShowPrintDialog] = useState(false)
   const [contactPaneWidth, setContactPaneWidth] = useState(defaultContactPaneWidth)
   const [isResizingContactPane, setIsResizingContactPane] = useState(false)
+  const [rightPanel, setRightPanel] = useState<RightPanel>(null)
 
   const contactPaneResizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
 
-  const { showDecoPanel, toggleDecoPanel } = useDecorationStore(
-    useShallow((s) => ({ showDecoPanel: s.showDecoPanel, toggleDecoPanel: s.toggleDecoPanel })),
-  )
-  const { showPanel: showLabelPanel, togglePanel: toggleLabelPanel } = useLabelStore(
-    useShallow((s) => ({ showPanel: s.showPanel, togglePanel: s.togglePanel })),
-  )
+  const toggleRightPanel = (next: Exclude<RightPanel, null>) => {
+    setRightPanel((prev) => (prev === next ? null : next))
+  }
+
   const {
     selectedCount,
     setSelectedIds,
@@ -151,48 +150,73 @@ function App() {
           <>
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
               {/* トップバー */}
-              <div className="flex items-center justify-end gap-2 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
-                <button
-                  onClick={toggleLabelPanel}
-                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                    showLabelPanel
-                      ? 'bg-green-50 border-green-400 text-green-700'
-                      : 'border-gray-300 text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  ラベル設定
-                </button>
-                <button
-                  onClick={toggleDecoPanel}
-                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                    showDecoPanel
-                      ? 'bg-blue-50 border-blue-400 text-blue-700'
-                      : 'border-gray-300 text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  デザイン設定
-                </button>
+              <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
+                <div className="flex items-center gap-1 mr-auto">
+                  <SecondaryToggleButton
+                    active={rightPanel === 'label'}
+                    onClick={() => toggleRightPanel('label')}
+                    icon={<LabelIcon />}
+                    label="ラベル設定"
+                  />
+                  <SecondaryToggleButton
+                    active={rightPanel === 'design'}
+                    onClick={() => toggleRightPanel('design')}
+                    icon={<DesignIcon />}
+                    label="デザイン設定"
+                  />
+                </div>
                 <button
                   onClick={() => setShowPrintDialog(true)}
                   disabled={selectedCount === 0}
-                  className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  ラベル印刷 {selectedCount > 0 && `(${selectedCount}件)`}
+                  <PrintIcon />
+                  ラベル印刷
+                  {selectedCount > 0 && (
+                    <span className="ml-0.5 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-[11px] font-semibold rounded-full bg-white/20 text-white">
+                      {selectedCount}
+                    </span>
+                  )}
                 </button>
               </div>
               <PreviewArea />
             </div>
-            {showLabelPanel && (
-              <div className="w-60 bg-white border-l border-gray-200 flex flex-col h-full shrink-0">
-                <div className="px-4 py-3 border-b border-gray-200">
-                  <h2 className="text-sm font-semibold text-gray-700">ラベル設定</h2>
+            {rightPanel && (
+              <div className="w-72 bg-white border-l border-gray-200 flex flex-col h-full shrink-0">
+                <div className="flex items-stretch border-b border-gray-200">
+                  <PanelTab
+                    active={rightPanel === 'label'}
+                    onClick={() => setRightPanel('label')}
+                  >
+                    ラベル設定
+                  </PanelTab>
+                  <PanelTab
+                    active={rightPanel === 'design'}
+                    onClick={() => setRightPanel('design')}
+                  >
+                    デザイン設定
+                  </PanelTab>
+                  <button
+                    type="button"
+                    onClick={() => setRightPanel(null)}
+                    className="ml-auto px-3 text-gray-400 hover:text-gray-600"
+                    aria-label="パネルを閉じる"
+                    title="パネルを閉じる"
+                  >
+                    ×
+                  </button>
                 </div>
-                <div className="flex-1 overflow-y-auto p-4">
-                  <LabelSettingsPanel />
+                <div className="flex-1 overflow-y-auto">
+                  {rightPanel === 'label' ? (
+                    <div className="p-4">
+                      <LabelSettingsPanel />
+                    </div>
+                  ) : (
+                    <DecorationSidebar />
+                  )}
                 </div>
               </div>
             )}
-            {showDecoPanel && <DecorationSidebar />}
           </>
         )}
         {view === 'senders' && (
@@ -233,6 +257,120 @@ function NavButton({
     >
       {children}
     </button>
+  )
+}
+
+function SecondaryToggleButton({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs transition-colors ${
+        active
+          ? 'bg-gray-100 text-gray-800 ring-1 ring-gray-300'
+          : 'text-gray-600 hover:bg-gray-100'
+      }`}
+    >
+      <span className="text-gray-500" aria-hidden="true">
+        {icon}
+      </span>
+      {label}
+    </button>
+  )
+}
+
+function PanelTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`px-4 py-2.5 text-xs font-medium border-b-2 transition-colors ${
+        active
+          ? 'text-blue-700 border-blue-600'
+          : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function PrintIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 6 2 18 2 18 9" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <rect x="6" y="14" width="12" height="8" />
+    </svg>
+  )
+}
+
+function LabelIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  )
+}
+
+function DesignIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3v18" />
+      <path d="M3 12h18" />
+    </svg>
   )
 }
 

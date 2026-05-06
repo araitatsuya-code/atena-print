@@ -397,29 +397,34 @@ export default function PreviewArea() {
       {/* ツールバー */}
       <div className="bg-white border-b border-gray-200 shrink-0">
         <div className="flex items-center gap-3 px-4 py-2">
-          <span className="text-sm font-medium text-gray-700 mr-auto">
-            {template.name}
+          <div className="flex items-center gap-2 mr-auto min-w-0">
+            <span className="text-sm font-medium text-gray-700 truncate">
+              {template.name}
+            </span>
             {selectedContacts.length > 0 && (
-              <span className="ml-2 text-xs text-gray-400">
+              <span className="text-xs text-gray-400 shrink-0">
                 {safeIndex + 1} / {selectedContacts.length} 件
               </span>
             )}
-          </span>
-          {/* オフセット表示 */}
-          {currentContact && hasOffset && (
-            <div className="flex items-center gap-1 text-xs text-amber-600">
-              <span>
-                補正: X {displayOffset.x.toFixed(1)} / Y {displayOffset.y.toFixed(1)} mm
+            {/* オフセット表示 (バッジ) */}
+            {currentContact && hasOffset && (
+              <span className="inline-flex items-center gap-1 shrink-0 pl-2 pr-1 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[11px] text-amber-700">
+                <span aria-hidden="true">⚠</span>
+                <span>
+                  補正 X {displayOffset.x.toFixed(1)} / Y {displayOffset.y.toFixed(1)} mm
+                </span>
+                <button
+                  type="button"
+                  onClick={resetOffset}
+                  className="ml-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full text-amber-600 hover:bg-amber-100 hover:text-amber-800"
+                  title="補正を初期値に戻す"
+                  aria-label="補正をリセット"
+                >
+                  ×
+                </button>
               </span>
-              <button
-                onClick={resetOffset}
-                className="underline hover:text-amber-800"
-                title="補正を初期値に戻す"
-              >
-                リセット
-              </button>
-            </div>
-          )}
+            )}
+          </div>
           {/* グリッドトグル */}
           <button
             onClick={() => setShowGrid((v) => !v)}
