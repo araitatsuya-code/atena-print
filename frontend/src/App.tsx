@@ -48,6 +48,11 @@ function App() {
 
   const showPreview = view === 'contacts' || view === 'preview'
   useEffect(() => {
+    const clampContactPaneWidth = () => {
+      const maxWidth = Math.max(minContactPaneWidth, window.innerWidth - 520)
+      setContactPaneWidth((prev) => Math.min(maxWidth, Math.max(minContactPaneWidth, prev)))
+    }
+
     const handlePointerMove = (event: PointerEvent) => {
       const resizing = contactPaneResizeRef.current
       if (!resizing) return
@@ -62,11 +67,14 @@ function App() {
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
     }
+    clampContactPaneWidth()
     window.addEventListener('pointermove', handlePointerMove)
     window.addEventListener('pointerup', handlePointerUp)
+    window.addEventListener('resize', clampContactPaneWidth)
     return () => {
       window.removeEventListener('pointermove', handlePointerMove)
       window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener('resize', clampContactPaneWidth)
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
     }
