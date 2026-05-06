@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
+import { SaveContact } from '../../../wailsjs/go/main/App'
 import { useContactStore } from '../../stores/contactStore'
 import { usePreviewStore } from '../../stores/previewStore'
 import { useDecorationStore } from '../../stores/decorationStore'
@@ -26,10 +27,47 @@ import {
 const MM_TO_PX = 96 / 25.4
 
 const ZOOM_MIN = 0.5
-const ZOOM_MAX = 4.0
+const ZOOM_MAX = 8.0
 const ZOOM_STEP = 0.25
 const KEYBOARD_FINE_STEP_MM = 0.1
 const KEYBOARD_COARSE_STEP_MM = 1.0
+const SAVE_TIMEOUT_MS = 10_000
+
+type EditableContactField =
+  | 'postalCode'
+  | 'familyName'
+  | 'givenName'
+  | 'honorific'
+  | 'company'
+  | 'department'
+  | 'prefecture'
+  | 'city'
+  | 'street'
+  | 'building'
+
+interface ContentDraft {
+  contactId: string
+  patch: Partial<Pick<Contact, EditableContactField>>
+}
+
+const EDITABLE_FIELDS_BY_BOX: Record<EditableFieldId, EditableContactField[]> = {
+  postalCode: ['postalCode'],
+  recipientName: ['familyName', 'givenName', 'honorific', 'company', 'department'],
+  recipientAddr: ['prefecture', 'city', 'street', 'building'],
+}
+
+const EDITABLE_FIELD_LABELS: Record<EditableContactField, string> = {
+  postalCode: '郵便番号',
+  familyName: '姓',
+  givenName: '名',
+  honorific: '敬称',
+  company: '会社',
+  department: '部署',
+  prefecture: '都道府県',
+  city: '市区町村',
+  street: '番地',
+  building: '建物',
+}
 
 function isEditableInputTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -47,9 +85,25 @@ function parseInputNumber(rawValue: string): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function clampZoom(value: number): number {
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value))
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => reject(new Error(message)), timeoutMs)
+  })
+  try {
+    return await Promise.race([promise, timeoutPromise])
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle)
+  }
+}
+
 export default function PreviewArea() {
-  const { contacts } = useContactStore(
-    useShallow((s) => ({ contacts: s.contacts })),
+  const { contacts, setContacts } = useContactStore(
+    useShallow((s) => ({ contacts: s.contacts, setContacts: s.setContacts })),
   )
   const {
     zoom,
@@ -106,8 +160,8 @@ export default function PreviewArea() {
     ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
     : { ...defaultTpl, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
 
-  const zoomIn = () => setZoom(Math.min(ZOOM_MAX, Math.round((zoom + ZOOM_STEP) * 100) / 100))
-  const zoomOut = () => setZoom(Math.max(ZOOM_MIN, Math.round((zoom - ZOOM_STEP) * 100) / 100))
+  const zoomIn = () => setZoom(clampZoom(Math.round((zoom + ZOOM_STEP) * 100) / 100))
+  const zoomOut = () => setZoom(clampZoom(Math.round((zoom - ZOOM_STEP) * 100) / 100))
   const zoomReset = () => setZoom(1)
 
   // 要素配置変更ハンドラ
@@ -119,6 +173,10 @@ export default function PreviewArea() {
   const [showGrid, setShowGrid] = useState(false)
   // フォント編集対象フィールド
   const [selectedFieldId, setSelectedFieldId] = useState<EditableFieldId | null>(null)
+  // 内容編集ドラフト（選択中連絡先のみ）
+  const [contentDraft, setContentDraft] = useState<ContentDraft | null>(null)
+  const [contentSaving, setContentSaving] = useState(false)
+  const [contentError, setContentError] = useState<string | null>(null)
   const latestTemplateRef = useRef(template)
 
   useEffect(() => {
@@ -184,10 +242,25 @@ export default function PreviewArea() {
   const displayOffset = dragLive ?? { x: layout.offsetX, y: layout.offsetY }
   const hasOffset = displayOffset.x !== 0 || displayOffset.y !== 0
   const editableBoxes = buildEditableBoxes(template)
+  const currentZoomPct = Math.round(zoom * 100)
+  const zoomPresets = [50, 75, 100, 125, 150, 200, 300, 400, 600, 800]
+  const zoomOptions = zoomPresets.includes(currentZoomPct)
+    ? zoomPresets
+    : [...zoomPresets, currentZoomPct].sort((a, b) => a - b)
   const selectedBox = editableBoxes.find((box) => box.id === selectedFieldId) ?? null
   const selectedInspector = selectedFieldId
     ? getEditableFieldInspectorValue(template, selectedFieldId)
     : null
+  const selectedEditableFields = selectedFieldId ? EDITABLE_FIELDS_BY_BOX[selectedFieldId] : []
+  const mergedCurrentContact =
+    currentContact && contentDraft?.contactId === currentContact.id
+      ? { ...currentContact, ...contentDraft.patch }
+      : currentContact
+  const hasContentDraft =
+    !!currentContact &&
+    !!contentDraft &&
+    contentDraft.contactId === currentContact.id &&
+    Object.keys(contentDraft.patch).length > 0
 
   useEffect(() => {
     if (editableBoxes.length === 0) {
@@ -197,6 +270,15 @@ export default function PreviewArea() {
     if (selectedFieldId && editableBoxes.some((box) => box.id === selectedFieldId)) return
     setSelectedFieldId(editableBoxes[0].id)
   }, [editableBoxes, selectedFieldId])
+
+  useEffect(() => {
+    setContentError(null)
+    setContentDraft((prev) => {
+      if (!currentContact) return null
+      if (prev && prev.contactId === currentContact.id) return prev
+      return null
+    })
+  }, [currentContact])
 
   function updateSelectedField(
     updater: (tpl: Template, fieldId: EditableFieldId) => Template,
@@ -220,6 +302,60 @@ export default function PreviewArea() {
     const parsed = parseInputNumber(rawValue)
     if (parsed === null) return
     handleTemplateChange(setEditableFieldFontPt(template, selectedFieldId, parsed))
+  }
+
+  function getEditableFieldValue(field: EditableContactField): string {
+    if (!currentContact) return ''
+    if (contentDraft?.contactId === currentContact.id && contentDraft.patch[field] !== undefined) {
+      return contentDraft.patch[field] ?? ''
+    }
+    return currentContact[field]
+  }
+
+  function updateEditableFieldValue(field: EditableContactField, value: string) {
+    if (!currentContact) return
+    setContentError(null)
+    setContentDraft((prev) => {
+      const base = prev?.contactId === currentContact.id ? prev : { contactId: currentContact.id, patch: {} }
+      const nextPatch = { ...base.patch }
+      if (currentContact[field] === value) {
+        delete nextPatch[field]
+      } else {
+        nextPatch[field] = value
+      }
+      if (Object.keys(nextPatch).length === 0) return null
+      return { contactId: currentContact.id, patch: nextPatch }
+    })
+  }
+
+  function cancelEditableContent() {
+    setContentDraft(null)
+    setContentError(null)
+  }
+
+  async function saveEditableContent() {
+    if (!currentContact || !contentDraft || contentDraft.contactId !== currentContact.id) return
+    setContentSaving(true)
+    setContentError(null)
+    try {
+      const saved = await withTimeout(
+        SaveContact({
+          ...currentContact,
+          ...contentDraft.patch,
+        } as Parameters<typeof SaveContact>[0]),
+        SAVE_TIMEOUT_MS,
+        '保存処理がタイムアウトしました。',
+      )
+      const latest = useContactStore.getState().contacts
+      setContacts(latest.map((item) => (item.id === saved.id ? { ...item, ...saved } : item)))
+      setContentDraft(null)
+    } catch (err) {
+      console.error(err)
+      const message = err instanceof Error ? err.message : '内容の保存に失敗しました。再度お試しください。'
+      setContentError(message)
+    } finally {
+      setContentSaving(false)
+    }
   }
 
   useEffect(() => {
@@ -310,7 +446,7 @@ export default function PreviewArea() {
               onClick={zoomReset}
               className="px-3 py-1 text-xs rounded border border-gray-300 hover:bg-gray-100 min-w-[52px] text-center"
             >
-              {Math.round(zoom * 100)}%
+              {currentZoomPct}%
             </button>
             <button
               onClick={zoomIn}
@@ -320,6 +456,21 @@ export default function PreviewArea() {
             >
               ＋
             </button>
+            <select
+              value={currentZoomPct}
+              onChange={(e) => {
+                const next = Number.parseInt(e.target.value, 10)
+                if (Number.isFinite(next)) setZoom(clampZoom(next / 100))
+              }}
+              className="h-8 rounded border border-gray-300 bg-white px-2 text-xs text-gray-700"
+              title="表示倍率"
+            >
+              {zoomOptions.map((pct) => (
+                <option key={pct} value={pct}>
+                  {pct}%
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -352,6 +503,51 @@ export default function PreviewArea() {
                 </button>
               )
             })}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1 rounded border border-gray-300 bg-white p-1">
+            <span className="px-1 text-xs text-gray-500">内容</span>
+            {!currentContact && (
+              <span className="px-1 text-xs text-gray-400">印刷対象を選択してください</span>
+            )}
+            {currentContact && selectedEditableFields.length === 0 && (
+              <span className="px-1 text-xs text-gray-400">編集項目を選択してください</span>
+            )}
+            {currentContact &&
+              selectedEditableFields.map((field) => (
+                <label key={field} className="flex items-center gap-1 pl-1">
+                  <span className="text-[11px] text-gray-500">{EDITABLE_FIELD_LABELS[field]}</span>
+                  <input
+                    type="text"
+                    value={getEditableFieldValue(field)}
+                    onChange={(e) => updateEditableFieldValue(field, e.target.value)}
+                    disabled={contentSaving}
+                    className="h-8 min-w-[86px] rounded border border-gray-300 bg-white px-2 text-xs text-gray-700 disabled:opacity-40"
+                  />
+                </label>
+              ))}
+            <button
+              type="button"
+              onClick={cancelEditableContent}
+              disabled={!hasContentDraft || contentSaving}
+              className="h-8 rounded border border-gray-300 px-2 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-40"
+            >
+              キャンセル
+            </button>
+            <button
+              type="button"
+              onClick={() => void saveEditableContent()}
+              disabled={contentSaving || !hasContentDraft}
+              className={`h-8 rounded border px-2 text-xs transition-colors ${
+                contentSaving
+                  ? 'border-blue-600 bg-blue-600 text-white opacity-70'
+                  : hasContentDraft
+                    ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700'
+                    : 'border-gray-300 bg-gray-100 text-gray-500'
+              }`}
+            >
+              {contentSaving ? '保存中...' : hasContentDraft ? '確定' : '保存済み'}
+            </button>
           </div>
 
           <div className="flex items-center gap-1">
@@ -457,12 +653,21 @@ export default function PreviewArea() {
           <span className="text-[11px] text-gray-500">
             矢印キーで 0.1mm、Shift+矢印で 1.0mm 移動。ドラッグと数値は同期。
           </span>
+          <span className="text-[11px] text-gray-500">
+            内容入力は即時プレビュー反映。確定で保存、キャンセルで破棄。
+          </span>
+          {!contentSaving && !hasContentDraft && (
+            <span className="text-[11px] text-gray-500">変更すると「確定」が有効になります。</span>
+          )}
+          {contentError && (
+            <span className="text-[11px] text-red-600">{contentError}</span>
+          )}
         </div>
       </div>
 
       {/* キャンバスエリア */}
       <div className="flex-1 overflow-auto flex items-center justify-center p-6">
-        {currentContact ? (
+        {mergedCurrentContact ? (
           // オフセット補正を CSS transform で可視化。
           // 背景ドラッグ → 印刷位置補正 / カラーハンドルドラッグ → 要素個別配置
           <div
@@ -477,7 +682,7 @@ export default function PreviewArea() {
             title="背景ドラッグ: 印刷位置補正 / カラーハンドルドラッグ: 要素の位置調整"
           >
             <LabelStack
-              contact={currentContact}
+              contact={mergedCurrentContact}
               template={template}
               zoom={zoom}
               watermark={watermark}
@@ -523,7 +728,7 @@ export default function PreviewArea() {
             >
               <div className="overflow-hidden rounded" style={{ transform: 'scale(1)', transformOrigin: 'top left' }}>
                 <LabelStack
-                  contact={c}
+                  contact={contentDraft?.contactId === c.id ? { ...c, ...contentDraft.patch } : c}
                   template={template}
                   zoom={0.35}
                   watermark={watermark}
