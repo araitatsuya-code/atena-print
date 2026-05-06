@@ -242,6 +242,11 @@ export default function PreviewArea() {
   const displayOffset = dragLive ?? { x: layout.offsetX, y: layout.offsetY }
   const hasOffset = displayOffset.x !== 0 || displayOffset.y !== 0
   const editableBoxes = buildEditableBoxes(template)
+  const currentZoomPct = Math.round(zoom * 100)
+  const zoomPresets = [50, 75, 100, 125, 150, 200, 300, 400, 600, 800]
+  const zoomOptions = zoomPresets.includes(currentZoomPct)
+    ? zoomPresets
+    : [...zoomPresets, currentZoomPct].sort((a, b) => a - b)
   const selectedBox = editableBoxes.find((box) => box.id === selectedFieldId) ?? null
   const selectedInspector = selectedFieldId
     ? getEditableFieldInspectorValue(template, selectedFieldId)
@@ -441,7 +446,7 @@ export default function PreviewArea() {
               onClick={zoomReset}
               className="px-3 py-1 text-xs rounded border border-gray-300 hover:bg-gray-100 min-w-[52px] text-center"
             >
-              {Math.round(zoom * 100)}%
+              {currentZoomPct}%
             </button>
             <button
               onClick={zoomIn}
@@ -452,7 +457,7 @@ export default function PreviewArea() {
               ＋
             </button>
             <select
-              value={Math.round(zoom * 100)}
+              value={currentZoomPct}
               onChange={(e) => {
                 const next = Number.parseInt(e.target.value, 10)
                 if (Number.isFinite(next)) setZoom(clampZoom(next / 100))
@@ -460,7 +465,7 @@ export default function PreviewArea() {
               className="h-8 rounded border border-gray-300 bg-white px-2 text-xs text-gray-700"
               title="表示倍率"
             >
-              {[50, 75, 100, 125, 150, 200, 300, 400, 600, 800].map((pct) => (
+              {zoomOptions.map((pct) => (
                 <option key={pct} value={pct}>
                   {pct}%
                 </option>
