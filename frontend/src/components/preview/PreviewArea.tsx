@@ -9,6 +9,7 @@ import LabelEditorOverlay from './LabelEditorOverlay'
 import LabelGridOverlay from './LabelGridOverlay'
 import WatermarkLayer from './WatermarkLayer'
 import QROverlay from './QROverlay'
+import { Popover } from '../ui/popover'
 import { useLabelStore } from '../../stores/labelStore'
 import type { Contact, Template, Watermark, QRConfig } from '../../types'
 import {
@@ -162,7 +163,6 @@ export default function PreviewArea() {
 
   const zoomIn = () => setZoom(clampZoom(Math.round((zoom + ZOOM_STEP) * 100) / 100))
   const zoomOut = () => setZoom(clampZoom(Math.round((zoom - ZOOM_STEP) * 100) / 100))
-  const zoomReset = () => setZoom(1)
 
   // 要素配置変更ハンドラ
   function handleTemplateChange(updated: Template) {
@@ -393,7 +393,7 @@ export default function PreviewArea() {
   }, [currentContact, selectedFieldId])
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-[#f0f0f0]">
+    <div className="flex-1 flex flex-col overflow-hidden bg-slate-200">
       {/* ツールバー */}
       <div className="bg-white border-b border-gray-200 shrink-0">
         <div className="flex items-center gap-3 px-4 py-2">
@@ -437,40 +437,48 @@ export default function PreviewArea() {
             <button
               onClick={zoomOut}
               disabled={zoom <= ZOOM_MIN}
-              className="px-2 py-1 text-sm rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-40"
+              className="h-8 w-8 text-sm rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-40"
               aria-label="ズームアウト"
             >
               −
             </button>
-            <button
-              onClick={zoomReset}
-              className="px-3 py-1 text-xs rounded border border-gray-300 hover:bg-gray-100 min-w-[52px] text-center"
+            <Popover
+              triggerLabel={`${currentZoomPct}%`}
+              triggerClassName="h-8 px-3 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100 min-w-[64px] text-center"
+              triggerTitle="表示倍率を選択"
+              align="right"
             >
-              {currentZoomPct}%
-            </button>
+              {(close) => (
+                <div className="flex flex-col py-1 min-w-[88px]">
+                  {zoomOptions.map((pct) => {
+                    const isCurrent = pct === currentZoomPct
+                    return (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => {
+                          setZoom(clampZoom(pct / 100))
+                          close()
+                        }}
+                        className={`px-3 py-1 text-xs text-right hover:bg-gray-100 ${
+                          isCurrent ? 'text-blue-600 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        {pct}%
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </Popover>
             <button
               onClick={zoomIn}
               disabled={zoom >= ZOOM_MAX}
-              className="px-2 py-1 text-sm rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-40"
+              className="h-8 w-8 text-sm rounded border border-gray-300 hover:bg-gray-100 disabled:opacity-40"
               aria-label="ズームイン"
             >
               ＋
             </button>
-            <select
-              value={currentZoomPct}
-              onChange={(e) => {
-                const next = Number.parseInt(e.target.value, 10)
-                if (Number.isFinite(next)) setZoom(clampZoom(next / 100))
-              }}
-              className="h-8 rounded border border-gray-300 bg-white px-2 text-xs text-gray-700"
-              title="表示倍率"
-            >
-              {zoomOptions.map((pct) => (
-                <option key={pct} value={pct}>
-                  {pct}%
-                </option>
-              ))}
-            </select>
           </div>
         </div>
 
@@ -496,7 +504,9 @@ export default function PreviewArea() {
                   title={`${box.label} を編集`}
                 >
                   <span
-                    className="inline-block h-2 w-2 rounded-full"
+                    className={`inline-block h-2.5 w-2.5 rounded-full ${
+                      selected ? 'ring-2 ring-white ring-offset-0' : ''
+                    }`}
                     style={{ backgroundColor: box.color }}
                   />
                   {box.label}
@@ -650,15 +660,26 @@ export default function PreviewArea() {
             太字
           </button>
 
-          <span className="text-[11px] text-gray-500">
-            矢印キーで 0.1mm、Shift+矢印で 1.0mm 移動。ドラッグと数値は同期。
-          </span>
-          <span className="text-[11px] text-gray-500">
-            内容入力は即時プレビュー反映。確定で保存、キャンセルで破棄。
-          </span>
-          {!contentSaving && !hasContentDraft && (
-            <span className="text-[11px] text-gray-500">変更すると「確定」が有効になります。</span>
-          )}
+          <Popover
+            triggerLabel="?"
+            triggerClassName="ml-auto h-7 w-7 rounded-full border border-gray-300 bg-white text-xs text-gray-500 hover:bg-gray-100"
+            triggerTitle="操作ヘルプを表示"
+            triggerAriaLabel="操作ヘルプを表示"
+            align="right"
+          >
+            {() => (
+              <div className="w-72 p-3 text-xs text-gray-600 space-y-2">
+                <p>
+                  <span className="font-medium text-gray-700">移動: </span>
+                  矢印キーで 0.1mm、Shift+矢印で 1.0mm 移動。ドラッグと数値は同期。
+                </p>
+                <p>
+                  <span className="font-medium text-gray-700">内容編集: </span>
+                  入力は即時プレビュー反映。「確定」で保存、「キャンセル」で破棄。
+                </p>
+              </div>
+            )}
+          </Popover>
           {contentError && (
             <span className="text-[11px] text-red-600">{contentError}</span>
           )}
@@ -757,7 +778,7 @@ interface LabelStackProps {
 
 function LabelStack({ contact, template, zoom, watermark, qrConfig }: LabelStackProps) {
   return (
-    <div className="relative shadow-md" style={{ display: 'inline-block' }}>
+    <div className="relative shadow-lg ring-1 ring-black/5" style={{ display: 'inline-block' }}>
       <LabelCanvas contact={contact} template={template} zoom={zoom} />
       <WatermarkLayer
         watermark={watermark}
