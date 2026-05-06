@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"atena-label/internal/entity"
 	"atena-label/internal/repository"
 )
@@ -22,6 +24,7 @@ type BackupUseCase struct {
 	repo repository.BackupRepository
 
 	mu       sync.Mutex
+	genMu    sync.Mutex
 	settings entity.BackupSettings
 	stopCh   chan struct{}
 	doneCh   chan struct{}
@@ -90,6 +93,9 @@ func (uc *BackupUseCase) SaveSettings(settings entity.BackupSettings) (entity.Ba
 }
 
 func (uc *BackupUseCase) ListGenerations() ([]entity.BackupGeneration, error) {
+	uc.genMu.Lock()
+	defer uc.genMu.Unlock()
+
 	records, err := uc.repo.LoadGenerationRecords()
 	if err != nil {
 		return nil, fmt.Errorf("load generations: %w", err)
@@ -140,8 +146,10 @@ func (uc *BackupUseCase) RestoreGeneration(ctx context.Context, backupID string)
 		return entity.RestoreBackupResult{}, fmt.Errorf("preserve current data: %w", err)
 	}
 
+	uc.genMu.Lock()
 	records, err := uc.repo.LoadGenerationRecords()
 	if err != nil {
+		uc.genMu.Unlock()
 		return entity.RestoreBackupResult{}, fmt.Errorf("load generations: %w", err)
 	}
 	var target *entity.BackupGenerationRecord
@@ -152,12 +160,15 @@ func (uc *BackupUseCase) RestoreGeneration(ctx context.Context, backupID string)
 		}
 	}
 	if target == nil {
+		uc.genMu.Unlock()
 		return entity.RestoreBackupResult{}, fmt.Errorf("指定した世代が見つかりません")
 	}
-
 	if _, err := uc.repo.StagePendingRestore(target.FileName, backupID); err != nil {
+		uc.genMu.Unlock()
 		return entity.RestoreBackupResult{}, fmt.Errorf("stage pending restore: %w", err)
 	}
+	uc.genMu.Unlock()
+
 	return entity.RestoreBackupResult{
 		Restored:          true,
 		BackupID:          backupID,
@@ -193,7 +204,7 @@ func (uc *BackupUseCase) runManagedBackup(ctx context.Context, trigger string) (
 	uc.mu.Unlock()
 
 	now := time.Now()
-	backupID := fmt.Sprintf("bkp-%d", now.UnixNano())
+	backupID := uuid.NewString()
 	fileName := fmt.Sprintf("atena-backup-%s-%s.db", now.Format("20060102-150405"), backupID)
 	destPath := uc.repo.BackupFilePath(fileName)
 
@@ -204,6 +215,9 @@ func (uc *BackupUseCase) runManagedBackup(ctx context.Context, trigger string) (
 	if err != nil {
 		contactCount = 0
 	}
+
+	uc.genMu.Lock()
+	defer uc.genMu.Unlock()
 
 	records, err := uc.repo.LoadGenerationRecords()
 	if err != nil {

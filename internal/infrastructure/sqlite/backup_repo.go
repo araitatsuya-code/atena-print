@@ -80,6 +80,9 @@ func (r *BackupRepo) SaveGenerationRecords(records []entity.BackupGenerationReco
 }
 
 func (r *BackupRepo) CreateSnapshot(ctx context.Context, destPath string) error {
+	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+		return err
+	}
 	_ = os.Remove(destPath)
 	if _, err := r.db.ExecContext(ctx, "VACUUM INTO ?", destPath); err != nil {
 		return err
