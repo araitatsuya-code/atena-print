@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useShallow } from 'zustand/shallow'
 import type { View } from './types'
 import ContactList from './components/address/ContactList'
@@ -14,8 +14,15 @@ import { useLabelStore } from './stores/labelStore'
 import { useContactStore } from './stores/contactStore'
 
 function App() {
+  const minContactPaneWidth = 300
+  const defaultContactPaneWidth = 360
+
   const [view, setView] = useState<View>('dashboard')
   const [showPrintDialog, setShowPrintDialog] = useState(false)
+  const [contactPaneWidth, setContactPaneWidth] = useState(defaultContactPaneWidth)
+  const [isResizingContactPane, setIsResizingContactPane] = useState(false)
+
+  const contactPaneResizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
 
   const { showDecoPanel, toggleDecoPanel } = useDecorationStore(
     useShallow((s) => ({ showDecoPanel: s.showDecoPanel, toggleDecoPanel: s.toggleDecoPanel })),
@@ -40,6 +47,43 @@ function App() {
   )
 
   const showPreview = view === 'contacts' || view === 'preview'
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const resizing = contactPaneResizeRef.current
+      if (!resizing) return
+      const rawNextWidth = resizing.startWidth + (event.clientX - resizing.startX)
+      const maxWidth = Math.max(minContactPaneWidth, window.innerWidth - 520)
+      const nextWidth = Math.min(maxWidth, Math.max(minContactPaneWidth, rawNextWidth))
+      setContactPaneWidth(nextWidth)
+    }
+    const handlePointerUp = () => {
+      contactPaneResizeRef.current = null
+      setIsResizingContactPane(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [])
+
+  const startContactPaneResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    contactPaneResizeRef.current = {
+      startX: event.clientX,
+      startWidth: contactPaneWidth,
+    }
+    setIsResizingContactPane(true)
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }
+
   const handleJumpToContact = (contactID: string) => {
     setShowPrintDialog(false)
     setView('contacts')
@@ -77,8 +121,22 @@ function App() {
           <Dashboard onNavigate={(v) => setView(v as View)} />
         )}
         {view === 'contacts' && (
-          <div className="w-72 border-r border-gray-200 bg-white flex flex-col h-full">
+          <div
+            className="relative border-r border-gray-200 bg-white flex flex-col h-full shrink-0"
+            style={{ width: contactPaneWidth, minWidth: minContactPaneWidth }}
+          >
             <ContactList />
+            <button
+              type="button"
+              onPointerDown={startContactPaneResize}
+              className={`absolute right-0 top-0 z-30 h-full w-2 translate-x-1/2 cursor-col-resize touch-none ${
+                isResizingContactPane ? 'bg-blue-200/70' : 'hover:bg-blue-100/70'
+              }`}
+              aria-label="住所録パネルの幅を調整"
+              title="ドラッグして住所録パネルを広げる"
+            >
+              <span className="mx-auto block h-full w-px bg-gray-300" />
+            </button>
           </div>
         )}
         {showPreview && (
