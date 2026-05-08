@@ -487,183 +487,184 @@ export default function PreviewArea() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-t border-gray-100 bg-gray-50">
-          <span className="text-xs font-medium text-gray-700">文字設定</span>
-
-          <div className="flex flex-wrap items-center gap-1 rounded border border-gray-300 bg-white p-1">
-            {editableBoxes.length === 0 && (
-              <span className="px-2 text-xs text-gray-500">編集項目なし</span>
-            )}
-            {editableBoxes.map((box) => {
-              const selected = box.id === selectedFieldId
-              return (
-                <button
-                  key={box.id}
-                  onClick={() => setSelectedFieldId(box.id)}
-                  disabled={!currentContact}
-                  className={`h-7 rounded px-2 text-xs border transition-colors inline-flex items-center gap-1.5 ${
-                    selected
-                      ? 'bg-slate-700 text-white border-slate-700'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                  } disabled:opacity-40`}
-                  title={`${box.label} を編集`}
-                >
-                  <span
-                    className={`inline-block h-2.5 w-2.5 rounded-full ${
-                      selected ? 'ring-2 ring-white ring-offset-0' : ''
-                    }`}
-                    style={{ backgroundColor: box.color }}
-                  />
-                  {box.label}
-                </button>
-              )
-            })}
+        <div className="flex flex-wrap items-stretch gap-3 px-4 py-2 border-t border-gray-100 bg-gray-50">
+          {/* Block A: 対象選択 */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">対象</span>
+            <div className="flex flex-wrap items-center gap-1">
+              {editableBoxes.length === 0 && (
+                <span className="px-2 text-xs text-gray-500">編集項目なし</span>
+              )}
+              {editableBoxes.map((box) => {
+                const selected = box.id === selectedFieldId
+                return (
+                  <button
+                    key={box.id}
+                    onClick={() => setSelectedFieldId(box.id)}
+                    disabled={!currentContact}
+                    className={`h-7 rounded-md px-2 text-xs border transition-colors inline-flex items-center gap-1.5 ${
+                      selected
+                        ? 'bg-slate-700 text-white border-slate-700'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                    } disabled:opacity-40`}
+                    style={selected ? { boxShadow: `0 0 0 2px ${box.color}55` } : undefined}
+                    title={`${box.label} を編集`}
+                  >
+                    <span
+                      className={`inline-block h-2.5 w-2.5 rounded-full ${
+                        selected ? 'ring-2 ring-white ring-offset-0' : ''
+                      }`}
+                      style={{ backgroundColor: box.color }}
+                    />
+                    {box.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1 rounded border border-gray-300 bg-white p-1">
-            <span className="px-1 text-xs text-gray-500">内容</span>
-            {!currentContact && (
-              <span className="px-1 text-xs text-gray-400">印刷対象を選択してください</span>
-            )}
-            {currentContact && selectedEditableFields.length === 0 && (
-              <span className="px-1 text-xs text-gray-400">編集項目を選択してください</span>
-            )}
-            {currentContact &&
-              selectedEditableFields.map((field) => (
-                <label key={field} className="flex items-center gap-1 pl-1">
-                  <span className="text-[11px] text-gray-500">{EDITABLE_FIELD_LABELS[field]}</span>
-                  <input
-                    type="text"
-                    value={getEditableFieldValue(field)}
-                    onChange={(e) => updateEditableFieldValue(field, e.target.value)}
-                    disabled={contentSaving}
-                    className="h-8 min-w-[86px] rounded border border-gray-300 bg-white px-2 text-xs text-gray-700 disabled:opacity-40"
-                  />
-                </label>
-              ))}
-            <button
-              type="button"
-              onClick={cancelEditableContent}
-              disabled={!hasContentDraft || contentSaving}
-              className="h-8 rounded border border-gray-300 px-2 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-40"
-            >
-              キャンセル
-            </button>
-            <button
-              type="button"
-              onClick={() => void saveEditableContent()}
-              disabled={contentSaving || !hasContentDraft}
-              className={`h-8 rounded border px-2 text-xs transition-colors ${
-                contentSaving
-                  ? 'border-blue-600 bg-blue-600 text-white opacity-70'
-                  : hasContentDraft
-                    ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700'
-                    : 'border-gray-300 bg-gray-100 text-gray-500'
-              }`}
-            >
-              {contentSaving ? '保存中...' : hasContentDraft ? '確定' : '保存済み'}
-            </button>
-          </div>
+          <div className="w-px bg-gray-200 self-stretch" aria-hidden="true" />
 
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500">サイズ</span>
-            <button
-              onClick={() => updateSelectedField((tpl, id) => applyFontDelta(tpl, id, -0.5))}
-              disabled={!selectedInspector}
-              className="h-8 w-8 rounded border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-40"
-              title="文字サイズを小さくする"
-            >
-              −
-            </button>
-            <input
-              type="number"
-              step={0.5}
-              value={selectedInspector ? selectedInspector.fontPt.toFixed(1) : ''}
-              onChange={(e) => updateSelectedFontFromInput(e.target.value)}
-              disabled={!selectedInspector}
-              className="h-8 w-20 rounded border border-gray-300 bg-white px-2 text-right text-xs text-gray-700 disabled:opacity-40"
-              title="フォントサイズ (pt)"
-            />
-            <span className="text-xs text-gray-500">pt</span>
-            <button
-              onClick={() => updateSelectedField((tpl, id) => applyFontDelta(tpl, id, 0.5))}
-              disabled={!selectedInspector}
-              className="h-8 w-8 rounded border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-40"
-              title="文字サイズを大きくする"
-            >
-              ＋
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500">X</span>
-            <input
-              type="number"
-              step={0.1}
-              value={selectedInspector ? selectedInspector.xMm.toFixed(1) : ''}
-              onChange={(e) => updateSelectedPositionFromInput('x', e.target.value)}
-              disabled={!selectedInspector}
-              className="h-8 w-20 rounded border border-gray-300 bg-white px-2 text-right text-xs text-gray-700 disabled:opacity-40"
-              title="X 座標 (mm)"
-            />
-            <span className="text-xs text-gray-500">mm</span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500">Y</span>
-            <input
-              type="number"
-              step={0.1}
-              value={selectedInspector ? selectedInspector.yMm.toFixed(1) : ''}
-              onChange={(e) => updateSelectedPositionFromInput('y', e.target.value)}
-              disabled={!selectedInspector}
-              className="h-8 w-20 rounded border border-gray-300 bg-white px-2 text-right text-xs text-gray-700 disabled:opacity-40"
-              title="Y 座標 (mm)"
-            />
-            <span className="text-xs text-gray-500">mm</span>
-          </div>
-
-          <div className="flex items-center rounded border border-gray-300 overflow-hidden">
-            <button
-              onClick={() => updateSelectedField((tpl, id) => applyFontFamily(tpl, id, 'serif'))}
-              disabled={!selectedBox}
-              className={`h-8 px-3 text-xs transition-colors ${
-                selectedBox?.fontFamily === 'serif'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
-              } disabled:opacity-40`}
-              title="明朝体"
-            >
-              明朝
-            </button>
-            <button
-              onClick={() =>
-                updateSelectedField((tpl, id) => applyFontFamily(tpl, id, 'sans-serif'))
-              }
-              disabled={!selectedBox}
-              className={`h-8 px-3 text-xs border-l border-gray-300 transition-colors ${
-                selectedBox?.fontFamily === 'sans-serif'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
-              } disabled:opacity-40`}
-              title="ゴシック体"
-            >
-              ゴシック
-            </button>
-          </div>
-
-          <button
-            onClick={() => updateSelectedField((tpl, id) => applyBold(tpl, id, !selectedBox?.bold))}
-            disabled={!selectedBox}
-            className={`h-8 px-3 rounded border text-xs transition-colors ${
-              selectedBox?.bold
-                ? 'bg-slate-700 border-slate-700 text-white'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-100'
-            } disabled:opacity-40`}
-            title="太字切替"
+          {/* Block B: 内容編集 */}
+          <div
+            className={`flex items-center gap-2 -mx-1 px-2 py-0.5 rounded-md transition-colors ${
+              hasContentDraft ? 'bg-amber-50 ring-1 ring-amber-200' : ''
+            }`}
           >
-            太字
-          </button>
+            <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">内容</span>
+            {hasContentDraft && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-medium">
+                未保存
+              </span>
+            )}
+            <div className="flex flex-wrap items-center gap-1">
+              {!currentContact && (
+                <span className="px-1 text-xs text-gray-400">印刷対象を選択してください</span>
+              )}
+              {currentContact && selectedEditableFields.length === 0 && (
+                <span className="px-1 text-xs text-gray-400">編集項目を選択してください</span>
+              )}
+              {currentContact &&
+                selectedEditableFields.map((field) => (
+                  <label key={field} className="flex items-center gap-1 pl-1">
+                    <span className="text-[11px] text-gray-500">{EDITABLE_FIELD_LABELS[field]}</span>
+                    <input
+                      type="text"
+                      value={getEditableFieldValue(field)}
+                      onChange={(e) => updateEditableFieldValue(field, e.target.value)}
+                      disabled={contentSaving}
+                      className="h-8 min-w-[86px] rounded border border-gray-300 bg-white px-2 text-xs text-gray-700 disabled:opacity-40"
+                    />
+                  </label>
+                ))}
+            </div>
+          </div>
+
+          <div className="w-px bg-gray-200 self-stretch" aria-hidden="true" />
+
+          {/* Block C: 形状編集 */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">形状</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-500">サイズ</span>
+              <button
+                onClick={() => updateSelectedField((tpl, id) => applyFontDelta(tpl, id, -0.5))}
+                disabled={!selectedInspector}
+                className="h-8 w-8 rounded border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+                title="文字サイズを小さくする"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                step={0.5}
+                value={selectedInspector ? selectedInspector.fontPt.toFixed(1) : ''}
+                onChange={(e) => updateSelectedFontFromInput(e.target.value)}
+                disabled={!selectedInspector}
+                className="h-8 w-20 rounded border border-gray-300 bg-white px-2 text-right text-xs text-gray-700 disabled:opacity-40"
+                title="フォントサイズ (pt)"
+              />
+              <span className="text-xs text-gray-500">pt</span>
+              <button
+                onClick={() => updateSelectedField((tpl, id) => applyFontDelta(tpl, id, 0.5))}
+                disabled={!selectedInspector}
+                className="h-8 w-8 rounded border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+                title="文字サイズを大きくする"
+              >
+                ＋
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-500">X</span>
+              <input
+                type="number"
+                step={0.1}
+                value={selectedInspector ? selectedInspector.xMm.toFixed(1) : ''}
+                onChange={(e) => updateSelectedPositionFromInput('x', e.target.value)}
+                disabled={!selectedInspector}
+                className="h-8 w-20 rounded border border-gray-300 bg-white px-2 text-right text-xs text-gray-700 disabled:opacity-40"
+                title="X 座標 (mm)"
+              />
+              <span className="text-xs text-gray-500">mm</span>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-500">Y</span>
+              <input
+                type="number"
+                step={0.1}
+                value={selectedInspector ? selectedInspector.yMm.toFixed(1) : ''}
+                onChange={(e) => updateSelectedPositionFromInput('y', e.target.value)}
+                disabled={!selectedInspector}
+                className="h-8 w-20 rounded border border-gray-300 bg-white px-2 text-right text-xs text-gray-700 disabled:opacity-40"
+                title="Y 座標 (mm)"
+              />
+              <span className="text-xs text-gray-500">mm</span>
+            </div>
+
+            <div className="flex items-center rounded border border-gray-300 overflow-hidden">
+              <button
+                onClick={() => updateSelectedField((tpl, id) => applyFontFamily(tpl, id, 'serif'))}
+                disabled={!selectedBox}
+                className={`h-8 px-3 text-xs transition-colors ${
+                  selectedBox?.fontFamily === 'serif'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                } disabled:opacity-40`}
+                title="明朝体"
+              >
+                明朝
+              </button>
+              <button
+                onClick={() =>
+                  updateSelectedField((tpl, id) => applyFontFamily(tpl, id, 'sans-serif'))
+                }
+                disabled={!selectedBox}
+                className={`h-8 px-3 text-xs border-l border-gray-300 transition-colors ${
+                  selectedBox?.fontFamily === 'sans-serif'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                } disabled:opacity-40`}
+                title="ゴシック体"
+              >
+                ゴシック
+              </button>
+            </div>
+
+            <button
+              onClick={() => updateSelectedField((tpl, id) => applyBold(tpl, id, !selectedBox?.bold))}
+              disabled={!selectedBox}
+              className={`h-8 px-3 rounded border text-xs transition-colors ${
+                selectedBox?.bold
+                  ? 'bg-slate-700 border-slate-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-100'
+              } disabled:opacity-40`}
+              title="太字切替"
+            >
+              太字
+            </button>
+          </div>
 
           <Popover
             triggerLabel="?"
@@ -692,7 +693,7 @@ export default function PreviewArea() {
       </div>
 
       {/* キャンバスエリア */}
-      <div className="flex-1 overflow-auto flex items-center justify-center p-6">
+      <div className="relative flex-1 overflow-auto flex items-center justify-center p-6">
         {mergedCurrentContact ? (
           // オフセット補正を CSS transform で可視化。
           // 背景ドラッグ → 印刷位置補正 / カラーハンドルドラッグ → 要素個別配置
@@ -735,6 +736,34 @@ export default function PreviewArea() {
           </div>
         ) : (
           <p className="text-gray-400 text-sm">住所録で印刷対象をONにしてください</p>
+        )}
+
+        {/* フローティング確定バー (内容ドラフト中のみ) */}
+        {(hasContentDraft || contentSaving) && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center z-20">
+            <div className="pointer-events-auto inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white shadow-lg ring-1 ring-amber-200">
+              <span className="inline-flex items-center gap-1.5 text-xs text-amber-700">
+                <span aria-hidden="true">●</span>
+                内容に未保存の変更があります
+              </span>
+              <button
+                type="button"
+                onClick={cancelEditableContent}
+                disabled={contentSaving}
+                className="h-8 rounded-md border border-gray-300 bg-white px-3 text-xs text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveEditableContent()}
+                disabled={contentSaving}
+                className="h-8 rounded-md bg-blue-600 px-4 text-xs font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-70"
+              >
+                {contentSaving ? '保存中...' : '確定'}
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

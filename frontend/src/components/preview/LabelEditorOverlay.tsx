@@ -138,12 +138,14 @@ export default function LabelEditorOverlay({
               top: y,
               width: w,
               height: h,
-              border: `${selected ? 2 : 1.5}px dashed ${box.color}`,
-              background: selected ? `${box.color}20` : 'transparent',
+              border: `${selected ? 2.5 : 1.5}px dashed ${box.color}`,
+              background: selected ? `${box.color}26` : 'transparent',
+              boxShadow: selected ? `0 0 0 3px ${box.color}33` : 'none',
               boxSizing: 'border-box',
               pointerEvents: 'auto',
               cursor: 'move',
               userSelect: 'none',
+              transition: 'box-shadow 120ms ease, background 120ms ease',
               zIndex: selected ? 2 : 1,
             }}
           >
