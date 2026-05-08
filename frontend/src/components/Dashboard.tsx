@@ -21,8 +21,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (view: string) =
   const [history, setHistory] = useState<PrintHistory[]>([])
   const [annual, setAnnual] = useState<AnnualSummary>(emptyAnnualSummary)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
+    setLoading(true)
+    setError(null)
     Promise.all([
       GetDashboardStats(),
       GetPrintHistory(10),
@@ -33,14 +37,33 @@ export default function Dashboard({ onNavigate }: { onNavigate: (view: string) =
         setHistory(h ?? [])
         setAnnual(aggregateAnnual(statuses ?? []))
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err)
+        setError(err instanceof Error ? err.message : '読み込みに失敗しました。')
+      })
       .finally(() => setLoading(false))
-  }, [currentYear])
+  }, [currentYear, reloadKey])
 
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
         読み込み中...
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-sm">
+        <p className="text-red-600">データの読み込みに失敗しました。</p>
+        <p className="text-xs text-gray-500">{error}</p>
+        <button
+          type="button"
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="px-4 py-2 text-sm rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+        >
+          再読み込み
+        </button>
       </div>
     )
   }
