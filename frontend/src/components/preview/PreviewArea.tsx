@@ -393,7 +393,7 @@ export default function PreviewArea() {
   }, [currentContact, selectedFieldId])
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-slate-200">
+    <div className="relative flex-1 flex flex-col overflow-hidden bg-slate-200">
       {/* ツールバー */}
       <div className="bg-white border-b border-gray-200 shrink-0">
         <div className="flex items-center gap-3 px-4 py-2">
@@ -693,7 +693,7 @@ export default function PreviewArea() {
       </div>
 
       {/* キャンバスエリア */}
-      <div className="relative flex-1 overflow-auto flex items-center justify-center p-6">
+      <div className="flex-1 overflow-auto flex items-center justify-center p-6">
         {mergedCurrentContact ? (
           // オフセット補正を CSS transform で可視化。
           // 背景ドラッグ → 印刷位置補正 / カラーハンドルドラッグ → 要素個別配置
@@ -737,34 +737,6 @@ export default function PreviewArea() {
         ) : (
           <p className="text-gray-400 text-sm">住所録で印刷対象をONにしてください</p>
         )}
-
-        {/* フローティング確定バー (内容ドラフト中のみ) */}
-        {(hasContentDraft || contentSaving) && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center z-20">
-            <div className="pointer-events-auto inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white shadow-lg ring-1 ring-amber-200">
-              <span className="inline-flex items-center gap-1.5 text-xs text-amber-700">
-                <span aria-hidden="true">●</span>
-                内容に未保存の変更があります
-              </span>
-              <button
-                type="button"
-                onClick={cancelEditableContent}
-                disabled={contentSaving}
-                className="h-8 rounded-md border border-gray-300 bg-white px-3 text-xs text-gray-700 hover:bg-gray-100 disabled:opacity-40"
-              >
-                キャンセル
-              </button>
-              <button
-                type="button"
-                onClick={() => void saveEditableContent()}
-                disabled={contentSaving}
-                className="h-8 rounded-md bg-blue-600 px-4 text-xs font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-70"
-              >
-                {contentSaving ? '保存中...' : '確定'}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* サムネイルナビゲーション (複数選択時) */}
@@ -795,6 +767,38 @@ export default function PreviewArea() {
               </span>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* フローティング確定バー (内容ドラフト中のみ) — overflow-auto の外側に配置してズーム時もビューポートに固定 */}
+      {(hasContentDraft || contentSaving) && (
+        <div
+          className={`pointer-events-none absolute inset-x-0 flex justify-center z-20 ${
+            selectedContacts.length > 1 ? 'bottom-28' : 'bottom-4'
+          }`}
+        >
+          <div className="pointer-events-auto inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white shadow-lg ring-1 ring-amber-200">
+            <span className="inline-flex items-center gap-1.5 text-xs text-amber-700">
+              <span aria-hidden="true">●</span>
+              内容に未保存の変更があります
+            </span>
+            <button
+              type="button"
+              onClick={cancelEditableContent}
+              disabled={contentSaving}
+              className="h-8 rounded-md border border-gray-300 bg-white px-3 text-xs text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+            >
+              キャンセル
+            </button>
+            <button
+              type="button"
+              onClick={() => void saveEditableContent()}
+              disabled={contentSaving}
+              className="h-8 rounded-md bg-blue-600 px-4 text-xs font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-70"
+            >
+              {contentSaving ? '保存中...' : '確定'}
+            </button>
+          </div>
         </div>
       )}
     </div>
