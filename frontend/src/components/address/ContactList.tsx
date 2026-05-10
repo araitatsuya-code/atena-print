@@ -781,114 +781,149 @@ export default function ContactList() {
         </button>
       </div>
 
-      {/* 選択/印刷対象コントロール */}
+      {/* セクション1: 件数表示 + 表示フィルタ */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 text-xs text-gray-500">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <span>
-            表示 {displayContacts.length} 件 / 印刷対象 {printTargetCount} 件
-            {selectedVisibleCount > 0 ? ` / 表示中選択 ${selectedVisibleCount} 件` : ''}
+            <span className="text-gray-700 font-medium">{displayContacts.length}</span> 件表示
           </span>
-          <span className="text-gray-300">|</span>
-          <label className="flex items-center gap-1">
-            年
-            <input
-              type="number"
-              min={minYear}
-              max={maxYear}
-              value={annualStatusYear}
-              onChange={(e) => {
-                const nextYear = Number(e.target.value)
-                if (Number.isInteger(nextYear) && nextYear >= 1900 && nextYear <= 3000) {
-                  setAnnualStatusYear(nextYear)
-                }
-              }}
-              className="w-20 rounded border border-gray-300 px-1 py-0.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </label>
+          <span className="text-gray-300">/</span>
+          <span>
+            印刷対象 <span className="text-emerald-700 font-medium">{printTargetCount}</span> 件
+          </span>
+          {selectedVisibleCount > 0 && (
+            <>
+              <span className="text-gray-300">/</span>
+              <span>
+                選択 <span className="text-blue-700 font-medium">{selectedVisibleCount}</span> 件
+              </span>
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              setShowPrintTargetOnly((prev) => !prev)
-              clearSelection()
-              setEditingCell(null)
-            }}
-            className={`px-2 py-0.5 rounded border transition-colors ${
-              showPrintTargetOnly
-                ? 'bg-blue-50 border-blue-300 text-blue-700'
-                : 'border-gray-300 text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            {showPrintTargetOnly ? '全件表示' : '対象のみ表示'}
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            setShowPrintTargetOnly((prev) => !prev)
+            clearSelection()
+            setEditingCell(null)
+          }}
+          className={`px-2 py-0.5 rounded border transition-colors ${
+            showPrintTargetOnly
+              ? 'bg-blue-50 border-blue-300 text-blue-700'
+              : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          {showPrintTargetOnly ? '全件表示' : '対象のみ表示'}
+        </button>
       </div>
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 text-xs text-gray-500 gap-2">
-        <div className="flex items-center gap-2">
+
+      {/* セクション2: 表示中スコープのアクション */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5 border-b border-gray-100 text-xs">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500 shrink-0">
+          表示中 {displayContacts.length} 件
+        </span>
+        <div className="flex items-center gap-1">
           <button
             onClick={() => setSelectedIds(new Set(displayContacts.map((c) => c.id)))}
-            className="hover:text-blue-600 disabled:opacity-40"
+            className="px-1.5 py-0.5 rounded text-gray-600 hover:text-blue-600 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent"
             disabled={displayContacts.length === 0}
           >
-            表示中を全選択
+            全選択
           </button>
           <button
             onClick={clearSelection}
-            className="hover:text-blue-600 disabled:opacity-40"
+            className="px-1.5 py-0.5 rounded text-gray-600 hover:text-blue-600 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent"
             disabled={selectedIds.size === 0}
           >
             選択解除
           </button>
         </div>
-        <div className="flex items-center gap-2">
+        <span className="hidden sm:inline-block w-px h-4 bg-gray-200" aria-hidden="true" />
+        <div className="flex items-center gap-1">
+          <span className="text-gray-500">印刷対象:</span>
           <button
             onClick={() => void setPrintTargetForVisibleContacts(true)}
-            className="hover:text-blue-600 disabled:opacity-40"
+            className="px-1.5 py-0.5 rounded text-emerald-700 hover:bg-emerald-50 disabled:opacity-40 disabled:hover:bg-transparent"
             disabled={displayContacts.length === 0 || bulkUpdatingPrintTargets}
           >
-            表示中を対象ON
+            ON
           </button>
           <button
             onClick={() => void setPrintTargetForVisibleContacts(false)}
-            className="hover:text-blue-600 disabled:opacity-40"
+            className="px-1.5 py-0.5 rounded text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent"
             disabled={displayContacts.length === 0 || bulkUpdatingPrintTargets}
           >
-            表示中を対象OFF
+            OFF
           </button>
         </div>
       </div>
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 text-xs text-gray-500 gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400">年次手動更新</span>
+
+      {/* セクション3: 選択中スコープの年次ステータスアクション */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5 border-b border-gray-100 text-xs">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500 shrink-0">
+          選択中 {selectedVisibleCount} 件 を
+        </span>
+        <label className="flex items-center gap-1 text-gray-500">
+          <input
+            type="number"
+            min={minYear}
+            max={maxYear}
+            value={annualStatusYear}
+            onChange={(e) => {
+              const nextYear = Number(e.target.value)
+              if (Number.isInteger(nextYear) && nextYear >= 1900 && nextYear <= 3000) {
+                setAnnualStatusYear(nextYear)
+              }
+            }}
+            className="w-20 rounded border border-gray-300 px-1 py-0.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            aria-label="年次ステータスの対象年"
+          />
+          <span>年に</span>
+        </label>
+        <div
+          className={`inline-flex rounded-md border border-gray-300 overflow-hidden divide-x divide-gray-300 ${
+            selectedVisibleContacts.length === 0 || annualStatusActionsDisabled ? 'opacity-50' : ''
+          }`}
+        >
           <button
             onClick={() => void setAnnualStatusForSelectedContacts({ sent: true })}
-            className="hover:text-blue-600 disabled:opacity-40"
+            className="px-2 py-0.5 text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed"
             disabled={selectedVisibleContacts.length === 0 || annualStatusActionsDisabled}
+            title="送付済にする"
           >
-            選択を送付済
+            送付済
           </button>
           <button
             onClick={() => void setAnnualStatusForSelectedContacts({ received: true })}
-            className="hover:text-blue-600 disabled:opacity-40"
+            className="px-2 py-0.5 text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed"
             disabled={selectedVisibleContacts.length === 0 || annualStatusActionsDisabled}
+            title="受取済にする"
           >
-            選択を受取済
+            受取
           </button>
           <button
             onClick={() => void setAnnualStatusForSelectedContacts({ mourning: true })}
-            className="hover:text-blue-600 disabled:opacity-40"
+            className="px-2 py-0.5 text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed"
             disabled={selectedVisibleContacts.length === 0 || annualStatusActionsDisabled}
+            title="喪中にする"
           >
-            選択を喪中
+            喪中
           </button>
           <button
-            onClick={() => void setAnnualStatusForSelectedContacts({ sent: false, received: false, mourning: false })}
-            className="hover:text-blue-600 disabled:opacity-40"
+            onClick={() =>
+              void setAnnualStatusForSelectedContacts({ sent: false, received: false, mourning: false })
+            }
+            className="px-2 py-0.5 text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed"
             disabled={selectedVisibleContacts.length === 0 || annualStatusActionsDisabled}
+            title="送付済・受取・喪中をすべてリセット"
           >
-            選択をクリア
+            リセット
           </button>
         </div>
+        {selectedVisibleContacts.length === 0 && (
+          <span className="text-[11px] text-gray-400">
+            行のチェックボックスで対象を選んでください
+          </span>
+        )}
       </div>
       {inlineSaveError && (
         <div className="px-3 py-2 text-xs text-red-600 bg-red-50 border-b border-red-100">
