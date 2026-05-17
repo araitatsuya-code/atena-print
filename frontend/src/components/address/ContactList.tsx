@@ -1200,8 +1200,8 @@ function PrintTargetSwitch({ on, disabled, onToggle }: PrintTargetSwitchProps) {
         e.stopPropagation()
         onToggle()
       }}
-      className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-        on ? 'bg-emerald-500' : 'bg-gray-300'
+      className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${
+        on ? 'bg-emerald-500 focus-visible:ring-emerald-500' : 'bg-gray-300 focus-visible:ring-gray-400'
       }`}
       title={on ? '印刷対象です。クリックで除外' : '除外中。クリックで印刷対象に'}
     >
