@@ -950,7 +950,9 @@ export default function ContactList() {
           <table className="w-full min-w-[1220px] table-fixed border-separate border-spacing-0">
             <thead className="sticky top-0 z-10 bg-gray-50 text-xs text-gray-500">
               <tr>
-                <th className="w-10 px-2 py-2 border-b border-gray-200 text-left">選択</th>
+                <th className="w-10 px-2 py-2 border-b border-gray-200 text-center text-[11px] text-gray-400 font-normal">
+                  選択
+                </th>
                 <th
                   className="relative px-2 py-2 border-b border-gray-200 text-left font-medium select-none"
                   style={{
@@ -961,7 +963,12 @@ export default function ContactList() {
                   宛先
                   {renderResizeHandle(summaryColumnKey, minSummaryColumnWidth)}
                 </th>
-                <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">印刷対象</th>
+                <th className="w-20 px-2 py-2 border-b border-gray-200 text-left">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                    印刷
+                  </span>
+                </th>
                 <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">{annualStatusYear}送付</th>
                 <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">{annualStatusYear}受取</th>
                 <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">{annualStatusYear}喪中</th>
@@ -1012,13 +1019,14 @@ export default function ContactList() {
                     }`}
                     onDoubleClick={() => setEditTarget(c)}
                   >
-                    <td className="px-2 py-1.5 border-b border-gray-100 align-top">
+                    <td className="px-2 py-1.5 border-b border-gray-100 align-top text-center">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(c.id)}
                         onChange={() => toggleSelected(c.id)}
                         onClick={(e) => e.stopPropagation()}
                         className="mt-1 h-3.5 w-3.5 accent-blue-600"
+                        aria-label="行を選択"
                       />
                     </td>
                     <td className="px-2 py-1.5 border-b border-gray-100 align-top">
@@ -1033,13 +1041,10 @@ export default function ContactList() {
                       </div>
                     </td>
                     <td className="px-2 py-1.5 border-b border-gray-100 align-top">
-                      <input
-                        type="checkbox"
-                        checked={c.isPrintTarget}
+                      <PrintTargetSwitch
+                        on={c.isPrintTarget}
                         disabled={bulkUpdatingPrintTargets || updatingPrintTargetIds.has(c.id)}
-                        onChange={() => void togglePrintTarget(c)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="mt-1 h-3.5 w-3.5 accent-emerald-600 disabled:opacity-40"
+                        onToggle={() => void togglePrintTarget(c)}
                       />
                     </td>
                     <td className="px-2 py-1.5 border-b border-gray-100 align-top">
@@ -1174,5 +1179,39 @@ export default function ContactList() {
         />
       )}
     </div>
+  )
+}
+
+interface PrintTargetSwitchProps {
+  on: boolean
+  disabled?: boolean
+  onToggle: () => void
+}
+
+function PrintTargetSwitch({ on, disabled, onToggle }: PrintTargetSwitchProps) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={on ? '印刷対象 ON (クリックでOFF)' : '印刷対象 OFF (クリックでON)'}
+      disabled={disabled}
+      onClick={(e) => {
+        e.stopPropagation()
+        onToggle()
+      }}
+      className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${
+        on ? 'bg-emerald-500 focus-visible:ring-emerald-500' : 'bg-gray-300 focus-visible:ring-gray-400'
+      }`}
+      title={on ? '印刷対象です。クリックで除外' : '除外中。クリックで印刷対象に'}
+    >
+      <span className="sr-only">{on ? 'ON' : 'OFF'}</span>
+      <span
+        aria-hidden="true"
+        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+          on ? 'translate-x-[22px]' : 'translate-x-0.5'
+        }`}
+      />
+    </button>
   )
 }
