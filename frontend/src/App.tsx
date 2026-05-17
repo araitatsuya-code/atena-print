@@ -45,7 +45,6 @@ function App() {
     })),
   )
 
-  const showPreview = view === 'contacts' || view === 'preview'
   useEffect(() => {
     const clampContactPaneWidth = () => {
       const maxWidth = Math.max(minContactPaneWidth, window.innerWidth - 520)
@@ -93,7 +92,7 @@ function App() {
 
   const handleJumpToContact = (contactID: string) => {
     setShowPrintDialog(false)
-    setView('contacts')
+    setView('workspace')
     setCurrentGroupId('')
     setSearchQuery('')
     setSelectedIds(new Set([contactID]))
@@ -108,11 +107,8 @@ function App() {
         <NavButton active={view === 'dashboard'} onClick={() => setView('dashboard')}>
           ダッシュボード
         </NavButton>
-        <NavButton active={view === 'contacts'} onClick={() => setView('contacts')}>
-          住所録
-        </NavButton>
-        <NavButton active={view === 'preview'} onClick={() => setView('preview')}>
-          ラベルプレビュー
+        <NavButton active={view === 'workspace'} onClick={() => setView('workspace')}>
+          ラベル印刷
         </NavButton>
         <NavButton active={view === 'senders'} onClick={() => setView('senders')}>
           差出人管理
@@ -127,27 +123,25 @@ function App() {
         {view === 'dashboard' && (
           <Dashboard onNavigate={(v) => setView(v as View)} />
         )}
-        {view === 'contacts' && (
-          <div
-            className="relative border-r border-gray-200 bg-white flex flex-col h-full shrink-0"
-            style={{ width: contactPaneWidth, minWidth: minContactPaneWidth }}
-          >
-            <ContactList />
-            <button
-              type="button"
-              onPointerDown={startContactPaneResize}
-              className={`absolute right-0 top-0 z-30 h-full w-2 translate-x-1/2 cursor-col-resize touch-none ${
-                isResizingContactPane ? 'bg-blue-200/70' : 'hover:bg-blue-100/70'
-              }`}
-              aria-label="住所録パネルの幅を調整"
-              title="ドラッグして住所録パネルを広げる"
-            >
-              <span className="mx-auto block h-full w-px bg-gray-300" />
-            </button>
-          </div>
-        )}
-        {showPreview && (
+        {view === 'workspace' && (
           <>
+            <div
+              className="relative border-r border-gray-200 bg-white flex flex-col h-full shrink-0"
+              style={{ width: contactPaneWidth, minWidth: minContactPaneWidth }}
+            >
+              <ContactList />
+              <button
+                type="button"
+                onPointerDown={startContactPaneResize}
+                className={`absolute right-0 top-0 z-30 h-full w-2 translate-x-1/2 cursor-col-resize touch-none ${
+                  isResizingContactPane ? 'bg-blue-200/70' : 'hover:bg-blue-100/70'
+                }`}
+                aria-label="住所録パネルの幅を調整"
+                title="ドラッグして住所録パネルを広げる"
+              >
+                <span className="mx-auto block h-full w-px bg-gray-300" />
+              </button>
+            </div>
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
               {/* トップバー */}
               <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
