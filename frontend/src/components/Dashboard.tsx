@@ -150,20 +150,20 @@ function NextStepHero({
     empty: {
       title: '最初の連絡先を追加しましょう',
       description: 'CSV取込で一括登録するか、住所録から手動で追加できます。',
-      primary: { label: 'CSV取込で始める', view: 'contacts' },
-      secondary: { label: '住所録を開く', view: 'contacts' },
+      primary: { label: 'CSV取込で始める', view: 'workspace' },
+      secondary: { label: '住所録を開く', view: 'workspace' },
     },
     'first-print': {
       title: 'ラベルを印刷してみましょう',
       description: '住所録で印刷対象を選び、プレビュー画面から印刷できます。',
-      primary: { label: 'ラベル印刷へ', view: 'preview' },
-      secondary: { label: '住所録を開く', view: 'contacts' },
+      primary: { label: 'ラベル印刷へ', view: 'workspace' },
+      secondary: { label: '住所録を開く', view: 'workspace' },
     },
     'next-print': {
       title: '次のラベル印刷を始めましょう',
       description: '前回の続きから印刷対象を選んで印刷できます。',
-      primary: { label: 'ラベル印刷へ', view: 'preview' },
-      secondary: { label: '住所録を開く', view: 'contacts' },
+      primary: { label: 'ラベル印刷へ', view: 'workspace' },
+      secondary: { label: '住所録を開く', view: 'workspace' },
     },
   }[state]
 
