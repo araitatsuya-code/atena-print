@@ -13,7 +13,7 @@ import { useDecorationStore } from '../stores/decorationStore'
 import { useLabelStore } from '../stores/labelStore'
 import { usePreviewStore } from '../stores/previewStore'
 import { useSenderStore } from '../stores/senderStore'
-import { DEFAULT_TEMPLATE, DEFAULT_TEMPLATE_HORIZONTAL } from './preview/LabelCanvas'
+import { resolveTemplate } from '../lib/labelPresets'
 import { renderLabelSnapshotsToDataURLBatch } from '../lib/labelSnapshot'
 import { buildPreprintWarnings } from '../lib/printPreflight'
 import { useShallow } from 'zustand/shallow'
@@ -124,15 +124,12 @@ export default function PrintConfirmDialog({ onClose, onJumpToContact }: Props) 
   const paperLabel = `${layout.paperWidth}×${layout.paperHeight}mm (${layout.columns}列×${layout.rows}行)`
   const printableContactKey = printableContacts.map((c) => c.id).join(',')
 
-  function resolveTemplate() {
-    const defaultTpl = orientation === 'horizontal' ? DEFAULT_TEMPLATE_HORIZONTAL : DEFAULT_TEMPLATE
-    return selectedTemplate
-      ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
-      : { ...defaultTpl, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
+  function buildResolvedTemplate() {
+    return resolveTemplate(selectedTemplate, layout.labelWidth, layout.labelHeight, orientation)
   }
 
   function resolveTemplateAndContactIDs() {
-    const tpl = resolveTemplate()
+    const tpl = buildResolvedTemplate()
 
     let ids = printableContacts.map((c) => c.id)
     if (repeatFill && ids.length > 0 && ids.length < labelsPerPage) {
@@ -147,7 +144,7 @@ export default function PrintConfirmDialog({ onClose, onJumpToContact }: Props) 
     return { tpl, ids }
   }
 
-  const resolvedTemplate = useMemo(resolveTemplate, [orientation, selectedTemplate, layout])
+  const resolvedTemplate = useMemo(buildResolvedTemplate, [orientation, selectedTemplate, layout])
   const preprintWarnings = useMemo(
     () => buildPreprintWarnings(printableContacts, resolvedTemplate, unsupportedWarnings),
     [printableContacts, resolvedTemplate, unsupportedWarnings],

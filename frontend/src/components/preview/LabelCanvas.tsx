@@ -1,76 +1,13 @@
 import { useEffect, useRef } from 'react'
 import type { Contact, Template } from '../../types'
 import { MM_TO_PX_AT_96_DPI, renderLabelTextLayer } from '../../lib/labelRenderer'
+import { DEFAULT_TEMPLATE, DEFAULT_TEMPLATE_HORIZONTAL } from '../../lib/labelPresets'
 
 /** 1mm あたりのピクセル数 (96 dpi 基準) */
 const MM_TO_PX = MM_TO_PX_AT_96_DPI // ≈ 3.78
 
-/**
- * デフォルトテンプレート: A4 12面ラベル (86.4×42.3mm) 縦書き
- * テンプレート選択 UI が実装されるまでのフォールバック用。
- */
-export const DEFAULT_TEMPLATE: Template = {
-  id: 'default-a4-12',
-  name: '標準 (A4 12面)',
-  orientation: 'vertical',
-  labelWidth: 86.4,
-  labelHeight: 42.3,
-  postalCode: {
-    x: 36,        // 〒マーク左端 (mm)
-    y: 4.5,       // 上端からの距離 (mm)
-    digitSpacing: 5.5,
-    fontSize: 10,
-  },
-  recipient: {
-    nameX: 79,    // 氏名カラム右端 (mm)
-    nameY: 8,     // 上端からの距離 (mm)
-    nameFont: 13,
-    addressX: 69, // 住所ブロック右端 (mm)
-    addressY: 8,  // 上端からの距離 (mm)
-    addressFont: 8.5,
-  },
-  sender: {
-    nameX: 16,    // 差出人氏名カラム右端 (mm)
-    nameY: 24,
-    nameFont: 6.5,
-    addressX: 8,  // 差出人住所ブロック右端 (mm)
-    addressY: 24,
-    addressFont: 5.5,
-  },
-}
-
-/**
- * デフォルトテンプレート: A4 12面ラベル (86.4×42.3mm) 横書き
- */
-export const DEFAULT_TEMPLATE_HORIZONTAL: Template = {
-  id: 'default-a4-12-h',
-  name: '標準 (A4 12面) 横書き',
-  orientation: 'horizontal',
-  labelWidth: 86.4,
-  labelHeight: 42.3,
-  postalCode: {
-    x: 5,
-    y: 3,
-    digitSpacing: 7,
-    fontSize: 9,
-  },
-  recipient: {
-    nameX: 5,
-    nameY: 13,
-    nameFont: 12,
-    addressX: 5,
-    addressY: 24,
-    addressFont: 8.5,
-  },
-  sender: {
-    nameX: 50,
-    nameY: 33,
-    nameFont: 6.5,
-    addressX: 50,
-    addressY: 37,
-    addressFont: 5.5,
-  },
-}
+// 後方互換のための再エクスポート (PreviewArea / PrintConfirmDialog などが参照)
+export { DEFAULT_TEMPLATE, DEFAULT_TEMPLATE_HORIZONTAL }
 
 interface LabelCanvasProps {
   contact: Contact
