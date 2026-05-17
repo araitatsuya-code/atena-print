@@ -33,6 +33,37 @@ export function buildEditableBoxes(tpl: Template): EditableBox[] {
   const labelWidth = tpl.labelWidth
   const boxes: EditableBox[] = []
 
+  // 宛名を先頭にして、印刷対象を選んだ後の自然な編集導線に合わせる
+  const recipient = tpl.recipient
+  if (isVertical) {
+    const nameWidth = (recipient.nameFont / 2.835) * 2.5
+    boxes.push({
+      id: 'recipientName',
+      label: '宛名',
+      visualXMm: recipient.nameX - nameWidth,
+      visualYMm: recipient.nameY,
+      widthMm: nameWidth,
+      heightMm: Math.max(5, labelHeight - recipient.nameY - 2),
+      fontPt: recipient.nameFont,
+      fontFamily: recipient.nameFontFamily ?? 'serif',
+      bold: recipient.nameBold ?? false,
+      color: '#10b981',
+    })
+  } else {
+    boxes.push({
+      id: 'recipientName',
+      label: '宛名',
+      visualXMm: recipient.nameX,
+      visualYMm: recipient.nameY,
+      widthMm: Math.max(10, labelWidth - recipient.nameX - 2),
+      heightMm: (recipient.nameFont / 2.835) * 1.8,
+      fontPt: recipient.nameFont,
+      fontFamily: recipient.nameFontFamily ?? 'serif',
+      bold: recipient.nameBold ?? false,
+      color: '#10b981',
+    })
+  }
+
   if (tpl.postalCode) {
     const postal = tpl.postalCode
     boxes.push({
@@ -49,21 +80,7 @@ export function buildEditableBoxes(tpl: Template): EditableBox[] {
     })
   }
 
-  const recipient = tpl.recipient
   if (isVertical) {
-    const nameWidth = (recipient.nameFont / 2.835) * 2.5
-    boxes.push({
-      id: 'recipientName',
-      label: '宛名',
-      visualXMm: recipient.nameX - nameWidth,
-      visualYMm: recipient.nameY,
-      widthMm: nameWidth,
-      heightMm: Math.max(5, labelHeight - recipient.nameY - 2),
-      fontPt: recipient.nameFont,
-      fontFamily: recipient.nameFontFamily ?? 'serif',
-      bold: recipient.nameBold ?? false,
-      color: '#10b981',
-    })
     const addressWidth = (recipient.addressFont / 2.835) * 2.5
     boxes.push({
       id: 'recipientAddr',
@@ -78,18 +95,6 @@ export function buildEditableBoxes(tpl: Template): EditableBox[] {
       color: '#f59e0b',
     })
   } else {
-    boxes.push({
-      id: 'recipientName',
-      label: '宛名',
-      visualXMm: recipient.nameX,
-      visualYMm: recipient.nameY,
-      widthMm: Math.max(10, labelWidth - recipient.nameX - 2),
-      heightMm: (recipient.nameFont / 2.835) * 1.8,
-      fontPt: recipient.nameFont,
-      fontFamily: recipient.nameFontFamily ?? 'serif',
-      bold: recipient.nameBold ?? false,
-      color: '#10b981',
-    })
     boxes.push({
       id: 'recipientAddr',
       label: '住所',

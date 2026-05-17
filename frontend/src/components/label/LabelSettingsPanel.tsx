@@ -1,5 +1,6 @@
 import { useShallow } from 'zustand/shallow'
 import { useLabelStore } from '../../stores/labelStore'
+import { usePreviewStore } from '../../stores/previewStore'
 import type { LabelLayout } from '../../types'
 
 interface Preset {
@@ -98,6 +99,7 @@ export default function LabelSettingsPanel() {
       resetOffset: s.resetOffset,
     })),
   )
+  const setSelectedTemplate = usePreviewStore((s) => s.setSelectedTemplate)
 
   const currentPreset = matchPreset(layout)
 
@@ -106,6 +108,8 @@ export default function LabelSettingsPanel() {
     if (preset?.layout) {
       // オフセットは維持したままレイアウトを変更
       setLayout(preset.layout)
+      // ユーザーのカスタム配置をクリアし、新プリセットのフィールド配置を適用
+      setSelectedTemplate(null)
     }
   }
 

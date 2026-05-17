@@ -4,7 +4,8 @@ import { SaveContact } from '../../../wailsjs/go/main/App'
 import { useContactStore } from '../../stores/contactStore'
 import { usePreviewStore } from '../../stores/previewStore'
 import { useDecorationStore } from '../../stores/decorationStore'
-import LabelCanvas, { DEFAULT_TEMPLATE, DEFAULT_TEMPLATE_HORIZONTAL } from './LabelCanvas'
+import LabelCanvas from './LabelCanvas'
+import { resolveTemplate } from '../../lib/labelPresets'
 import LabelEditorOverlay from './LabelEditorOverlay'
 import LabelGridOverlay from './LabelGridOverlay'
 import WatermarkLayer from './WatermarkLayer'
@@ -146,20 +147,26 @@ export default function PreviewArea() {
     }
   }, [selectedContacts.length, previewContactIndex, setPreviewContactIndex])
 
-  // 書字方向が変わったら保存済みテンプレートをリセット (縦書き用の座標を横書きに流用しない)
+  // 書字方向またはラベル寸法が変わったら、整合しなくなった保存済みテンプレートを破棄
   useEffect(() => {
-    if (selectedTemplate && selectedTemplate.orientation !== orientation) {
+    if (!selectedTemplate) return
+    const orientationMismatch = selectedTemplate.orientation !== orientation
+    const widthMismatch = Math.abs(selectedTemplate.labelWidth - layout.labelWidth) >= 0.5
+    const heightMismatch = Math.abs(selectedTemplate.labelHeight - layout.labelHeight) >= 0.5
+    if (orientationMismatch || widthMismatch || heightMismatch) {
       setSelectedTemplate(null)
     }
-  }, [orientation, selectedTemplate, setSelectedTemplate])
+  }, [orientation, layout.labelWidth, layout.labelHeight, selectedTemplate, setSelectedTemplate])
 
   const safeIndex = Math.max(0, Math.min(previewContactIndex, selectedContacts.length - 1))
   const currentContact: Contact | null = selectedContacts[safeIndex] ?? null
 
-  const defaultTpl = orientation === 'horizontal' ? DEFAULT_TEMPLATE_HORIZONTAL : DEFAULT_TEMPLATE
-  const template: Template = selectedTemplate
-    ? { ...selectedTemplate, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
-    : { ...defaultTpl, orientation, labelWidth: layout.labelWidth, labelHeight: layout.labelHeight }
+  const template: Template = resolveTemplate(
+    selectedTemplate,
+    layout.labelWidth,
+    layout.labelHeight,
+    orientation,
+  )
 
   const zoomIn = () => setZoom(clampZoom(Math.round((zoom + ZOOM_STEP) * 100) / 100))
   const zoomOut = () => setZoom(clampZoom(Math.round((zoom - ZOOM_STEP) * 100) / 100))
