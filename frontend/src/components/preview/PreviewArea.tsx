@@ -171,6 +171,8 @@ export default function PreviewArea() {
 
   // グリッド表示フラグ (ローカル状態)
   const [showGrid, setShowGrid] = useState(false)
+  // 文字設定リボン (2段目) の表示フラグ
+  const [showFieldRibbon, setShowFieldRibbon] = useState(true)
   // フォント編集対象フィールド
   const [selectedFieldId, setSelectedFieldId] = useState<EditableFieldId | null>(null)
   // 内容編集ドラフト（選択中連絡先のみ）
@@ -485,8 +487,21 @@ export default function PreviewArea() {
               ＋
             </button>
           </div>
+          {/* 文字設定リボン折りたたみトグル */}
+          <button
+            onClick={() => setShowFieldRibbon((v) => !v)}
+            className="h-8 px-2 inline-flex items-center gap-1 text-xs rounded border border-gray-300 bg-white hover:bg-gray-100"
+            title={showFieldRibbon ? '文字設定を折りたたむ' : '文字設定を展開'}
+            aria-expanded={showFieldRibbon}
+          >
+            <span aria-hidden="true" className="text-[10px]">
+              {showFieldRibbon ? '▴' : '▾'}
+            </span>
+            文字設定
+          </button>
         </div>
 
+        {showFieldRibbon && (
         <div className="flex flex-wrap items-stretch gap-3 px-4 py-2 border-t border-gray-100 bg-gray-50">
           {/* Block A: 対象選択 */}
           <div className="flex items-center gap-2">
@@ -690,10 +705,12 @@ export default function PreviewArea() {
             <span className="text-[11px] text-red-600">{contentError}</span>
           )}
         </div>
+        )}
       </div>
 
       {/* キャンバスエリア */}
-      <div className="flex-1 overflow-auto flex items-center justify-center p-6">
+      <div className="flex-1 overflow-auto">
+        <div className="min-h-full flex items-center justify-center p-6">
         {mergedCurrentContact ? (
           // オフセット補正を CSS transform で可視化。
           // 背景ドラッグ → 印刷位置補正 / カラーハンドルドラッグ → 要素個別配置
@@ -737,6 +754,7 @@ export default function PreviewArea() {
         ) : (
           <p className="text-gray-400 text-sm">住所録で印刷対象をONにしてください</p>
         )}
+        </div>
       </div>
 
       {/* サムネイルナビゲーション (複数選択時) */}
