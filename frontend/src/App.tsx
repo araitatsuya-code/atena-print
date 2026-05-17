@@ -143,35 +143,42 @@ function App() {
               </button>
             </div>
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-              {/* トップバー */}
+              {/* ワークフローステッパー */}
               <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
-                <div className="flex items-center gap-1 mr-auto">
-                  <SecondaryToggleButton
-                    active={rightPanel === 'label'}
-                    onClick={() => toggleRightPanel('label')}
-                    icon={<LabelIcon />}
-                    label="ラベル設定"
-                  />
-                  <SecondaryToggleButton
-                    active={rightPanel === 'design'}
-                    onClick={() => toggleRightPanel('design')}
-                    icon={<DesignIcon />}
-                    label="デザイン設定"
-                  />
-                </div>
-                <button
-                  onClick={() => setShowPrintDialog(true)}
+                <StepperItem
+                  number={1}
+                  label="印刷対象を選ぶ"
+                  sub={selectedCount > 0 ? `${selectedCount} 件選択中` : '未選択'}
+                  active={selectedCount === 0}
+                  done={selectedCount > 0}
+                />
+                <StepperConnector />
+                <StepperItem
+                  number={2}
+                  label="デザインを整える"
+                  sub={
+                    rightPanel === 'label'
+                      ? 'ラベル設定を編集中'
+                      : rightPanel === 'design'
+                        ? 'デザイン設定を編集中'
+                        : 'ラベル / デザイン設定'
+                  }
+                  active={rightPanel !== null}
+                  onClick={() => setRightPanel((prev) => (prev ? null : 'label'))}
+                />
+                <StepperConnector />
+                <StepperItem
+                  number={3}
+                  label="印刷"
+                  sub={
+                    selectedCount > 0
+                      ? `${selectedCount} 件を印刷`
+                      : '対象を選んでください'
+                  }
+                  primary
                   disabled={selectedCount === 0}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <PrintIcon />
-                  ラベル印刷
-                  {selectedCount > 0 && (
-                    <span className="ml-0.5 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-[11px] font-semibold rounded-full bg-white/20 text-white">
-                      {selectedCount}
-                    </span>
-                  )}
-                </button>
+                  onClick={() => setShowPrintDialog(true)}
+                />
               </div>
               <PreviewArea />
             </div>
@@ -254,33 +261,82 @@ function NavButton({
   )
 }
 
-function SecondaryToggleButton({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean
-  onClick: () => void
-  icon: React.ReactNode
+interface StepperItemProps {
+  number: number
   label: string
-}) {
+  sub?: string
+  active?: boolean
+  done?: boolean
+  primary?: boolean
+  disabled?: boolean
+  onClick?: () => void
+}
+
+function StepperItem({
+  number,
+  label,
+  sub,
+  active,
+  done,
+  primary,
+  disabled,
+  onClick,
+}: StepperItemProps) {
+  const interactive = !!onClick && !disabled
+
+  let containerClass = 'text-gray-600'
+  let circleClass = 'bg-gray-200 text-gray-600'
+  let circleContent: React.ReactNode = number
+
+  if (primary) {
+    containerClass = disabled
+      ? 'bg-blue-600/40 text-white cursor-not-allowed'
+      : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm'
+    circleClass = 'bg-white/25 text-white'
+  } else if (active) {
+    containerClass = 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
+    circleClass = 'bg-blue-600 text-white'
+  } else if (done) {
+    containerClass = 'text-gray-700 hover:bg-gray-100'
+    circleClass = 'bg-emerald-500 text-white'
+    circleContent = '✓'
+  } else if (interactive) {
+    containerClass = 'text-gray-600 hover:bg-gray-100'
+  }
+
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-pressed={active}
-      className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs transition-colors ${
-        active
-          ? 'bg-gray-100 text-gray-800 ring-1 ring-gray-300'
-          : 'text-gray-600 hover:bg-gray-100'
+      disabled={disabled || !onClick}
+      aria-current={active && !primary ? 'step' : undefined}
+      className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md transition-colors text-left disabled:cursor-default ${containerClass} ${
+        !onClick ? 'disabled:opacity-100' : ''
       }`}
     >
-      <span className="text-gray-500" aria-hidden="true">
-        {icon}
+      <span
+        aria-hidden="true"
+        className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-semibold ${circleClass}`}
+      >
+        {circleContent}
       </span>
-      {label}
+      <span className="leading-tight">
+        <span className="block text-xs font-medium">{label}</span>
+        {sub && (
+          <span className={`block text-[10px] ${primary ? 'opacity-90' : 'opacity-80'}`}>
+            {sub}
+          </span>
+        )}
+      </span>
     </button>
+  )
+}
+
+function StepperConnector() {
+  return (
+    <span aria-hidden="true" className="self-center text-gray-300 text-sm select-none">
+      →
+    </span>
   )
 }
 
@@ -306,65 +362,6 @@ function PanelTab({
     >
       {children}
     </button>
-  )
-}
-
-function PrintIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <polyline points="6 9 6 2 18 2 18 9" />
-      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-      <rect x="6" y="14" width="12" height="8" />
-    </svg>
-  )
-}
-
-function LabelIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <line x1="3" y1="10" x2="21" y2="10" />
-    </svg>
-  )
-}
-
-function DesignIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 3v18" />
-      <path d="M3 12h18" />
-    </svg>
   )
 }
 
