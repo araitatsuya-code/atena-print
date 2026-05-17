@@ -10,6 +10,9 @@ import {
 } from '../../wailsjs/go/main/App'
 import { entity } from '../../wailsjs/go/models'
 import type { BackupGeneration, BackupSettings } from '../types'
+import SenderManager from './sender/SenderManager'
+
+type SettingsTab = 'sender' | 'data'
 
 const triggerLabelMap: Record<string, string> = {
   startup: '起動時',
@@ -19,6 +22,7 @@ const triggerLabelMap: Record<string, string> = {
 }
 
 export default function Settings() {
+  const [activeTab, setActiveTab] = useState<SettingsTab>('sender')
   const [version, setVersion] = useState('')
   const [exportMsg, setExportMsg] = useState('')
   const [importMsg, setImportMsg] = useState('')
@@ -144,9 +148,31 @@ export default function Settings() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-8 max-w-4xl">
-      <h2 className="text-xl font-semibold text-gray-800">設定</h2>
-
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="px-6 pt-6 pb-0 bg-white border-b border-gray-200">
+        <h2 className="text-xl font-semibold text-gray-800 mb-3">設定</h2>
+        <div className="flex gap-1 -mb-px">
+          <SettingsTabButton
+            active={activeTab === 'sender'}
+            onClick={() => setActiveTab('sender')}
+          >
+            差出人
+          </SettingsTabButton>
+          <SettingsTabButton
+            active={activeTab === 'data'}
+            onClick={() => setActiveTab('data')}
+          >
+            データ・アプリ
+          </SettingsTabButton>
+        </div>
+      </div>
+      {activeTab === 'sender' && (
+        <div className="flex-1 overflow-y-auto">
+          <SenderManager />
+        </div>
+      )}
+      {activeTab === 'data' && (
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 max-w-4xl">
       <section className="space-y-3">
         <h3 className="text-sm font-semibold text-gray-600 border-b border-gray-200 pb-2">データ管理</h3>
 
@@ -321,7 +347,34 @@ export default function Settings() {
           </p>
         </div>
       </section>
+        </div>
+      )}
     </div>
+  )
+}
+
+function SettingsTabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+        active
+          ? 'text-blue-700 border-blue-600'
+          : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
+      }`}
+    >
+      {children}
+    </button>
   )
 }
 
