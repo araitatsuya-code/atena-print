@@ -100,18 +100,36 @@ function App() {
 
   return (
     <div className="flex h-screen bg-gray-50 text-gray-900">
-      {/* サイドバー */}
-      <nav className="w-48 bg-white border-r border-gray-200 flex flex-col p-3 gap-1 shrink-0">
-        <h1 className="text-sm font-bold px-2 py-3 text-gray-700">Atena ラベル印刷</h1>
-        <NavButton active={view === 'dashboard'} onClick={() => setView('dashboard')}>
-          ダッシュボード
-        </NavButton>
-        <NavButton active={view === 'workspace'} onClick={() => setView('workspace')}>
-          ラベル印刷
-        </NavButton>
-        <NavButton active={view === 'settings'} onClick={() => setView('settings')}>
-          設定
-        </NavButton>
+      {/* サイドバー (アイコン化) */}
+      <nav
+        className="w-14 bg-white border-r border-gray-200 flex flex-col items-center py-3 gap-1 shrink-0"
+        aria-label="メインナビゲーション"
+      >
+        <div
+          className="w-9 h-9 mb-2 flex items-center justify-center rounded-md bg-blue-600 text-white font-bold text-sm"
+          aria-label="Atena ラベル印刷"
+          title="Atena ラベル印刷"
+        >
+          A
+        </div>
+        <NavButton
+          active={view === 'dashboard'}
+          onClick={() => setView('dashboard')}
+          icon={<HomeIcon />}
+          label="ダッシュボード"
+        />
+        <NavButton
+          active={view === 'workspace'}
+          onClick={() => setView('workspace')}
+          icon={<PrinterIcon />}
+          label="ラベル印刷"
+        />
+        <NavButton
+          active={view === 'settings'}
+          onClick={() => setView('settings')}
+          icon={<SettingsIcon />}
+          label="設定"
+        />
       </nav>
 
       {/* メインコンテンツ */}
@@ -232,23 +250,86 @@ function App() {
 function NavButton({
   active,
   onClick,
-  children,
+  icon,
+  label,
 }: {
   active: boolean
   onClick: () => void
-  children: React.ReactNode
+  icon: React.ReactNode
+  label: string
 }) {
   return (
     <button
       onClick={onClick}
-      className={`text-left px-3 py-2 rounded-md text-sm transition-colors ${
+      title={label}
+      aria-label={label}
+      aria-current={active ? 'page' : undefined}
+      className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors ${
         active
-          ? 'bg-blue-50 text-blue-700 font-medium'
-          : 'text-gray-600 hover:bg-gray-100'
+          ? 'bg-blue-50 text-blue-700'
+          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
       }`}
     >
-      {children}
+      {icon}
     </button>
+  )
+}
+
+function HomeIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 12l9-9 9 9" />
+      <path d="M5 10v10a1 1 0 0 0 1 1h4v-7h4v7h4a1 1 0 0 0 1-1V10" />
+    </svg>
+  )
+}
+
+function PrinterIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 6 2 18 2 18 9" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <rect x="6" y="14" width="12" height="8" />
+    </svg>
+  )
+}
+
+function SettingsIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
   )
 }
 
