@@ -6,7 +6,6 @@ import PreviewArea from './components/preview/PreviewArea'
 import DecorationSidebar from './components/decoration/DecorationSidebar'
 import LabelSettingsPanel from './components/label/LabelSettingsPanel'
 import PrintConfirmDialog from './components/PrintConfirmDialog'
-import Dashboard from './components/Dashboard'
 import Settings from './components/Settings'
 import { useContactStore } from './stores/contactStore'
 
@@ -16,7 +15,7 @@ function App() {
   const minContactPaneWidth = 300
   const defaultContactPaneWidth = 360
 
-  const [view, setView] = useState<View>('dashboard')
+  const [view, setView] = useState<View>('workspace')
   const [showPrintDialog, setShowPrintDialog] = useState(false)
   const [contactPaneWidth, setContactPaneWidth] = useState(defaultContactPaneWidth)
   const [isResizingContactPane, setIsResizingContactPane] = useState(false)
@@ -113,12 +112,6 @@ function App() {
           A
         </div>
         <NavButton
-          active={view === 'dashboard'}
-          onClick={() => setView('dashboard')}
-          icon={<HomeIcon />}
-          label="ダッシュボード"
-        />
-        <NavButton
           active={view === 'workspace'}
           onClick={() => setView('workspace')}
           icon={<PrinterIcon />}
@@ -134,9 +127,6 @@ function App() {
 
       {/* メインコンテンツ */}
       <main className="flex-1 flex overflow-hidden">
-        {view === 'dashboard' && (
-          <Dashboard onNavigate={(v) => setView(v as View)} />
-        )}
         {view === 'workspace' && (
           <>
             <div
@@ -272,25 +262,6 @@ function NavButton({
     >
       {icon}
     </button>
-  )
-}
-
-function HomeIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M3 12l9-9 9 9" />
-      <path d="M5 10v10a1 1 0 0 0 1 1h4v-7h4v7h4a1 1 0 0 0 1-1V10" />
-    </svg>
   )
 }
 

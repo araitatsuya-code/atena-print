@@ -936,9 +936,36 @@ export default function ContactList() {
         {loading && (
           <div className="text-center py-8 text-sm text-gray-400">読み込み中...</div>
         )}
-        {!loading && contacts.length === 0 && (
+        {!loading && contacts.length === 0 && searchQuery && (
           <div className="text-center py-8 text-sm text-gray-400">
-            {searchQuery ? '検索結果がありません' : '連絡先がありません'}
+            検索結果がありません
+          </div>
+        )}
+        {!loading && contacts.length === 0 && !searchQuery && (
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl" aria-hidden="true">
+              📇
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-800">連絡先がまだありません</p>
+              <p className="text-xs text-gray-500 mt-1">CSV取込か手動追加で始めましょう</p>
+            </div>
+            <div className="flex gap-2 mt-2">
+              <button
+                type="button"
+                onClick={handleImport}
+                className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+              >
+                CSV取込
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditTarget(null)}
+                className="px-4 py-2 text-sm rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              >
+                手動で追加
+              </button>
+            </div>
           </div>
         )}
         {!loading && contacts.length > 0 && displayContacts.length === 0 && (
