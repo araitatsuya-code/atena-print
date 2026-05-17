@@ -25,7 +25,6 @@ const AppVersion = "1.0.0"
 type App struct {
 	ctx                 context.Context
 	contactUseCase      *usecase.ContactUseCase
-	contactYearStatusUC *usecase.ContactYearStatusUseCase
 	addressNormUseCase  *usecase.AddressNormalizationUseCase
 	csvUseCase          *usecase.CSVUseCase
 	groupUseCase        *usecase.GroupUseCase
@@ -48,10 +47,9 @@ type addressNormalizationRollbackBatch struct {
 }
 
 // NewApp creates a new App application struct
-func NewApp(contactUC *usecase.ContactUseCase, contactYearStatusUC *usecase.ContactYearStatusUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, printUC *usecase.PrintUseCase, senderUC *usecase.SenderUseCase, postalRepo repository.PostalRepository, printHistoryUC *usecase.PrintHistoryUseCase, backupUC *usecase.BackupUseCase, db *sql.DB, dbPath string) *App {
+func NewApp(contactUC *usecase.ContactUseCase, csvUC *usecase.CSVUseCase, groupUC *usecase.GroupUseCase, watermarkUC *usecase.WatermarkUseCase, qrCodeUC *usecase.QRCodeUseCase, printUC *usecase.PrintUseCase, senderUC *usecase.SenderUseCase, postalRepo repository.PostalRepository, printHistoryUC *usecase.PrintHistoryUseCase, backupUC *usecase.BackupUseCase, db *sql.DB, dbPath string) *App {
 	return &App{
 		contactUseCase:      contactUC,
-		contactYearStatusUC: contactYearStatusUC,
 		addressNormUseCase:  usecase.NewAddressNormalizationUseCase(postalRepo),
 		csvUseCase:          csvUC,
 		groupUseCase:        groupUC,
@@ -270,35 +268,6 @@ func (a *App) RollbackAddressNormalization(batchID string) (entity.AddressNormal
 	}
 
 	return result, nil
-}
-
-// GetContactYearStatuses returns all yearly statuses in the specified year.
-func (a *App) GetContactYearStatuses(year int) ([]entity.ContactYearStatus, error) {
-	list, err := a.contactYearStatusUC.ListByYear(year)
-	if err != nil {
-		return nil, fmt.Errorf("GetContactYearStatuses: %w", err)
-	}
-	if list == nil {
-		list = []entity.ContactYearStatus{}
-	}
-	return list, nil
-}
-
-// SaveContactYearStatus creates or updates one yearly status for a contact.
-func (a *App) SaveContactYearStatus(status entity.ContactYearStatus) (entity.ContactYearStatus, error) {
-	saved, err := a.contactYearStatusUC.Save(status)
-	if err != nil {
-		return entity.ContactYearStatus{}, fmt.Errorf("SaveContactYearStatus: %w", err)
-	}
-	return saved, nil
-}
-
-// MarkContactsSentForYear marks contacts as sent for the specified year.
-func (a *App) MarkContactsSentForYear(contactIDs []string, year int) error {
-	if err := a.contactYearStatusUC.MarkSent(contactIDs, year); err != nil {
-		return fmt.Errorf("MarkContactsSentForYear: %w", err)
-	}
-	return nil
 }
 
 // LookupPostal returns address information for the given postal code (7 digits, hyphens allowed).

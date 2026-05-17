@@ -20,16 +20,6 @@ export interface Contact {
   updatedAt: string
 }
 
-export interface ContactYearStatus {
-  contactId: string
-  year: number
-  sent: boolean
-  received: boolean
-  mourning: boolean
-  createdAt: string
-  updatedAt: string
-}
-
 export interface Sender {
   id: string
   familyName: string

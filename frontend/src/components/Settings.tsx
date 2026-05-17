@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ExportDB,
   GetAppVersion,
   GetBackupSettings,
-  GetContactYearStatuses,
   GetPrintHistory,
   ImportDB,
   ListBackupGenerations,
@@ -11,18 +10,10 @@ import {
   SaveBackupSettings,
 } from '../../wailsjs/go/main/App'
 import { entity } from '../../wailsjs/go/models'
-import type { BackupGeneration, BackupSettings, ContactYearStatus, PrintHistory } from '../types'
+import type { BackupGeneration, BackupSettings, PrintHistory } from '../types'
 import SenderManager from './sender/SenderManager'
 
 type SettingsTab = 'sender' | 'history' | 'data'
-
-interface AnnualSummary {
-  sent: number
-  received: number
-  mourning: number
-}
-
-const emptyAnnualSummary: AnnualSummary = { sent: 0, received: 0, mourning: 0 }
 
 const triggerLabelMap: Record<string, string> = {
   startup: '起動時',
@@ -33,7 +24,6 @@ const triggerLabelMap: Record<string, string> = {
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('history')
-  const currentYear = useMemo(() => new Date().getFullYear(), [])
   const [version, setVersion] = useState('')
   const [exportMsg, setExportMsg] = useState('')
   const [importMsg, setImportMsg] = useState('')
@@ -45,7 +35,6 @@ export default function Settings() {
   const [savingBackupSettings, setSavingBackupSettings] = useState(false)
   const [restoringBackupID, setRestoringBackupID] = useState('')
   const [printHistory, setPrintHistory] = useState<PrintHistory[]>([])
-  const [annual, setAnnual] = useState<AnnualSummary>(emptyAnnualSummary)
   const [historyLoading, setHistoryLoading] = useState(true)
   const [historyError, setHistoryError] = useState<string | null>(null)
 
@@ -57,17 +46,16 @@ export default function Settings() {
   useEffect(() => {
     setHistoryLoading(true)
     setHistoryError(null)
-    Promise.all([GetPrintHistory(20), GetContactYearStatuses(currentYear)])
-      .then(([history, statuses]) => {
+    GetPrintHistory(20)
+      .then((history) => {
         setPrintHistory(history ?? [])
-        setAnnual(aggregateAnnual(statuses ?? []))
       })
       .catch((err) => {
         console.error(err)
         setHistoryError(err instanceof Error ? err.message : '読み込みに失敗しました。')
       })
       .finally(() => setHistoryLoading(false))
-  }, [currentYear])
+  }, [])
 
   async function loadBackupData() {
     setLoadingBackups(true)
@@ -186,7 +174,7 @@ export default function Settings() {
             active={activeTab === 'history'}
             onClick={() => setActiveTab('history')}
           >
-            履歴・状況
+            履歴
           </SettingsTabButton>
           <SettingsTabButton
             active={activeTab === 'sender'}
@@ -210,17 +198,6 @@ export default function Settings() {
             <p className="text-sm text-red-600">{historyError}</p>
           ) : (
             <>
-              <section className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-600 border-b border-gray-200 pb-2">
-                  {currentYear} 年の状況
-                </h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <AnnualCard label={`${currentYear} 送付済`} value={annual.sent} accent="blue" />
-                  <AnnualCard label={`${currentYear} 受取`} value={annual.received} accent="indigo" />
-                  <AnnualCard label={`${currentYear} 喪中`} value={annual.mourning} accent="rose" />
-                </div>
-              </section>
-
               <section className="space-y-3">
                 <h3 className="text-sm font-semibold text-gray-600 border-b border-gray-200 pb-2">
                   印刷履歴
@@ -482,42 +459,3 @@ function formatDateTime(value: string) {
   })
 }
 
-const annualAccentMap = {
-  blue: { value: 'text-blue-700', label: 'text-blue-600' },
-  indigo: { value: 'text-indigo-700', label: 'text-indigo-600' },
-  rose: { value: 'text-rose-700', label: 'text-rose-600' },
-} as const
-
-type AnnualAccent = keyof typeof annualAccentMap
-
-function AnnualCard({
-  label,
-  value,
-  accent,
-}: {
-  label: string
-  value: number
-  accent: AnnualAccent
-}) {
-  const colors = annualAccentMap[accent]
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
-      <p className={`text-[11px] font-medium uppercase tracking-wide ${colors.label}`}>{label}</p>
-      <p className={`mt-1 text-2xl font-bold ${colors.value}`}>
-        {value}
-        <span className="text-sm font-normal text-gray-500 ml-1">件</span>
-      </p>
-    </div>
-  )
-}
-
-function aggregateAnnual(statuses: ContactYearStatus[]): AnnualSummary {
-  return statuses.reduce<AnnualSummary>(
-    (acc, s) => ({
-      sent: acc.sent + (s.sent ? 1 : 0),
-      received: acc.received + (s.received ? 1 : 0),
-      mourning: acc.mourning + (s.mourning ? 1 : 0),
-    }),
-    { ...emptyAnnualSummary },
-  )
-}
