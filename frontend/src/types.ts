@@ -259,4 +259,4 @@ export interface RestoreBackupResult {
   restartRequired: boolean
 }
 
-export type View = 'dashboard' | 'workspace' | 'settings'
+export type View = 'workspace' | 'settings'

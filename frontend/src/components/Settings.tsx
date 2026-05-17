@@ -1,18 +1,28 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ExportDB,
   GetAppVersion,
   GetBackupSettings,
+  GetContactYearStatuses,
+  GetPrintHistory,
   ImportDB,
   ListBackupGenerations,
   RestoreBackupGeneration,
   SaveBackupSettings,
 } from '../../wailsjs/go/main/App'
 import { entity } from '../../wailsjs/go/models'
-import type { BackupGeneration, BackupSettings } from '../types'
+import type { BackupGeneration, BackupSettings, ContactYearStatus, PrintHistory } from '../types'
 import SenderManager from './sender/SenderManager'
 
-type SettingsTab = 'sender' | 'data'
+type SettingsTab = 'sender' | 'history' | 'data'
+
+interface AnnualSummary {
+  sent: number
+  received: number
+  mourning: number
+}
+
+const emptyAnnualSummary: AnnualSummary = { sent: 0, received: 0, mourning: 0 }
 
 const triggerLabelMap: Record<string, string> = {
   startup: '起動時',
@@ -22,7 +32,8 @@ const triggerLabelMap: Record<string, string> = {
 }
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('sender')
+  const [activeTab, setActiveTab] = useState<SettingsTab>('history')
+  const currentYear = useMemo(() => new Date().getFullYear(), [])
   const [version, setVersion] = useState('')
   const [exportMsg, setExportMsg] = useState('')
   const [importMsg, setImportMsg] = useState('')
@@ -33,11 +44,30 @@ export default function Settings() {
   const [loadingBackups, setLoadingBackups] = useState(false)
   const [savingBackupSettings, setSavingBackupSettings] = useState(false)
   const [restoringBackupID, setRestoringBackupID] = useState('')
+  const [printHistory, setPrintHistory] = useState<PrintHistory[]>([])
+  const [annual, setAnnual] = useState<AnnualSummary>(emptyAnnualSummary)
+  const [historyLoading, setHistoryLoading] = useState(true)
+  const [historyError, setHistoryError] = useState<string | null>(null)
 
   useEffect(() => {
     GetAppVersion().then(setVersion).catch(console.error)
     loadBackupData().catch(console.error)
   }, [])
+
+  useEffect(() => {
+    setHistoryLoading(true)
+    setHistoryError(null)
+    Promise.all([GetPrintHistory(20), GetContactYearStatuses(currentYear)])
+      .then(([history, statuses]) => {
+        setPrintHistory(history ?? [])
+        setAnnual(aggregateAnnual(statuses ?? []))
+      })
+      .catch((err) => {
+        console.error(err)
+        setHistoryError(err instanceof Error ? err.message : '読み込みに失敗しました。')
+      })
+      .finally(() => setHistoryLoading(false))
+  }, [currentYear])
 
   async function loadBackupData() {
     setLoadingBackups(true)
@@ -153,6 +183,12 @@ export default function Settings() {
         <h2 className="text-xl font-semibold text-gray-800 mb-3">設定</h2>
         <div className="flex gap-1 -mb-px">
           <SettingsTabButton
+            active={activeTab === 'history'}
+            onClick={() => setActiveTab('history')}
+          >
+            履歴・状況
+          </SettingsTabButton>
+          <SettingsTabButton
             active={activeTab === 'sender'}
             onClick={() => setActiveTab('sender')}
           >
@@ -166,6 +202,61 @@ export default function Settings() {
           </SettingsTabButton>
         </div>
       </div>
+      {activeTab === 'history' && (
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 max-w-4xl">
+          {historyLoading ? (
+            <p className="text-sm text-gray-500">読み込み中...</p>
+          ) : historyError ? (
+            <p className="text-sm text-red-600">{historyError}</p>
+          ) : (
+            <>
+              <section className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-600 border-b border-gray-200 pb-2">
+                  {currentYear} 年の状況
+                </h3>
+                <div className="grid grid-cols-3 gap-3">
+                  <AnnualCard label={`${currentYear} 送付済`} value={annual.sent} accent="blue" />
+                  <AnnualCard label={`${currentYear} 受取`} value={annual.received} accent="indigo" />
+                  <AnnualCard label={`${currentYear} 喪中`} value={annual.mourning} accent="rose" />
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-600 border-b border-gray-200 pb-2">
+                  印刷履歴
+                </h3>
+                {printHistory.length === 0 ? (
+                  <p className="text-sm text-gray-400">印刷履歴がありません。</p>
+                ) : (
+                  <ul className="divide-y divide-gray-100 border border-gray-200 rounded-md bg-white">
+                    {printHistory.map((h, i) => (
+                      <li
+                        key={h.id}
+                        className={`flex items-center justify-between px-4 py-2 text-sm ${
+                          i === 0 ? 'bg-blue-50/60' : ''
+                        }`}
+                      >
+                        <div>
+                          {i === 0 && (
+                            <span className="inline-block mr-2 px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-100 text-blue-700">
+                              最新
+                            </span>
+                          )}
+                          <span className="text-gray-700">{formatDateTime(h.printedAt)}</span>
+                        </div>
+                        <span className="flex items-center gap-3 text-xs text-gray-500">
+                          <span>{h.contactCount} 件</span>
+                          <span>{h.qrEnabled ? 'QR あり' : 'QR なし'}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </>
+          )}
+        </div>
+      )}
       {activeTab === 'sender' && (
         <div className="flex-1 overflow-y-auto">
           <SenderManager />
@@ -389,4 +480,44 @@ function formatDateTime(value: string) {
     minute: '2-digit',
     second: '2-digit',
   })
+}
+
+const annualAccentMap = {
+  blue: { value: 'text-blue-700', label: 'text-blue-600' },
+  indigo: { value: 'text-indigo-700', label: 'text-indigo-600' },
+  rose: { value: 'text-rose-700', label: 'text-rose-600' },
+} as const
+
+type AnnualAccent = keyof typeof annualAccentMap
+
+function AnnualCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string
+  value: number
+  accent: AnnualAccent
+}) {
+  const colors = annualAccentMap[accent]
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
+      <p className={`text-[11px] font-medium uppercase tracking-wide ${colors.label}`}>{label}</p>
+      <p className={`mt-1 text-2xl font-bold ${colors.value}`}>
+        {value}
+        <span className="text-sm font-normal text-gray-500 ml-1">件</span>
+      </p>
+    </div>
+  )
+}
+
+function aggregateAnnual(statuses: ContactYearStatus[]): AnnualSummary {
+  return statuses.reduce<AnnualSummary>(
+    (acc, s) => ({
+      sent: acc.sent + (s.sent ? 1 : 0),
+      received: acc.received + (s.received ? 1 : 0),
+      mourning: acc.mourning + (s.mourning ? 1 : 0),
+    }),
+    { ...emptyAnnualSummary },
+  )
 }
