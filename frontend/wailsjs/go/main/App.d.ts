@@ -38,8 +38,6 @@ export function GetContact(arg1:string):Promise<entity.Contact>;
 
 export function GetContactGroups(arg1:string):Promise<Array<entity.Group>>;
 
-export function GetContactYearStatuses(arg1:number):Promise<Array<entity.ContactYearStatus>>;
-
 export function GetContacts(arg1:string):Promise<Array<entity.Contact>>;
 
 export function GetDashboardStats():Promise<entity.DashboardStats>;
@@ -64,8 +62,6 @@ export function ListBackupGenerations():Promise<Array<entity.BackupGeneration>>;
 
 export function LookupPostal(arg1:string):Promise<entity.Address>;
 
-export function MarkContactsSentForYear(arg1:Array<string>,arg2:number):Promise<void>;
-
 export function OpenCSVFileDialog():Promise<string>;
 
 export function PrintPDF(arg1:string):Promise<void>;
@@ -81,8 +77,6 @@ export function SaveBackupSettings(arg1:entity.BackupSettings):Promise<entity.Ba
 export function SaveCSVFileDialog(arg1:string):Promise<string>;
 
 export function SaveContact(arg1:entity.Contact):Promise<entity.Contact>;
-
-export function SaveContactYearStatus(arg1:entity.ContactYearStatus):Promise<entity.ContactYearStatus>;
 
 export function SaveGroup(arg1:entity.Group):Promise<entity.Group>;
 

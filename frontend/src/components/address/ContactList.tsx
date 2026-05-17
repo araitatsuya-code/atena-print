@@ -8,11 +8,9 @@ import {
   OpenCSVFileDialog,
   SaveCSVFileDialog,
   SaveContact,
-  GetContactYearStatuses,
-  SaveContactYearStatus,
 } from '../../../wailsjs/go/main/App'
 import { useContactStore } from '../../stores/contactStore'
-import type { Contact, ContactYearStatus, Group } from '../../types'
+import type { Contact, Group } from '../../types'
 import ContactEditModal from './ContactEditModal'
 import GroupManageDialog from './GroupManageDialog'
 import CSVImportWizard from './CSVImportWizard'
@@ -20,7 +18,6 @@ import AddressNormalizationDialog from './AddressNormalizationDialog'
 
 type EditableField = 'familyName' | 'givenName' | 'honorific' | 'postalCode' | 'prefecture' | 'city' | 'street'
 type NavigationMode = 'none' | 'enter' | 'tab'
-type AnnualStatusField = 'sent' | 'received' | 'mourning'
 
 interface EditingCell {
   contactId: string
@@ -71,10 +68,6 @@ export default function ContactList() {
     focusContactId,
     currentGroupId,
     searchQuery,
-    annualStatusYear,
-    annualStatuses,
-    annualStatusesLoadedYear,
-    annualStatusesLoading,
     setContacts,
     setSelectedIds,
     clearFocusContactId,
@@ -82,10 +75,6 @@ export default function ContactList() {
     clearSelection,
     setCurrentGroupId,
     setSearchQuery,
-    setAnnualStatusYear,
-    setAnnualStatusesLoading,
-    setAnnualStatuses,
-    upsertAnnualStatuses,
   } = useContactStore()
 
   const [groups, setGroups] = useState<Group[]>([])
@@ -101,8 +90,6 @@ export default function ContactList() {
   const [showPrintTargetOnly, setShowPrintTargetOnly] = useState(false)
   const [bulkUpdatingPrintTargets, setBulkUpdatingPrintTargets] = useState(false)
   const [updatingPrintTargetIds, setUpdatingPrintTargetIds] = useState<Set<string>>(new Set())
-  const [bulkUpdatingAnnualStatus, setBulkUpdatingAnnualStatus] = useState(false)
-  const [updatingAnnualStatusKeys, setUpdatingAnnualStatusKeys] = useState<Set<string>>(new Set())
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
     const widths: Record<string, number> = {
       [summaryColumnKey]: defaultSummaryColumnWidth,
@@ -144,40 +131,7 @@ export default function ContactList() {
     ? contacts.filter((c) => c.isPrintTarget)
     : contacts
   const selectedVisibleCount = displayContacts.filter((c) => selectedIds.has(c.id)).length
-  const selectedVisibleContacts = displayContacts.filter((c) => selectedIds.has(c.id))
   const printTargetCount = contacts.filter((c) => c.isPrintTarget).length
-  const annualStatusesReady = annualStatusesLoadedYear === annualStatusYear && !annualStatusesLoading
-  const annualStatusActionsDisabled = bulkUpdatingAnnualStatus || !annualStatusesReady
-
-  const getDefaultAnnualStatus = (contactID: string): ContactYearStatus => ({
-    contactId: contactID,
-    year: annualStatusYear,
-    sent: false,
-    received: false,
-    mourning: false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  })
-
-  const getAnnualStatus = (contactID: string): ContactYearStatus =>
-    annualStatuses[contactID] ?? getDefaultAnnualStatus(contactID)
-
-  const buildAnnualStatusPayload = (
-    contactID: string,
-    patch: Partial<Pick<ContactYearStatus, AnnualStatusField>>,
-    requestYear: number,
-  ): Parameters<typeof SaveContactYearStatus>[0] => {
-    const current = getAnnualStatus(contactID)
-    const now = new Date().toISOString()
-    const createdAt = current.createdAt?.trim() ? current.createdAt : now
-    return {
-      ...current,
-      ...patch,
-      year: requestYear,
-      createdAt,
-      updatedAt: now,
-    } as Parameters<typeof SaveContactYearStatus>[0]
-  }
 
   const refreshGroups = () => {
     GetGroups().then(setGroups).catch(console.error)
@@ -208,32 +162,6 @@ export default function ContactList() {
         }
       })
   }, [currentGroupId, searchQuery])
-
-  useEffect(() => {
-    let active = true
-    const requestYear = annualStatusYear
-    setAnnualStatusesLoading(true)
-    GetContactYearStatuses(requestYear)
-      .then((list) => {
-        if (!active) return
-        setAnnualStatuses(requestYear, list ?? [])
-      })
-      .catch((err) => {
-        console.error(err)
-        if (active) {
-          setInlineSaveError('年次ステータスの取得に失敗しました。再度お試しください。')
-          if (useContactStore.getState().annualStatusYear === requestYear) {
-            setAnnualStatusesLoading(false)
-          }
-        }
-      })
-    return () => {
-      active = false
-      if (useContactStore.getState().annualStatusYear === requestYear) {
-        setAnnualStatusesLoading(false)
-      }
-    }
-  }, [annualStatusYear])
 
   useEffect(() => {
     editingCellRef.current = editingCell
@@ -424,64 +352,6 @@ export default function ContactList() {
       }
     } finally {
       setBulkUpdatingPrintTargets(false)
-    }
-  }
-
-  const toggleAnnualStatus = async (contactID: string, field: AnnualStatusField) => {
-    if (annualStatusActionsDisabled) return
-    const requestYear = annualStatusYear
-    const updatingKey = `${contactID}:${field}`
-    setInlineSaveError(null)
-    setUpdatingAnnualStatusKeys((prev) => {
-      const next = new Set(prev)
-      next.add(updatingKey)
-      return next
-    })
-    try {
-      const current = getAnnualStatus(contactID)
-      const saved = await SaveContactYearStatus(
-        buildAnnualStatusPayload(contactID, { [field]: !current[field] }, requestYear),
-      )
-      if (useContactStore.getState().annualStatusYear === requestYear) {
-        upsertAnnualStatuses([saved])
-      }
-    } catch (err) {
-      console.error(err)
-      setInlineSaveError('年次ステータスの更新に失敗しました。再度お試しください。')
-    } finally {
-      setUpdatingAnnualStatusKeys((prev) => {
-        const next = new Set(prev)
-        next.delete(updatingKey)
-        return next
-      })
-    }
-  }
-
-  const setAnnualStatusForSelectedContacts = async (patch: Partial<Pick<ContactYearStatus, AnnualStatusField>>) => {
-    if (selectedVisibleContacts.length === 0 || annualStatusActionsDisabled) return
-    const requestYear = annualStatusYear
-    setInlineSaveError(null)
-    setBulkUpdatingAnnualStatus(true)
-    try {
-      const results = await Promise.allSettled(
-        selectedVisibleContacts.map((contact) =>
-          SaveContactYearStatus(buildAnnualStatusPayload(contact.id, patch, requestYear)),
-        ),
-      )
-      const savedList = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
-      const failed = results.filter((result) => result.status === 'rejected')
-      failed.forEach((result) => console.error(result.reason))
-
-      if (savedList.length > 0) {
-        if (useContactStore.getState().annualStatusYear === requestYear) {
-          upsertAnnualStatuses(savedList.filter((status) => status.year === requestYear))
-        }
-      }
-      if (failed.length > 0) {
-        setInlineSaveError(`年次ステータスの一括更新に失敗しました（${failed.length}件）。再度お試しください。`)
-      }
-    } finally {
-      setBulkUpdatingAnnualStatus(false)
     }
   }
 
@@ -731,9 +601,6 @@ export default function ContactList() {
   )
 
   const tabs = [{ id: '', name: 'すべて' }, ...groups]
-  const currentYear = new Date().getFullYear()
-  const minYear = currentYear - 10
-  const maxYear = currentYear + 10
 
   return (
     <div className="flex flex-col h-full">
@@ -857,74 +724,6 @@ export default function ContactList() {
         </div>
       </div>
 
-      {/* セクション3: 選択中スコープの年次ステータスアクション */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5 border-b border-gray-100 text-xs">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500 shrink-0">
-          選択中 {selectedVisibleCount} 件 を
-        </span>
-        <label className="flex items-center gap-1 text-gray-500">
-          <input
-            type="number"
-            min={minYear}
-            max={maxYear}
-            value={annualStatusYear}
-            onChange={(e) => {
-              const nextYear = Number(e.target.value)
-              if (Number.isInteger(nextYear) && nextYear >= 1900 && nextYear <= 3000) {
-                setAnnualStatusYear(nextYear)
-              }
-            }}
-            className="w-20 rounded border border-gray-300 px-1 py-0.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            aria-label="年次ステータスの対象年"
-          />
-          <span>年に</span>
-        </label>
-        <div
-          className={`inline-flex rounded-md border border-gray-300 overflow-hidden divide-x divide-gray-300 ${
-            selectedVisibleContacts.length === 0 || annualStatusActionsDisabled ? 'opacity-50' : ''
-          }`}
-        >
-          <button
-            onClick={() => void setAnnualStatusForSelectedContacts({ sent: true })}
-            className="px-2 py-0.5 text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed"
-            disabled={selectedVisibleContacts.length === 0 || annualStatusActionsDisabled}
-            title="送付済にする"
-          >
-            送付済
-          </button>
-          <button
-            onClick={() => void setAnnualStatusForSelectedContacts({ received: true })}
-            className="px-2 py-0.5 text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed"
-            disabled={selectedVisibleContacts.length === 0 || annualStatusActionsDisabled}
-            title="受取済にする"
-          >
-            受取
-          </button>
-          <button
-            onClick={() => void setAnnualStatusForSelectedContacts({ mourning: true })}
-            className="px-2 py-0.5 text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed"
-            disabled={selectedVisibleContacts.length === 0 || annualStatusActionsDisabled}
-            title="喪中にする"
-          >
-            喪中
-          </button>
-          <button
-            onClick={() =>
-              void setAnnualStatusForSelectedContacts({ sent: false, received: false, mourning: false })
-            }
-            className="px-2 py-0.5 text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed"
-            disabled={selectedVisibleContacts.length === 0 || annualStatusActionsDisabled}
-            title="送付済・受取・喪中をすべてリセット"
-          >
-            リセット
-          </button>
-        </div>
-        {selectedVisibleContacts.length === 0 && (
-          <span className="text-[11px] text-gray-400">
-            行のチェックボックスで対象を選んでください
-          </span>
-        )}
-      </div>
       {inlineSaveError && (
         <div className="px-3 py-2 text-xs text-red-600 bg-red-50 border-b border-red-100">
           {inlineSaveError}
@@ -996,9 +795,6 @@ export default function ContactList() {
                     印刷
                   </span>
                 </th>
-                <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">{annualStatusYear}送付</th>
-                <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">{annualStatusYear}受取</th>
-                <th className="w-16 px-2 py-2 border-b border-gray-200 text-left">{annualStatusYear}喪中</th>
                 {editableColumns.map((col) => (
                   <th
                     key={col.field}
@@ -1026,7 +822,6 @@ export default function ContactList() {
             </thead>
             <tbody>
               {displayContacts.map((c) => {
-                const annual = getAnnualStatus(c.id)
                 return (
                   <tr
                     key={c.id}
@@ -1072,36 +867,6 @@ export default function ContactList() {
                         on={c.isPrintTarget}
                         disabled={bulkUpdatingPrintTargets || updatingPrintTargetIds.has(c.id)}
                         onToggle={() => void togglePrintTarget(c)}
-                      />
-                    </td>
-                    <td className="px-2 py-1.5 border-b border-gray-100 align-top">
-                      <input
-                        type="checkbox"
-                        checked={annual.sent}
-                        disabled={annualStatusActionsDisabled || updatingAnnualStatusKeys.has(`${c.id}:sent`)}
-                        onChange={() => void toggleAnnualStatus(c.id, 'sent')}
-                        onClick={(e) => e.stopPropagation()}
-                        className="mt-1 h-3.5 w-3.5 accent-blue-600 disabled:opacity-40"
-                      />
-                    </td>
-                    <td className="px-2 py-1.5 border-b border-gray-100 align-top">
-                      <input
-                        type="checkbox"
-                        checked={annual.received}
-                        disabled={annualStatusActionsDisabled || updatingAnnualStatusKeys.has(`${c.id}:received`)}
-                        onChange={() => void toggleAnnualStatus(c.id, 'received')}
-                        onClick={(e) => e.stopPropagation()}
-                        className="mt-1 h-3.5 w-3.5 accent-indigo-600 disabled:opacity-40"
-                      />
-                    </td>
-                    <td className="px-2 py-1.5 border-b border-gray-100 align-top">
-                      <input
-                        type="checkbox"
-                        checked={annual.mourning}
-                        disabled={annualStatusActionsDisabled || updatingAnnualStatusKeys.has(`${c.id}:mourning`)}
-                        onChange={() => void toggleAnnualStatus(c.id, 'mourning')}
-                        onClick={(e) => e.stopPropagation()}
-                        className="mt-1 h-3.5 w-3.5 accent-rose-600 disabled:opacity-40"
                       />
                     </td>
                     {editableColumns.map((col) => (
